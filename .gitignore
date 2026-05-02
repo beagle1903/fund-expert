@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / agent
+.idea/
+.vscode/
+.claude/
+
+# Tool runtime data (last-run cache, news cache)
+.fundexpert/
+
+# Local source data (TEFAS/BEFAS exports kept off the public repo)
+data/
+
+# Misc
+*.tmp
