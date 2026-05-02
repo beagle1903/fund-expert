@@ -69,49 +69,31 @@ fund expert/
 
 ## Task 0: Project Bootstrap
 
+> **Already done before this plan starts executing:** the repo is already initialized (`main` branch on GitHub at `beagle1903/fund-expert`), `.gitignore` and `README.md` already exist, and `docs/` is committed. The steps below skip those.
+
 **Files:**
 - Create: `pyproject.toml`
 - Create: `requirements.txt`
-- Create: `.gitignore`
-- Create: `README.md`
+- Verify (already exists): `.gitignore`
+- Verify (already exists): `README.md`
 - Create: `fundexpert/__init__.py`
 - Create: `fundexpert/__main__.py`
 - Create: `tests/__init__.py`
 - Create: `tests/conftest.py`
 
-- [ ] **Step 0.1: Initialize git**
+- [ ] **Step 0.1: Verify git is initialized**
 
 ```bash
 cd "C:/Users/burha/Documents/dev-cc/fund expert"
-git init
-git config core.autocrlf false
+git rev-parse --is-inside-work-tree   # expect: true
+git remote -v                         # expect: origin → https://github.com/beagle1903/fund-expert
 ```
 
-- [ ] **Step 0.2: Create `.gitignore`**
+If for any reason the repo is not initialized, run `git init -b main` and add the remote, but otherwise skip.
 
-```gitignore
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-.pytest_cache/
-.venv/
-venv/
+- [ ] **Step 0.2: Verify `.gitignore` excludes the right things (do NOT overwrite)**
 
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-.idea/
-.vscode/
-
-# Tool runtime data
-.fundexpert/
-
-# Source data — already tracked but lock to UTF-8 noise
-*.tmp
-```
+The committed `.gitignore` already excludes `__pycache__/`, `*.py[cod]`, `*.egg-info/`, `.pytest_cache/`, `.venv/`, `.fundexpert/`, `data/`, `.claude/`, OS noise, and IDE folders. Confirm by inspecting the file; if anything is missing, append (do not replace) the missing entries.
 
 - [ ] **Step 0.3: Create `pyproject.toml`**
 
@@ -189,40 +171,9 @@ def fixtures_dir() -> Path:
     return FIXTURES
 ```
 
-- [ ] **Step 0.9: Create `README.md`**
+- [ ] **Step 0.9: Verify `README.md` exists (do NOT overwrite)**
 
-```markdown
-# Fund Expert
-
-CLI that recommends a Turkish investment-fund portfolio from local TEFAS/BEFAS CSVs.
-
-## Setup
-
-```bash
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
-
-pip install -e ".[dev]"
-```
-
-## Run
-
-```bash
-fundexpert            # interactive prompts
-fundexpert --news     # add RSS news annotations
-```
-
-## Test
-
-```bash
-pytest
-```
-
-See `docs/` for full design.
-```
+The committed `README.md` at the repo root already explains the project, points at the design docs, and describes how to bring your own CSVs into `data/`. If it is missing, recreate it from the prior commit on `main`. Otherwise leave it alone — adding setup details after the package exists is a later edit, not part of bootstrap.
 
 - [ ] **Step 0.10: Create venv, install, verify pytest collects 0 tests**
 
@@ -234,11 +185,17 @@ python -m venv .venv
 
 Expected: `0 tests collected` — confirms package imports cleanly and pytest finds the `tests/` directory.
 
-- [ ] **Step 0.11: First commit**
+- [ ] **Step 0.11: Stage and commit the bootstrap (NOT a first commit — `main` already has the docs commit)**
 
 ```bash
-git add .
+git add pyproject.toml requirements.txt fundexpert/ tests/
 git commit -m "chore: bootstrap fundexpert package and test harness"
+```
+
+Push if the user wants progress visible on GitHub:
+
+```bash
+git push origin main
 ```
 
 ---
