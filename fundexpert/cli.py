@@ -152,7 +152,20 @@ def _prompt(last: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _ensure_utf8_stdio() -> None:
+    """Force UTF-8 on stdout/stderr so Turkish characters render on any terminal."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main() -> int:
+    _ensure_utf8_stdio()
     parser = argparse.ArgumentParser(prog="fundexpert")
     parser.add_argument(
         "--news", action="store_true",
