@@ -19,7 +19,8 @@ Thumbs.db
 .fundexpert/
 
 # Local source data (TEFAS/BEFAS exports kept off the public repo)
-data/
+# Anchor to repo root so it doesn't match fundexpert/data/ package
+/data/
 
 # Misc
 *.tmp
