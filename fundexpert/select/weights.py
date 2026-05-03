@@ -13,7 +13,11 @@ def compute_weights(selected: pd.DataFrame) -> pd.DataFrame:
         return out
 
     scores = out["score"].astype(float)
-    shifted = scores - scores.min() + WEIGHT_EPSILON
+    # Clip to ε floor instead of subtracting min: keeps weights proportional to
+    # raw scores when all positive (avoiding the min-subtract amplification of
+    # tightly-clustered scores) while still giving negative/zero scores a tiny
+    # nonzero weight.
+    shifted = scores.clip(lower=WEIGHT_EPSILON)
     raw_weight = shifted / shifted.sum()
     display = (raw_weight * 100).round(1)
 
