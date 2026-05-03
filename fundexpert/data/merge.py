@@ -21,8 +21,3 @@ def merge_universe(frames: dict[str, pd.DataFrame], universe: str) -> pd.DataFra
     df = df.merge(yonetim_keep, on="fon_kodu", how="inner")
     df["universe"] = universe
     return df
-
-
-def merge_universes(frames: list[pd.DataFrame]) -> pd.DataFrame:
-    """Concatenate already-merged universe frames (TEFAS + BEFAS codes are disjoint)."""
-    return pd.concat(frames, ignore_index=True)

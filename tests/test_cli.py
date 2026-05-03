@@ -101,3 +101,33 @@ def test_main_exits_cleanly_on_keyboard_interrupt(capsys):
         rc = main()
     assert rc == 130
     assert "İptal" in capsys.readouterr().err
+
+
+def test_run_pipeline_rejects_both_universe():
+    with pytest.raises(ValueError, match="tefas.*befas"):
+        run_pipeline(
+            universe="both", risk_priority="medium", horizon="medium",
+            volume_priority="medium", fee_priority="medium",
+            n=2, max_per_type=2, now=datetime(2026, 5, 2),
+        )
+
+
+def test_main_renders_two_portfolios_when_universe_is_both():
+    """`both` runs pipeline once per platform; render_portfolio is called twice."""
+    answers = {
+        "universe": "both", "risk_priority": "medium", "horizon": "medium",
+        "volume_priority": "medium", "fee_priority": "medium", "n": 3,
+    }
+    fake_selected = pd.DataFrame({"display_weight_pct": [50, 50]})
+    fake_header = {"warning": None}
+    with patch("sys.argv", ["fundexpert"]), \
+         patch("fundexpert.cli._prompt", return_value=answers), \
+         patch("fundexpert.cli._save_last_run"), \
+         patch("fundexpert.cli.run_pipeline",
+               return_value=(fake_selected, fake_header)) as run_mock, \
+         patch("fundexpert.cli.render_portfolio") as render_mock:
+        rc = main()
+    assert rc == 0
+    assert render_mock.call_count == 2
+    universes_called = [call.kwargs["universe"] for call in run_mock.call_args_list]
+    assert universes_called == ["tefas", "befas"]

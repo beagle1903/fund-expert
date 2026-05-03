@@ -44,7 +44,7 @@ New-Item -ItemType Junction -Path "<worktree>/data" -Target "<repo>/data"
 
 ```
 loader.load_universe(getiri, buyukluk, yonetim)
-  → merge.merge_universe → (optional merge_universes for tefas+befas)
+  → merge.merge_universe (one universe per run; `both` runs the pipeline twice and renders two portfolios)
   → drop NaN applied_management_fee_pct
   → scoring.horizon.apply_horizon (averages return columns per horizon bucket)
   → scoring.score.score_candidates (weighted sum of R̂, V̂, 1−F̂; minus SRRI risk penalty)
