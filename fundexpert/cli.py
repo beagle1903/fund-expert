@@ -19,6 +19,7 @@ from fundexpert.render.table import render_portfolio
 from fundexpert.scoring.horizon import apply_horizon
 from fundexpert.scoring.score import score_candidates
 from fundexpert.select.pick import pick_top
+from fundexpert.select.strategy import bucket_from_name
 from fundexpert.select.weights import compute_weights
 
 DATA_ROOT = Path(__file__).resolve().parent.parent / "data"
@@ -65,6 +66,7 @@ def run_pipeline(
         fee_priority=fee_priority,
         risk_priority=risk_priority,
     )
+    scored = scored.assign(strategy=scored["fon_adi"].map(bucket_from_name))
     selected, warning = pick_top(scored, n=n, max_per_type=max_per_type)
     weighted = compute_weights(selected)
 
@@ -173,7 +175,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--max-per-type", type=int, default=DEFAULT_MAX_PER_TYPE,
-        help="Max funds per Şemsiye Fon Türü",
+        help="Max funds per strateji (e.g. para piyasası, hisse, borçlanma)",
     )
     args = parser.parse_args()
 
