@@ -41,7 +41,7 @@ def test_render_includes_total_row(capsys):
     render_portfolio(_selected(), _header(), news=None)
     captured = capsys.readouterr()
     assert "Toplam" in captured.out
-    assert "100.0" in captured.out
+    assert "100" in captured.out
 
 
 def test_render_includes_news_footer_when_provided(capsys):

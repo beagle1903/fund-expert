@@ -48,11 +48,11 @@ def render_portfolio(
             str(r["fon_adi"]),
             str(r["umbrella_type"]),
             str(int(r["risk"])),
-            f"{r['display_weight_pct']:.1f}",
+            f"{int(r['display_weight_pct'])}",
             f"{r['score']:.2f}",
         )
     total_weight = selected["display_weight_pct"].sum() if len(selected) else 0.0
-    table.add_row("", "", "", "[bold]Toplam[/bold]", f"[bold]{total_weight:.1f}[/bold]", "")
+    table.add_row("", "", "", "[bold]Toplam[/bold]", f"[bold]{int(total_weight)}[/bold]", "")
     console.print(table)
 
     if news:

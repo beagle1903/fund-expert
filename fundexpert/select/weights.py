@@ -1,30 +1,54 @@
-"""ε-shifted score-proportional weights, with rounding reconciliation to sum=100.0."""
+"""Score-proportional weights, snapped to multiples of 5 with a 5% floor."""
 
 import pandas as pd
 
 from fundexpert.config import WEIGHT_EPSILON
 
+_STEP = 5  # display weights are integer multiples of 5%
+
 
 def compute_weights(selected: pd.DataFrame) -> pd.DataFrame:
-    """Add `display_weight_pct` column. Sum is exactly 100.0 after rounding."""
+    """Add `display_weight_pct` column.
+
+    Each selected fund gets a 5% floor, the remaining 100 - 5*N is distributed
+    score-proportionally using the largest-remainder method on units of 5%.
+    Sum is exactly 100. With N=20 (the CLI cap), every fund gets exactly 5%.
+    """
     out = selected.copy()
-    if len(out) == 0:
-        out["display_weight_pct"] = pd.Series(dtype=float)
+    n = len(out)
+    if n == 0:
+        out["display_weight_pct"] = pd.Series(dtype=int)
+        return out
+    if n * _STEP > 100:
+        # Defensive: would never happen with the CLI's N≤20 cap, but stay safe
+        # by falling back to equal weighting in 5% units.
+        units_each = max(1, (100 // _STEP) // n)
+        display = pd.Series([units_each * _STEP] * n, index=out.index, dtype=int)
+        # Top-up to 100 by adding leftover units to highest-score funds
+        leftover = (100 // _STEP) - units_each * n
+        for idx in out["score"].astype(float).nlargest(leftover).index:
+            display.loc[idx] += _STEP
+        out["display_weight_pct"] = display
         return out
 
-    scores = out["score"].astype(float)
-    # Clip to ε floor instead of subtracting min: keeps weights proportional to
-    # raw scores when all positive (avoiding the min-subtract amplification of
-    # tightly-clustered scores) while still giving negative/zero scores a tiny
-    # nonzero weight.
-    shifted = scores.clip(lower=WEIGHT_EPSILON)
-    raw_weight = shifted / shifted.sum()
-    display = (raw_weight * 100).round(1)
+    scores = out["score"].astype(float).clip(lower=WEIGHT_EPSILON)
+    total_units = 100 // _STEP                      # 20 units of 5% each
+    base_units = 1                                   # 5% floor per fund
+    remaining_units = total_units - base_units * n   # units to distribute by score
 
-    delta = round(100.0 - display.sum(), 1)
-    if delta != 0.0:
-        idx_max = display.idxmax()
-        display.loc[idx_max] = round(display.loc[idx_max] + delta, 1)
+    proportions = scores / scores.sum()
+    raw_extra = proportions * remaining_units
+    floor_extra = raw_extra.astype(int)
+    leftover = int(remaining_units - floor_extra.sum())
 
-    out["display_weight_pct"] = display
+    units = floor_extra + base_units
+    if leftover > 0:
+        # Largest-remainder: hand the leftover units to the funds with the
+        # biggest fractional part. Stable on ties (pandas keeps insertion order).
+        remainders = raw_extra - floor_extra
+        winners = remainders.nlargest(leftover).index
+        for idx in winners:
+            units.loc[idx] += 1
+
+    out["display_weight_pct"] = (units * _STEP).astype(int)
     return out
