@@ -34,3 +34,23 @@ def test_single_fund_gets_full_weight():
     df = pd.DataFrame({"fon_kodu": ["A"], "score": [0.7]})
     out = compute_weights(df)
     assert out["display_weight_pct"].iloc[0] == 100.0
+
+
+def test_clustered_scores_produce_clustered_weights():
+    """Top fund should not dominate when scores are tightly clustered.
+
+    Reproduces the deployed-portfolio bug: scores [0.58, 0.35, 0.35, 0.34, 0.34,
+    0.34, 0.33, 0.33] used to put 65.7% in the top fund because weights subtracted
+    min before normalising. With raw-proportional weighting, the top weight should
+    be at most ~2× the smallest, matching the underlying score ratio.
+    """
+    df = pd.DataFrame({
+        "fon_kodu": ["A", "B", "C", "D", "E", "F", "G", "H"],
+        "score":    [0.58, 0.35, 0.35, 0.34, 0.34, 0.34, 0.33, 0.33],
+    })
+    out = compute_weights(df).sort_values("score", ascending=False)
+    weights = out["display_weight_pct"].tolist()
+    # Top fund's weight must be within 2.5× the smallest (score ratio is ~1.76×)
+    assert weights[0] / weights[-1] < 2.5
+    # And the top fund should be well under 30% with N=8
+    assert weights[0] < 30.0
