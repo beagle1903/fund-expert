@@ -1,10 +1,10 @@
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
-from fundexpert.cli import run_pipeline
+from fundexpert.cli import _prompt, main, run_pipeline
 
 
 @pytest.fixture
@@ -60,3 +60,44 @@ def test_run_pipeline_returns_selected_with_weights(fake_universe_loader):
     assert "display_weight_pct" in selected.columns
     assert sum(selected["display_weight_pct"]) == pytest.approx(100.0)
     assert header["candidate_total"] == 3
+
+
+def _make_questionary_mock(answers: list):
+    """Build a questionary stub whose .select/.text(...).ask() returns answers in order."""
+    iterator = iter(answers)
+
+    def _factory(*_args, **_kwargs):
+        prompt = MagicMock()
+        prompt.ask.return_value = next(iterator)
+        return prompt
+
+    qmock = MagicMock()
+    qmock.select.side_effect = _factory
+    qmock.text.side_effect = _factory
+    return qmock
+
+
+@pytest.mark.parametrize("cancel_at", range(6))
+def test_prompt_returns_none_when_user_cancels(cancel_at):
+    """Cancelling at any prompt step yields None instead of crashing on int(None)."""
+    answers = ["tefas", "medium", "medium", "medium", "medium", "5"]
+    answers[cancel_at] = None
+    qmock = _make_questionary_mock(answers)
+    with patch.dict("sys.modules", {"questionary": qmock}):
+        assert _prompt(last={}) is None
+
+
+def test_main_exits_cleanly_on_cancellation(capsys):
+    with patch("sys.argv", ["fundexpert"]), \
+         patch("fundexpert.cli._prompt", return_value=None):
+        rc = main()
+    assert rc == 130
+    assert "İptal" in capsys.readouterr().err
+
+
+def test_main_exits_cleanly_on_keyboard_interrupt(capsys):
+    with patch("sys.argv", ["fundexpert"]), \
+         patch("fundexpert.cli._prompt", side_effect=KeyboardInterrupt):
+        rc = main()
+    assert rc == 130
+    assert "İptal" in capsys.readouterr().err

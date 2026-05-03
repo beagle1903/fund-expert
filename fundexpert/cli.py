@@ -110,39 +110,52 @@ def _save_last_run(answers: dict[str, Any]) -> None:
         pass  # quality-of-life only — never fail the run on cache write errors
 
 
-def _prompt(last: dict[str, Any]) -> dict[str, Any]:
+def _prompt(last: dict[str, Any]) -> dict[str, Any] | None:
+    """Run interactive prompts. Returns None if the user cancelled (Ctrl+C / Esc)."""
     import questionary
 
     universe = questionary.select(
         "Fon evreni:", choices=UNIVERSE_CHOICES,
         default=last.get("universe", "tefas"),
     ).ask()
+    if universe is None:
+        return None
 
     risk_priority = questionary.select(
         "Risk önceliği (yüksek = riskten kaçınma):",
         choices=PRIORITY_CHOICES, default=last.get("risk_priority", "medium"),
     ).ask()
+    if risk_priority is None:
+        return None
 
     horizon = questionary.select(
         "Yatırım vadesi:",
         choices=HORIZON_CHOICES, default=last.get("horizon", "medium"),
     ).ask()
+    if horizon is None:
+        return None
 
     volume_priority = questionary.select(
         "Hacim değişimi önceliği:",
         choices=PRIORITY_CHOICES, default=last.get("volume_priority", "medium"),
     ).ask()
+    if volume_priority is None:
+        return None
 
     fee_priority = questionary.select(
         "Yönetim ücreti önceliği:",
         choices=PRIORITY_CHOICES, default=last.get("fee_priority", "medium"),
     ).ask()
+    if fee_priority is None:
+        return None
 
     n_raw = questionary.text(
         "Kaç fon istiyorsun (1-20)?",
         default=str(last.get("n", 5)),
         validate=lambda v: v.isdigit() and 1 <= int(v) <= 20,
     ).ask()
+    if n_raw is None:
+        return None
 
     return {
         "universe": universe,
@@ -180,7 +193,13 @@ def main() -> int:
     args = parser.parse_args()
 
     last = _load_last_run()
-    answers = _prompt(last)
+    try:
+        answers = _prompt(last)
+    except KeyboardInterrupt:
+        answers = None
+    if answers is None:
+        print("İptal edildi.", file=sys.stderr)
+        return 130
     _save_last_run(answers)
 
     selected, header = run_pipeline(
