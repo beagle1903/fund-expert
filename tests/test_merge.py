@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from fundexpert.data.merge import merge_universe, merge_universes
+from fundexpert.data.merge import merge_universe
 
 
 @pytest.fixture
@@ -69,12 +69,3 @@ def test_merge_universe_drops_funds_missing_in_one_file(small_frames):
     assert set(df["fon_kodu"]) == {"AAA", "CCC"}
 
 
-def test_merge_universes_concatenates_disjoint_universes(small_frames):
-    tefas = merge_universe(small_frames, universe="tefas")
-    befas_frames = {
-        k: v.assign(fon_kodu=v["fon_kodu"] + "X") for k, v in small_frames.items()
-    }
-    befas = merge_universe(befas_frames, universe="befas")
-    combined = merge_universes([tefas, befas])
-    assert len(combined) == 6
-    assert set(combined["universe"]) == {"tefas", "befas"}

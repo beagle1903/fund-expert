@@ -5,7 +5,7 @@ import pytest
 from fundexpert.cli import run_pipeline
 
 
-@pytest.mark.parametrize("universe", ["tefas", "befas", "both"])
+@pytest.mark.parametrize("universe", ["tefas", "befas"])
 def test_pipeline_runs_against_real_csvs(universe):
     selected, header = run_pipeline(
         universe=universe,

@@ -14,7 +14,7 @@ from fundexpert.config import (
     LAST_RUN_FILE,
 )
 from fundexpert.data.loader import load_universe
-from fundexpert.data.merge import merge_universe, merge_universes
+from fundexpert.data.merge import merge_universe
 from fundexpert.render.table import render_portfolio
 from fundexpert.scoring.horizon import apply_horizon
 from fundexpert.scoring.score import score_candidates
@@ -25,19 +25,15 @@ from fundexpert.select.weights import compute_weights
 DATA_ROOT = Path(__file__).resolve().parent.parent / "data"
 
 
-def _load_combined(universe: str) -> pd.DataFrame:
-    """Load and merge one or both universes into a single candidate frame."""
-    parts: list[pd.DataFrame] = []
-    universes = ["tefas", "befas"] if universe == "both" else [universe]
-    for u in universes:
-        folder = DATA_ROOT / u
-        frames = load_universe(
-            getiri_path=folder / "getiri.csv",
-            buyukluk_path=folder / "buyukluk.csv",
-            yonetim_path=folder / "yonetim ucreti.csv",
-        )
-        parts.append(merge_universe(frames, universe=u))
-    return merge_universes(parts) if len(parts) > 1 else parts[0]
+def _load_one(universe: str) -> pd.DataFrame:
+    """Load and merge a single universe (tefas or befas) into a candidate frame."""
+    folder = DATA_ROOT / universe
+    frames = load_universe(
+        getiri_path=folder / "getiri.csv",
+        buyukluk_path=folder / "buyukluk.csv",
+        yonetim_path=folder / "yonetim ucreti.csv",
+    )
+    return merge_universe(frames, universe=universe)
 
 
 def run_pipeline(
@@ -50,8 +46,13 @@ def run_pipeline(
     max_per_type: int,
     now: datetime,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Run the full data → score → select pipeline. Returns (selected, header)."""
-    candidates = _load_combined(universe)
+    """Run the full data → score → select pipeline for a single universe."""
+    if universe not in ("tefas", "befas"):
+        raise ValueError(
+            f"run_pipeline accepts 'tefas' or 'befas', got {universe!r}. "
+            "Use main()'s 'both' option for dual-portfolio output."
+        )
+    candidates = _load_one(universe)
     total = len(candidates)
 
     # Drop funds with NaN primary fee (per missing-value policy)
@@ -202,25 +203,28 @@ def main() -> int:
         return 130
     _save_last_run(answers)
 
-    selected, header = run_pipeline(
-        universe=answers["universe"],
-        risk_priority=answers["risk_priority"],
-        horizon=answers["horizon"],
-        volume_priority=answers["volume_priority"],
-        fee_priority=answers["fee_priority"],
-        n=answers["n"],
-        max_per_type=args.max_per_type,
-        now=datetime.now(),
-    )
-
-    if header.get("warning"):
-        print(f"Uyarı: {header['warning']}", file=sys.stderr)
-
     if args.news:
         print(
             "Not: --news özelliği v2 için planlandı, henüz aktif değil.",
             file=sys.stderr,
         )
 
-    render_portfolio(selected, header, news=None)
+    universes_to_run = (
+        ["tefas", "befas"] if answers["universe"] == "both" else [answers["universe"]]
+    )
+    now = datetime.now()
+    for u in universes_to_run:
+        selected, header = run_pipeline(
+            universe=u,
+            risk_priority=answers["risk_priority"],
+            horizon=answers["horizon"],
+            volume_priority=answers["volume_priority"],
+            fee_priority=answers["fee_priority"],
+            n=answers["n"],
+            max_per_type=args.max_per_type,
+            now=now,
+        )
+        if header.get("warning"):
+            print(f"Uyarı ({u}): {header['warning']}", file=sys.stderr)
+        render_portfolio(selected, header, news=None)
     return 0
