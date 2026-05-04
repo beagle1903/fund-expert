@@ -29,6 +29,9 @@ HORIZON_BUCKETS: dict[str, tuple[str, ...]] = {
 
 DEFAULT_MAX_PER_TYPE: int = 2
 
+# Per-sector cap. "diversified" sector (no sector keyword in name) is exempt.
+DEFAULT_MAX_PER_SECTOR: int = 2
+
 WEIGHT_EPSILON: float = 0.01  # shift used by select/weights.py to avoid zero weights
 
 # --- Paths -------------------------------------------------------------------

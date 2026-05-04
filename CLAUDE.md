@@ -49,7 +49,8 @@ loader.load_universe(getiri, buyukluk, yonetim)
   → scoring.horizon.apply_horizon (averages return columns per horizon bucket)
   → scoring.score.score_candidates (weighted sum of R̂, V̂, 1−F̂; minus SRRI risk penalty)
   → assign strategy bucket via select.strategy.bucket_from_name(fon_adi)
-  → select.pick.pick_top (N picks, capped at max_per_type per strategy)
+  → assign sector bucket via select.sector.sector_from_name(fon_adi)
+  → select.pick.pick_top (N picks, capped at max_per_type per strategy AND max_per_sector per sector; "diversified" sector exempt)
   → select.weights.compute_weights (5% units, largest-remainder, 5% floor)
   → render.table.render_portfolio
 ```
@@ -60,6 +61,7 @@ loader.load_universe(getiri, buyukluk, yonetim)
 - **Risk** = SRRI scale 1–7 (column `Fonun Risk Değeri` → `risk`).
 - **Score** = base ∈ [0,1] minus risk penalty; can go slightly negative.
 - **Strategy bucket** is derived from the fund name keyword, *not* `umbrella_type` (Şemsiye Fon Türü) — Şemsiye is too coarse (Serbest/Katılım umbrellas span multiple strategies). See `select/strategy.py`.
+- **Sector bucket** is also derived from the fund name (`select/sector.py`) and capped independently from strategy. Without it, multiple sector-themed funds (e.g. 5 different TEKNOLOJİ funds across HİSSE/FON SEPETİ/DEĞİŞKEN strategies) can satisfy the strategy cap while still producing a single-sector portfolio. Funds without a sector keyword fall to `"diversified"` and are exempt from the sector cap. Add new sector keywords as new sectors show up in real picks.
 - **Weights** are integer multiples of 5%, every selected fund gets ≥5%, sum = 100. With N=20 every fund gets exactly 5%.
 - **Tunables** live in `fundexpert/config.py` — priority weights, risk λ, horizon buckets, default cap, weight epsilon.
 
