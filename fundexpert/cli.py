@@ -40,7 +40,7 @@ def _load_one(universe: str) -> pd.DataFrame:
 
 def run_pipeline(
     universe: str,
-    risk_priority: str,
+    risk_level: str,
     horizon: str,
     volume_priority: str,
     fee_priority: str,
@@ -68,7 +68,7 @@ def run_pipeline(
         horizoned,
         volume_priority=volume_priority,
         fee_priority=fee_priority,
-        risk_priority=risk_priority,
+        risk_level=risk_level,
     )
     scored = scored.assign(
         strategy=scored["fon_adi"].map(bucket_from_name),
@@ -85,7 +85,7 @@ def run_pipeline(
         "candidate_total": total,
         "candidate_kept":  len(horizoned),
         "horizon":  horizon,
-        "risk_priority": risk_priority,
+        "risk_level": risk_level,
         "volume_priority": volume_priority,
         "fee_priority": fee_priority,
         "n": n,
@@ -130,11 +130,11 @@ def _prompt(last: dict[str, Any]) -> dict[str, Any] | None:
     if universe is None:
         return None
 
-    risk_priority = questionary.select(
-        "Risk önceliği (yüksek = riskten kaçınma):",
-        choices=PRIORITY_CHOICES, default=last.get("risk_priority", "medium"),
+    risk_level = questionary.select(
+        "Risk seviyesi (yüksek = yüksek risk tolere edilir):",
+        choices=PRIORITY_CHOICES, default=last.get("risk_level", "medium"),
     ).ask()
-    if risk_priority is None:
+    if risk_level is None:
         return None
 
     horizon = questionary.select(
@@ -168,7 +168,7 @@ def _prompt(last: dict[str, Any]) -> dict[str, Any] | None:
 
     return {
         "universe": universe,
-        "risk_priority": risk_priority,
+        "risk_level": risk_level,
         "horizon": horizon,
         "volume_priority": volume_priority,
         "fee_priority": fee_priority,
@@ -228,7 +228,7 @@ def main() -> int:
     for u in universes_to_run:
         selected, header = run_pipeline(
             universe=u,
-            risk_priority=answers["risk_priority"],
+            risk_level=answers["risk_level"],
             horizon=answers["horizon"],
             volume_priority=answers["volume_priority"],
             fee_priority=answers["fee_priority"],

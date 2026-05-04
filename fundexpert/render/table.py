@@ -23,7 +23,7 @@ def render_portfolio(
     console.print(f"[bold]Fund Expert — {ts}[/bold]")
     console.print(
         f"Evren: {header['universe']} ({header['candidate_total']} fon)  •  "
-        f"Vade: {header['horizon']}  •  Risk önc.: {header['risk_priority']}"
+        f"Vade: {header['horizon']}  •  Risk sev.: {header['risk_level']}"
     )
     console.print(
         f"Hacim önc.: {header['volume_priority']}  •  "
