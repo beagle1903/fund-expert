@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 
 from fundexpert.config import (
+    DEFAULT_MAX_PER_SECTOR,
     DEFAULT_MAX_PER_TYPE,
     LAST_RUN_FILE,
 )
@@ -19,6 +20,7 @@ from fundexpert.render.table import render_portfolio
 from fundexpert.scoring.horizon import apply_horizon
 from fundexpert.scoring.score import score_candidates
 from fundexpert.select.pick import pick_top
+from fundexpert.select.sector import sector_from_name
 from fundexpert.select.strategy import bucket_from_name
 from fundexpert.select.weights import compute_weights
 
@@ -45,6 +47,7 @@ def run_pipeline(
     n: int,
     max_per_type: int,
     now: datetime,
+    max_per_sector: int = DEFAULT_MAX_PER_SECTOR,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Run the full data → score → select pipeline for a single universe."""
     if universe not in ("tefas", "befas"):
@@ -67,8 +70,13 @@ def run_pipeline(
         fee_priority=fee_priority,
         risk_priority=risk_priority,
     )
-    scored = scored.assign(strategy=scored["fon_adi"].map(bucket_from_name))
-    selected, warning = pick_top(scored, n=n, max_per_type=max_per_type)
+    scored = scored.assign(
+        strategy=scored["fon_adi"].map(bucket_from_name),
+        sector=scored["fon_adi"].map(sector_from_name),
+    )
+    selected, warning = pick_top(
+        scored, n=n, max_per_type=max_per_type, max_per_sector=max_per_sector,
+    )
     weighted = compute_weights(selected)
 
     header = {
@@ -191,6 +199,10 @@ def main() -> int:
         "--max-per-type", type=int, default=DEFAULT_MAX_PER_TYPE,
         help="Max funds per strateji (e.g. para piyasası, hisse, borçlanma)",
     )
+    parser.add_argument(
+        "--max-per-sector", type=int, default=DEFAULT_MAX_PER_SECTOR,
+        help="Max funds per sektör (e.g. teknoloji, sağlık, enerji)",
+    )
     args = parser.parse_args()
 
     last = _load_last_run()
@@ -222,6 +234,7 @@ def main() -> int:
             fee_priority=answers["fee_priority"],
             n=answers["n"],
             max_per_type=args.max_per_type,
+            max_per_sector=args.max_per_sector,
             now=now,
         )
         if header.get("warning"):

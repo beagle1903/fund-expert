@@ -34,25 +34,41 @@ def render_portfolio(
         f"(NaN filtreleri sonrası)"
     )
 
+    show_sector = (
+        "sector" in selected.columns
+        and (selected["sector"] != "diversified").any()
+    )
+
     table = Table(show_header=True, header_style="bold")
     table.add_column("Fon Kodu")
     table.add_column("Fon Adı")
     table.add_column("Şemsiye")
+    if show_sector:
+        table.add_column("Sektör")
     table.add_column("Risk", justify="right")
     table.add_column("Ağırlık %", justify="right")
     table.add_column("Skor", justify="right")
 
     for _, r in selected.iterrows():
-        table.add_row(
+        row = [
             str(r["fon_kodu"]),
             str(r["fon_adi"]),
             str(r["umbrella_type"]),
+        ]
+        if show_sector:
+            row.append(str(r["sector"]))
+        row.extend([
             str(int(r["risk"])),
             f"{int(r['display_weight_pct'])}",
             f"{r['score']:.2f}",
-        )
+        ])
+        table.add_row(*row)
     total_weight = selected["display_weight_pct"].sum() if len(selected) else 0.0
-    table.add_row("", "", "", "[bold]Toplam[/bold]", f"[bold]{int(total_weight)}[/bold]", "")
+    footer = ["", "", ""]
+    if show_sector:
+        footer.append("")
+    footer.extend(["[bold]Toplam[/bold]", f"[bold]{int(total_weight)}[/bold]", ""])
+    table.add_row(*footer)
     console.print(table)
 
     if news:

@@ -54,3 +54,45 @@ def test_pick_top_caps_on_strategy_not_umbrella():
     })
     out, _ = pick_top(df, n=4, max_per_type=2)
     assert list(out["fon_kodu"]) == ["RRP", "PIP", "OSD"]
+
+
+def test_pick_top_caps_on_sector_across_strategies():
+    """Reproduces the BEFAS tech-concentration bug: 5 picks, 5 different
+    strategies (equity/fund_of_funds/mixed), but all sector=tech. The
+    per-strategy cap is satisfied yet the portfolio is single-sector.
+
+    With max_per_sector=2 only the top 2 tech funds qualify; the rest must
+    come from different sectors (or 'diversified', which is exempt).
+    """
+    df = pd.DataFrame({
+        "fon_kodu": ["YZD", "BHT", "MEV", "BZY", "AVR", "DIV"],
+        "strategy": ["fund_of_funds", "equity", "fund_of_funds", "mixed", "mixed", "mixed"],
+        "sector":   ["tech", "tech", "tech", "tech", "tech", "diversified"],
+        "score":    [0.85, 0.82, 0.81, 0.80, 0.79, 0.50],
+    })
+    out, _ = pick_top(df, n=4, max_per_type=2, max_per_sector=2)
+    # Only 2 tech funds (top scoring), then DIV (diversified is exempt).
+    assert list(out["fon_kodu"]) == ["YZD", "BHT", "DIV"]
+
+
+def test_pick_top_does_not_cap_diversified_sector():
+    """'diversified' funds (no sector keyword) should never hit the sector cap."""
+    df = pd.DataFrame({
+        "fon_kodu": ["A", "B", "C", "D", "E"],
+        "strategy": ["mixed", "equity", "debt", "fund_of_funds", "money_market"],
+        "sector":   ["diversified"] * 5,
+        "score":    [0.9, 0.8, 0.7, 0.6, 0.5],
+    })
+    out, _ = pick_top(df, n=5, max_per_type=2, max_per_sector=1)
+    assert list(out["fon_kodu"]) == ["A", "B", "C", "D", "E"]
+
+
+def test_pick_top_sector_cap_is_optional_for_legacy_callers():
+    """Callers without a sector column or max_per_sector must still work."""
+    df = pd.DataFrame({
+        "fon_kodu": ["A", "B", "C"],
+        "strategy": ["X", "X", "Y"],
+        "score":    [0.9, 0.8, 0.7],
+    })
+    out, _ = pick_top(df, n=3, max_per_type=2)  # no max_per_sector
+    assert list(out["fon_kodu"]) == ["A", "B", "C"]
