@@ -5,8 +5,10 @@ def test_priority_weights_match_spec():
     assert config.PRIORITY_WEIGHTS == {"low": 0.10, "medium": 0.30, "high": 0.60}
 
 
-def test_risk_lambdas_match_spec():
-    assert config.RISK_LAMBDAS == {"low": 0.05, "medium": 0.25, "high": 0.60}
+def test_risk_level_lambdas_match_spec():
+    # Keyed by desired risk level: "low" → big penalty (wants safe funds),
+    # "high" → tiny penalty (wants risky funds).
+    assert config.RISK_LEVEL_LAMBDAS == {"low": 0.60, "medium": 0.25, "high": 0.05}
 
 
 def test_horizon_buckets_match_spec():

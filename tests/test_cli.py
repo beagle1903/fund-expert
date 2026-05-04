@@ -48,7 +48,7 @@ def fake_universe_loader():
 def test_run_pipeline_returns_selected_with_weights(fake_universe_loader):
     selected, header = run_pipeline(
         universe="tefas",
-        risk_priority="medium",
+        risk_level="medium",
         horizon="medium",
         volume_priority="medium",
         fee_priority="medium",
@@ -106,7 +106,7 @@ def test_main_exits_cleanly_on_keyboard_interrupt(capsys):
 def test_run_pipeline_rejects_both_universe():
     with pytest.raises(ValueError, match="tefas.*befas"):
         run_pipeline(
-            universe="both", risk_priority="medium", horizon="medium",
+            universe="both", risk_level="medium", horizon="medium",
             volume_priority="medium", fee_priority="medium",
             n=2, max_per_type=2, now=datetime(2026, 5, 2),
         )
@@ -115,7 +115,7 @@ def test_run_pipeline_rejects_both_universe():
 def test_main_renders_two_portfolios_when_universe_is_both():
     """`both` runs pipeline once per platform; render_portfolio is called twice."""
     answers = {
-        "universe": "both", "risk_priority": "medium", "horizon": "medium",
+        "universe": "both", "risk_level": "medium", "horizon": "medium",
         "volume_priority": "medium", "fee_priority": "medium", "n": 3,
     }
     fake_selected = pd.DataFrame({"display_weight_pct": [50, 50]})

@@ -12,10 +12,12 @@ PRIORITY_WEIGHTS: dict[str, float] = {
 }
 
 # λ multiplier for the SRRI risk penalty: penalty = λ · ((risk - 1)/6)²
-RISK_LAMBDAS: dict[str, float] = {
-    "low": 0.05,
+# Keyed by user's *desired* risk level: "low" = wants safe funds, big penalty;
+# "high" = wants risky funds, almost no penalty.
+RISK_LEVEL_LAMBDAS: dict[str, float] = {
+    "low": 0.60,
     "medium": 0.25,
-    "high": 0.60,
+    "high": 0.05,
 }
 
 # Horizon → return columns averaged for the primary return signal

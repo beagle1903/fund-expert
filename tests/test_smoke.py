@@ -9,7 +9,7 @@ from fundexpert.cli import run_pipeline
 def test_pipeline_runs_against_real_csvs(universe):
     selected, header = run_pipeline(
         universe=universe,
-        risk_priority="medium",
+        risk_level="medium",
         horizon="medium",
         volume_priority="medium",
         fee_priority="medium",
@@ -27,7 +27,7 @@ def test_pipeline_runs_against_real_csvs(universe):
 def test_pipeline_long_horizon_drops_funds_with_no_long_history():
     selected, header = run_pipeline(
         universe="tefas",
-        risk_priority="high",
+        risk_level="high",
         horizon="long",
         volume_priority="low",
         fee_priority="high",

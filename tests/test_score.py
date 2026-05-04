@@ -20,7 +20,7 @@ def test_score_returns_score_column(horizon_ready):
     out = score_candidates(horizon_ready,
                            volume_priority="medium",
                            fee_priority="medium",
-                           risk_priority="medium")
+                           risk_level="medium")
     assert "score" in out.columns
     assert len(out) == 3
 
@@ -40,7 +40,9 @@ def test_higher_R_with_equal_other_features_scores_higher():
     assert hi > lo
 
 
-def test_higher_risk_loses_score_under_high_risk_priority():
+def test_higher_risk_loses_score_under_low_risk_level():
+    """When user wants 'low' risk level, λ is large (0.60) so risky funds lose
+    the most score: a SRRI-7 fund should score 0.60 below a SRRI-1 fund."""
     df = pd.DataFrame({
         "fon_kodu": ["L", "H"],
         "umbrella_type": ["X", "X"],
@@ -49,11 +51,28 @@ def test_higher_risk_loses_score_under_high_risk_priority():
         "applied_management_fee_pct": [1.0, 1.0],
         "risk":                       [1, 7],
     })
-    out = score_candidates(df, "medium", "medium", risk_priority="high")
+    out = score_candidates(df, "medium", "medium", risk_level="low")
     low_risk = out.loc[out["fon_kodu"] == "L", "score"].iloc[0]
     high_risk = out.loc[out["fon_kodu"] == "H", "score"].iloc[0]
     assert low_risk > high_risk
     assert pytest.approx(low_risk - high_risk, abs=1e-6) == 0.60
+
+
+def test_high_risk_level_barely_penalises_risky_funds():
+    """When user wants 'high' risk level, λ is tiny (0.05) so the penalty
+    gap between SRRI-7 and SRRI-1 is only 0.05."""
+    df = pd.DataFrame({
+        "fon_kodu": ["L", "H"],
+        "umbrella_type": ["X", "X"],
+        "R":                          [10.0, 10.0],
+        "aum_change_pct":             [0.0, 0.0],
+        "applied_management_fee_pct": [1.0, 1.0],
+        "risk":                       [1, 7],
+    })
+    out = score_candidates(df, "medium", "medium", risk_level="high")
+    low_risk = out.loc[out["fon_kodu"] == "L", "score"].iloc[0]
+    high_risk = out.loc[out["fon_kodu"] == "H", "score"].iloc[0]
+    assert pytest.approx(low_risk - high_risk, abs=1e-6) == 0.05
 
 
 def test_lower_fee_scores_higher(horizon_ready):

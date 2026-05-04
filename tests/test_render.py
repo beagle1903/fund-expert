@@ -23,7 +23,7 @@ def _header():
         "candidate_total": 1308,
         "candidate_kept":  1107,
         "horizon": "long",
-        "risk_priority": "high",
+        "risk_level": "high",
         "volume_priority": "medium",
         "fee_priority": "high",
         "n": 5,
