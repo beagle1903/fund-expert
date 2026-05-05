@@ -46,7 +46,7 @@ def fake_universe_loader():
 
 
 def test_run_pipeline_returns_selected_with_weights(fake_universe_loader):
-    selected, header = run_pipeline(
+    selected, header, hits = run_pipeline(
         universe="tefas",
         risk_level="medium",
         horizon="medium",
@@ -60,6 +60,8 @@ def test_run_pipeline_returns_selected_with_weights(fake_universe_loader):
     assert "display_weight_pct" in selected.columns
     assert sum(selected["display_weight_pct"]) == pytest.approx(100.0)
     assert header["candidate_total"] == 3
+    # News disabled by default → empty hits dict.
+    assert hits == {}
 
 
 def _make_questionary_mock(answers: list):
@@ -120,14 +122,110 @@ def test_main_renders_two_portfolios_when_universe_is_both():
     }
     fake_selected = pd.DataFrame({"display_weight_pct": [50, 50]})
     fake_header = {"warning": None}
+    fake_hits: dict = {}
     with patch("sys.argv", ["fundexpert"]), \
          patch("fundexpert.cli._prompt", return_value=answers), \
          patch("fundexpert.cli._save_last_run"), \
          patch("fundexpert.cli.run_pipeline",
-               return_value=(fake_selected, fake_header)) as run_mock, \
+               return_value=(fake_selected, fake_header, fake_hits)) as run_mock, \
          patch("fundexpert.cli.render_portfolio") as render_mock:
         rc = main()
     assert rc == 0
     assert render_mock.call_count == 2
     universes_called = [call.kwargs["universe"] for call in run_mock.call_args_list]
     assert universes_called == ["tefas", "befas"]
+
+
+def test_main_passes_news_api_key_when_news_flag_set(monkeypatch):
+    """--news + TAVILY_API_KEY env var → run_pipeline called with news_enabled=True."""
+    answers = {
+        "universe": "tefas", "risk_level": "medium", "horizon": "medium",
+        "volume_priority": "medium", "fee_priority": "medium", "n": 3,
+    }
+    fake_selected = pd.DataFrame({"display_weight_pct": [100]})
+    fake_header = {"warning": None}
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-test-key")
+    with patch("sys.argv", ["fundexpert", "--news"]), \
+         patch("fundexpert.cli._prompt", return_value=answers), \
+         patch("fundexpert.cli._save_last_run"), \
+         patch("fundexpert.cli.run_pipeline",
+               return_value=(fake_selected, fake_header, {})) as run_mock, \
+         patch("fundexpert.cli.render_portfolio"):
+        rc = main()
+    assert rc == 0
+    assert run_mock.call_args.kwargs["news_enabled"] is True
+    assert run_mock.call_args.kwargs["news_api_key"] == "tvly-test-key"
+
+
+def test_main_default_run_does_not_pass_news_key(monkeypatch):
+    """No --news flag → news_enabled=False, news_api_key=None."""
+    answers = {
+        "universe": "tefas", "risk_level": "medium", "horizon": "medium",
+        "volume_priority": "medium", "fee_priority": "medium", "n": 3,
+    }
+    fake_selected = pd.DataFrame({"display_weight_pct": [100]})
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-shouldnt-be-used")
+    with patch("sys.argv", ["fundexpert"]), \
+         patch("fundexpert.cli._prompt", return_value=answers), \
+         patch("fundexpert.cli._save_last_run"), \
+         patch("fundexpert.cli.run_pipeline",
+               return_value=(fake_selected, {"warning": None}, {})) as run_mock, \
+         patch("fundexpert.cli.render_portfolio"):
+        main()
+    assert run_mock.call_args.kwargs["news_enabled"] is False
+    assert run_mock.call_args.kwargs["news_api_key"] is None
+
+
+def test_run_pipeline_with_news_shifts_picks_when_top_fund_has_negative_news(
+    fake_universe_loader,
+):
+    """End-to-end: hitting the leading fund with a Tavily match flips the order."""
+    from fundexpert.news.tavily import NewsHit
+
+    # First find what the top pick is without news, then put negative news on
+    # exactly that fund and verify the next run picks something else.
+    sel_no_news, _, hits_no_news = run_pipeline(
+        universe="tefas", risk_level="medium", horizon="medium",
+        volume_priority="medium", fee_priority="medium",
+        n=1, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
+        news_enabled=False, news_api_key=None,
+    )
+    leader_code = sel_no_news.iloc[0]["fon_kodu"]
+    leader_prefix = sel_no_news.iloc[0]["fon_adi"].split()[0] + " FON"
+
+    def fake_query(company_prefix, **_kw):
+        if company_prefix == leader_prefix:
+            return [NewsHit(title=f"{leader_code} hakkında soruşturma",
+                            url="https://x.com/p", published=None, source="x.com")]
+        return []
+
+    with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
+        sel_with_news, _, _ = run_pipeline(
+            universe="tefas", risk_level="medium", horizon="medium",
+            volume_priority="medium", fee_priority="medium",
+            n=1, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
+            news_enabled=True, news_api_key="tvly-test",
+        )
+    assert hits_no_news == {}
+    assert sel_no_news.iloc[0]["fon_kodu"] != sel_with_news.iloc[0]["fon_kodu"]
+
+
+def test_run_pipeline_news_enabled_without_api_key_falls_back_to_quant(
+    fake_universe_loader, capsys,
+):
+    """news_enabled=True but no key → no penalty, picks identical to news=off."""
+    sel_no_news, _, _ = run_pipeline(
+        universe="tefas", risk_level="medium", horizon="medium",
+        volume_priority="medium", fee_priority="medium",
+        n=2, max_per_type=2, now=datetime(2026, 5, 2),
+        news_enabled=False, news_api_key=None,
+    )
+    sel_news_no_key, _, hits = run_pipeline(
+        universe="tefas", risk_level="medium", horizon="medium",
+        volume_priority="medium", fee_priority="medium",
+        n=2, max_per_type=2, now=datetime(2026, 5, 2),
+        news_enabled=True, news_api_key=None,
+    )
+    assert list(sel_no_news["fon_kodu"]) == list(sel_news_no_key["fon_kodu"])
+    assert hits == {}
+    assert "TAVILY_API_KEY tanımlı değil" in capsys.readouterr().err

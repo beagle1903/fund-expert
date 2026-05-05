@@ -7,7 +7,7 @@ from fundexpert.cli import run_pipeline
 
 @pytest.mark.parametrize("universe", ["tefas", "befas"])
 def test_pipeline_runs_against_real_csvs(universe):
-    selected, header = run_pipeline(
+    selected, header, hits = run_pipeline(
         universe=universe,
         risk_level="medium",
         horizon="medium",
@@ -22,10 +22,12 @@ def test_pipeline_runs_against_real_csvs(universe):
     assert header["candidate_total"] > 0
     assert header["candidate_kept"] > 0
     assert (selected["risk"].between(1, 7)).all()
+    # News disabled by default in smoke test.
+    assert hits == {}
 
 
 def test_pipeline_long_horizon_drops_funds_with_no_long_history():
-    selected, header = run_pipeline(
+    selected, header, _ = run_pipeline(
         universe="tefas",
         risk_level="high",
         horizon="long",

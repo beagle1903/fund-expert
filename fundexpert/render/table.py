@@ -72,7 +72,7 @@ def render_portfolio(
     console.print(table)
 
     if news:
-        console.print("\n[bold]Haberler:[/bold]")
+        console.print("\n[bold red]⚠️ Olumsuz haber:[/bold red]")
         for code, items in news.items():
             for item in items:
                 published = f", {item['published']:%Y-%m-%d}" if item.get("published") else ""

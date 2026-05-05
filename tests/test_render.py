@@ -45,14 +45,16 @@ def test_render_includes_total_row(capsys):
 
 
 def test_render_includes_news_footer_when_provided(capsys):
-    news = {"AAA": [{"title": "Yeni fon ihracı", "url": "https://x", "source": "bigpara"}]}
+    news = {"AAA": [{"title": "AAA hakkında soruşturma", "url": "https://x",
+                     "source": "dunya.com"}]}
     render_portfolio(_selected(), _header(), news=news)
     captured = capsys.readouterr()
-    assert "Haberler" in captured.out
-    assert "Yeni fon ihrac" in captured.out
+    assert "Olumsuz haber" in captured.out
+    assert "soruşturma" in captured.out
+    assert "AAA" in captured.out
 
 
 def test_render_omits_news_section_when_no_hits(capsys):
     render_portfolio(_selected(), _header(), news={})
     captured = capsys.readouterr()
-    assert "Haberler" not in captured.out
+    assert "Olumsuz haber" not in captured.out
