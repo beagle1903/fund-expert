@@ -43,7 +43,7 @@ When `news_enabled=True`, append exactly one line to the existing 4-line header 
 | Key OK, hits exist, picks unchanged | `Haber taraması: aktif  •  top-K=24  •  3 fonda olumsuz haber  •  portföy değişmedi` |
 | Key OK, hits exist, picks changed | `Haber taraması: aktif  •  top-K=24  •  3 fonda olumsuz haber  •  1 pick değişti` |
 
-`top-K` is the value computed in `cli.py` (`NEWS_QUERY_TOP_K_MULTIPLIER * n`). `picks değişti` count is the size of the displaced set (see §3).
+`top-K` is the value computed in `cli.py` (`NEWS_QUERY_TOP_K_MULTIPLIER * n`). `picks değişti` count is the size of the displaced set (see #3).
 
 When `news_enabled=False`, no header line is added — output is byte-identical to today.
 
@@ -144,8 +144,8 @@ def render_portfolio(
 ```
 
 Behavior:
-- `news_meta=None` → no header news line, no displaced footer (footer B). The penalized-survivor footer (footer A) still renders if `news` is truthy, using the new heading text. Row markers (§2) require `news_meta` to be present (so we know `NEGATIVE_NEWS_PENALTY` is the live value), and degrade gracefully to no markers when `news_meta` is None.
-- `news_meta` provided → full §1–3 rendering.
+- `news_meta=None` → no header news line, no displaced footer (footer B). The penalized-survivor footer (footer A) still renders if `news` is truthy, using the new heading text. Row markers (#2) require `news_meta` to be present (so we know `NEGATIVE_NEWS_PENALTY` is the live value), and degrade gracefully to no markers when `news_meta` is None.
+- `news_meta` provided → full #1–3 rendering.
 
 This keeps the in-process programmatic-call snippet in `CLAUDE.md` working: it currently passes `news=hits or None` and no `news_meta`, so it gets footer A with the new heading and no markers/header line. The snippet doesn't need editing.
 
