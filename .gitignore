@@ -18,6 +18,11 @@ Thumbs.db
 # Tool runtime data (last-run cache, news cache)
 .fundexpert/
 
+# API key files — TAVILY_API_KEY belongs in env vars, never on disk
+.env
+.env.local
+.env.*
+
 # Local source data (TEFAS/BEFAS exports kept off the public repo)
 # Anchor to repo root so it doesn't match fundexpert/data/ package
 /data/

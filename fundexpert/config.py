@@ -36,6 +36,37 @@ DEFAULT_MAX_PER_SECTOR: int = 2
 
 WEIGHT_EPSILON: float = 0.01  # shift used by select/weights.py to avoid zero weights
 
+# --- News pass (optional, opt-in via --news) ---------------------------------
+
+# Env var holding the Tavily search API key. Never accept the key as a CLI arg
+# (it would persist in shell history). Missing/empty → news pass is skipped
+# with a stderr warning, picks fall back to pure quant ranking.
+NEWS_API_KEY_ENV: str = "TAVILY_API_KEY"
+
+# Top-K candidates by quant score get a Tavily query. Bounded as `multiplier · n`
+# so query count stays small (e.g. n=5 → top 15 funds queried, not all ~1000).
+NEWS_QUERY_TOP_K_MULTIPLIER: int = 3
+
+# Tavily query parameters.
+NEWS_MAX_AGE_DAYS: int = 30
+NEWS_MAX_RESULTS_PER_FUND: int = 3
+NEWS_QUERY_TIMEOUT_SECONDS: int = 10
+
+# Negative-keyword OR-list interpolated into the Tavily query string.
+# Conservative starter set — false positives are worse than misses here.
+# See todos.md "News pass — possible enhancements" for broader options.
+NEGATIVE_NEWS_KEYWORDS: tuple[str, ...] = (
+    "soruşturma", "dolandırıcılık", "iflas", "dava",
+    "ceza", "fesih", "suspansiyon", "kapatma", "şikayet",
+)
+
+# Fixed binary deduction from a fund's score when Tavily returns ≥1 hit.
+NEGATIVE_NEWS_PENALTY: float = 0.20
+
+# Disk cache for Tavily responses. Re-runs within TTL skip the network.
+NEWS_CACHE_DIR: Path = Path.home() / ".fundexpert" / "news_cache"
+NEWS_CACHE_TTL_SECONDS: int = 3600
+
 # --- Paths -------------------------------------------------------------------
 
 LAST_RUN_FILE: Path = Path.home() / ".fundexpert" / "last.json"

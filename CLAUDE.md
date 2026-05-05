@@ -18,11 +18,11 @@ from fundexpert.cli import run_pipeline, _ensure_utf8_stdio
 from fundexpert.render.table import render_portfolio
 from fundexpert.config import DEFAULT_MAX_PER_TYPE
 _ensure_utf8_stdio()
-selected, header = run_pipeline(
+selected, header, hits = run_pipeline(
     universe='tefas', risk_level='medium', horizon='medium',
     volume_priority='medium', fee_priority='medium',
     n=8, max_per_type=DEFAULT_MAX_PER_TYPE, now=datetime.now())
-render_portfolio(selected, header, news=None)
+render_portfolio(selected, header, news=hits or None)
 "
 ```
 
@@ -50,9 +50,10 @@ loader.load_universe(getiri, buyukluk, yonetim)
   → scoring.score.score_candidates (weighted sum of R̂, V̂, 1−F̂; minus SRRI risk penalty)
   → assign strategy bucket via select.strategy.bucket_from_name(fon_adi)
   → assign sector bucket via select.sector.sector_from_name(fon_adi)
+  → (--news only) news.penalty.apply_negative_news_penalty (top-K Tavily query, −0.20 binary penalty per fund with hits)
   → select.pick.pick_top (N picks, capped at max_per_type per strategy AND max_per_sector per sector; "diversified" sector exempt)
   → select.weights.compute_weights (5% units, largest-remainder, 5% floor)
-  → render.table.render_portfolio
+  → render.table.render_portfolio (news hits surface as "⚠️ Olumsuz haber:" footer)
 ```
 
 ## Conventions
@@ -63,7 +64,8 @@ loader.load_universe(getiri, buyukluk, yonetim)
 - **Strategy bucket** is derived from the fund name keyword, *not* `umbrella_type` (Şemsiye Fon Türü) — Şemsiye is too coarse (Serbest/Katılım umbrellas span multiple strategies). See `select/strategy.py`.
 - **Sector bucket** is also derived from the fund name (`select/sector.py`) and capped independently from strategy. Without it, multiple sector-themed funds (e.g. 5 different TEKNOLOJİ funds across HİSSE/FON SEPETİ/DEĞİŞKEN strategies) can satisfy the strategy cap while still producing a single-sector portfolio. Funds without a sector keyword fall to `"diversified"` and are exempt from the sector cap. Add new sector keywords as new sectors show up in real picks.
 - **Weights** are integer multiples of 5%, every selected fund gets ≥5%, sum = 100. With N=20 every fund gets exactly 5%.
-- **Tunables** live in `fundexpert/config.py` — priority weights, risk λ, horizon buckets, default cap, weight epsilon.
+- **Tunables** live in `fundexpert/config.py` — priority weights, risk λ, horizon buckets, default cap, weight epsilon, news pass (Tavily query top-K, keywords, penalty, cache TTL).
+- **News pass** (`--news`, opt-in): Tavily search per top-K candidate by quant score; any hit on a Turkish negative-news keyword (`soruşturma`, `iflas`, etc.) deducts a fixed `−0.20` from the fund's score before `pick_top`. Requires `TAVILY_API_KEY` env var; missing key → fail-soft (warning + skip). Module: `fundexpert/news/` (`match.py`, `tavily.py`, `penalty.py`). Cache: `~/.fundexpert/news_cache/` 1h TTL.
 
 ## Gotchas
 

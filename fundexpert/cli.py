@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -13,9 +14,19 @@ from fundexpert.config import (
     DEFAULT_MAX_PER_SECTOR,
     DEFAULT_MAX_PER_TYPE,
     LAST_RUN_FILE,
+    NEGATIVE_NEWS_KEYWORDS,
+    NEGATIVE_NEWS_PENALTY,
+    NEWS_API_KEY_ENV,
+    NEWS_CACHE_DIR,
+    NEWS_CACHE_TTL_SECONDS,
+    NEWS_MAX_AGE_DAYS,
+    NEWS_MAX_RESULTS_PER_FUND,
+    NEWS_QUERY_TIMEOUT_SECONDS,
+    NEWS_QUERY_TOP_K_MULTIPLIER,
 )
 from fundexpert.data.loader import load_universe
 from fundexpert.data.merge import merge_universe
+from fundexpert.news.penalty import apply_negative_news_penalty
 from fundexpert.render.table import render_portfolio
 from fundexpert.scoring.horizon import apply_horizon
 from fundexpert.scoring.score import score_candidates
@@ -48,8 +59,16 @@ def run_pipeline(
     max_per_type: int,
     now: datetime,
     max_per_sector: int = DEFAULT_MAX_PER_SECTOR,
-) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Run the full data → score → select pipeline for a single universe."""
+    news_enabled: bool = False,
+    news_api_key: str | None = None,
+) -> tuple[pd.DataFrame, dict[str, Any], dict[str, list]]:
+    """Run the full data → score → select pipeline for a single universe.
+
+    Returns (selected_df, header_dict, hits_by_pick). When `news_enabled`
+    is False, `hits_by_pick` is always {}. When True, the news pass runs
+    against the top-K candidates (K = NEWS_QUERY_TOP_K_MULTIPLIER * n)
+    and returns matched articles for any of the *finally-picked* funds.
+    """
     if universe not in ("tefas", "befas"):
         raise ValueError(
             f"run_pipeline accepts 'tefas' or 'befas', got {universe!r}. "
@@ -74,10 +93,37 @@ def run_pipeline(
         strategy=scored["fon_adi"].map(bucket_from_name),
         sector=scored["fon_adi"].map(sector_from_name),
     )
+
+    # Optional news pass: query Tavily for top-K candidates by quant score,
+    # subtract a fixed penalty for any with negative-news hits. Penalty is
+    # applied *before* pick_top so picks actually shift.
+    hits_by_code: dict[str, list] = {}
+    if news_enabled:
+        scored, hits_by_code = apply_negative_news_penalty(
+            scored,
+            top_k=NEWS_QUERY_TOP_K_MULTIPLIER * n,
+            keywords=NEGATIVE_NEWS_KEYWORDS,
+            penalty=NEGATIVE_NEWS_PENALTY,
+            api_key=news_api_key,
+            cache_dir=NEWS_CACHE_DIR,
+            ttl_seconds=NEWS_CACHE_TTL_SECONDS,
+            max_age_days=NEWS_MAX_AGE_DAYS,
+            max_results=NEWS_MAX_RESULTS_PER_FUND,
+            timeout_seconds=NEWS_QUERY_TIMEOUT_SECONDS,
+        )
+
     selected, warning = pick_top(
         scored, n=n, max_per_type=max_per_type, max_per_sector=max_per_sector,
     )
     weighted = compute_weights(selected)
+
+    # Project hits down to just the picked funds for the renderer.
+    picked_codes = set(weighted["fon_kodu"].astype(str))
+    hits_for_render = {
+        code: [hit.to_render_dict() for hit in hits]
+        for code, hits in hits_by_code.items()
+        if code in picked_codes
+    }
 
     header = {
         "timestamp": now,
@@ -92,7 +138,7 @@ def run_pipeline(
         "warning": warning,
         "excluded_horizon": excluded_horizon,
     }
-    return weighted, header
+    return weighted, header, hits_for_render
 
 
 # --- Prompt layer (Turkish) -------------------------------------------------
@@ -193,7 +239,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="fundexpert")
     parser.add_argument(
         "--news", action="store_true",
-        help="(Reserved for v2 — RSS news annotation. No-op in v1.)",
+        help="Tavily ile olumsuz haber taraması (gerekli: TAVILY_API_KEY env var)",
     )
     parser.add_argument(
         "--max-per-type", type=int, default=DEFAULT_MAX_PER_TYPE,
@@ -215,18 +261,14 @@ def main() -> int:
         return 130
     _save_last_run(answers)
 
-    if args.news:
-        print(
-            "Not: --news özelliği v2 için planlandı, henüz aktif değil.",
-            file=sys.stderr,
-        )
+    news_api_key = os.environ.get(NEWS_API_KEY_ENV) if args.news else None
 
     universes_to_run = (
         ["tefas", "befas"] if answers["universe"] == "both" else [answers["universe"]]
     )
     now = datetime.now()
     for u in universes_to_run:
-        selected, header = run_pipeline(
+        selected, header, hits_for_render = run_pipeline(
             universe=u,
             risk_level=answers["risk_level"],
             horizon=answers["horizon"],
@@ -236,8 +278,10 @@ def main() -> int:
             max_per_type=args.max_per_type,
             max_per_sector=args.max_per_sector,
             now=now,
+            news_enabled=args.news,
+            news_api_key=news_api_key,
         )
         if header.get("warning"):
             print(f"Uyarı ({u}): {header['warning']}", file=sys.stderr)
-        render_portfolio(selected, header, news=None)
+        render_portfolio(selected, header, news=hits_for_render or None)
     return 0
