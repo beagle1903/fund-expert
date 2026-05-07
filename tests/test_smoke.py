@@ -7,7 +7,7 @@ from fundexpert.cli import run_pipeline
 
 @pytest.mark.parametrize("universe", ["tefas", "befas"])
 def test_pipeline_runs_against_real_csvs(universe):
-    selected, header, hits = run_pipeline(
+    selected, header, hits, _ = run_pipeline(
         universe=universe,
         risk_level="medium",
         horizon="medium",
@@ -27,7 +27,7 @@ def test_pipeline_runs_against_real_csvs(universe):
 
 
 def test_pipeline_long_horizon_drops_funds_with_no_long_history():
-    selected, header, _ = run_pipeline(
+    selected, header, _, _ = run_pipeline(
         universe="tefas",
         risk_level="high",
         horizon="long",

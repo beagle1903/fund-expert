@@ -61,13 +61,16 @@ def run_pipeline(
     max_per_sector: int = DEFAULT_MAX_PER_SECTOR,
     news_enabled: bool = False,
     news_api_key: str | None = None,
-) -> tuple[pd.DataFrame, dict[str, Any], dict[str, list]]:
+) -> tuple[pd.DataFrame, dict[str, Any], dict[str, list], dict[str, Any]]:
     """Run the full data → score → select pipeline for a single universe.
 
-    Returns (selected_df, header_dict, hits_by_pick). When `news_enabled`
-    is False, `hits_by_pick` is always {}. When True, the news pass runs
-    against the top-K candidates (K = NEWS_QUERY_TOP_K_MULTIPLIER * n)
-    and returns matched articles for any of the *finally-picked* funds.
+    Returns (selected_df, header_dict, hits_by_pick, news_meta). When
+    `news_enabled` is False, `hits_by_pick` is always {} and `news_meta`
+    is `{"enabled": False}`. When True, the news pass runs against the
+    top-K candidates (K = NEWS_QUERY_TOP_K_MULTIPLIER * n) and returns
+    matched articles for any of the *finally-picked* funds; `news_meta`
+    carries metadata about the pass (key_present, top_k, total_hits,
+    displaced).
     """
     if universe not in ("tefas", "befas"):
         raise ValueError(
@@ -138,7 +141,19 @@ def run_pipeline(
         "warning": warning,
         "excluded_horizon": excluded_horizon,
     }
-    return weighted, header, hits_for_render
+
+    if not news_enabled:
+        news_meta: dict[str, Any] = {"enabled": False}
+    else:
+        news_meta = {
+            "enabled": True,
+            "key_present": bool(news_api_key),
+            "top_k": NEWS_QUERY_TOP_K_MULTIPLIER * n,
+            "total_hits": len(hits_by_code),
+            "displaced": [],  # filled in Task 2
+        }
+
+    return weighted, header, hits_for_render, news_meta
 
 
 # --- Prompt layer (Turkish) -------------------------------------------------
@@ -268,7 +283,7 @@ def main() -> int:
     )
     now = datetime.now()
     for u in universes_to_run:
-        selected, header, hits_for_render = run_pipeline(
+        selected, header, hits_for_render, news_meta = run_pipeline(
             universe=u,
             risk_level=answers["risk_level"],
             horizon=answers["horizon"],

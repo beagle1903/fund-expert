@@ -46,7 +46,7 @@ def fake_universe_loader():
 
 
 def test_run_pipeline_returns_selected_with_weights(fake_universe_loader):
-    selected, header, hits = run_pipeline(
+    selected, header, hits, _ = run_pipeline(
         universe="tefas",
         risk_level="medium",
         horizon="medium",
@@ -62,6 +62,15 @@ def test_run_pipeline_returns_selected_with_weights(fake_universe_loader):
     assert header["candidate_total"] == 3
     # News disabled by default → empty hits dict.
     assert hits == {}
+
+
+def test_run_pipeline_returns_news_meta_with_enabled_false_when_news_off(fake_universe_loader):
+    selected, header, hits, news_meta = run_pipeline(
+        universe="tefas", risk_level="medium", horizon="medium",
+        volume_priority="medium", fee_priority="medium",
+        n=2, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
+    )
+    assert news_meta == {"enabled": False}
 
 
 def _make_questionary_mock(answers: list):
@@ -127,7 +136,7 @@ def test_main_renders_two_portfolios_when_universe_is_both():
          patch("fundexpert.cli._prompt", return_value=answers), \
          patch("fundexpert.cli._save_last_run"), \
          patch("fundexpert.cli.run_pipeline",
-               return_value=(fake_selected, fake_header, fake_hits)) as run_mock, \
+               return_value=(fake_selected, fake_header, fake_hits, {"enabled": False})) as run_mock, \
          patch("fundexpert.cli.render_portfolio") as render_mock:
         rc = main()
     assert rc == 0
@@ -149,7 +158,7 @@ def test_main_passes_news_api_key_when_news_flag_set(monkeypatch):
          patch("fundexpert.cli._prompt", return_value=answers), \
          patch("fundexpert.cli._save_last_run"), \
          patch("fundexpert.cli.run_pipeline",
-               return_value=(fake_selected, fake_header, {})) as run_mock, \
+               return_value=(fake_selected, fake_header, {}, {"enabled": True, "key_present": True, "top_k": 9, "total_hits": 0, "displaced": []})) as run_mock, \
          patch("fundexpert.cli.render_portfolio"):
         rc = main()
     assert rc == 0
@@ -169,7 +178,7 @@ def test_main_default_run_does_not_pass_news_key(monkeypatch):
          patch("fundexpert.cli._prompt", return_value=answers), \
          patch("fundexpert.cli._save_last_run"), \
          patch("fundexpert.cli.run_pipeline",
-               return_value=(fake_selected, {"warning": None}, {})) as run_mock, \
+               return_value=(fake_selected, {"warning": None}, {}, {"enabled": False})) as run_mock, \
          patch("fundexpert.cli.render_portfolio"):
         main()
     assert run_mock.call_args.kwargs["news_enabled"] is False
@@ -184,7 +193,7 @@ def test_run_pipeline_with_news_shifts_picks_when_top_fund_has_negative_news(
 
     # First find what the top pick is without news, then put negative news on
     # exactly that fund and verify the next run picks something else.
-    sel_no_news, _, hits_no_news = run_pipeline(
+    sel_no_news, _, hits_no_news, _ = run_pipeline(
         universe="tefas", risk_level="medium", horizon="medium",
         volume_priority="medium", fee_priority="medium",
         n=1, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
@@ -200,7 +209,7 @@ def test_run_pipeline_with_news_shifts_picks_when_top_fund_has_negative_news(
         return []
 
     with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
-        sel_with_news, _, _ = run_pipeline(
+        sel_with_news, _, _, _ = run_pipeline(
             universe="tefas", risk_level="medium", horizon="medium",
             volume_priority="medium", fee_priority="medium",
             n=1, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
@@ -214,13 +223,13 @@ def test_run_pipeline_news_enabled_without_api_key_falls_back_to_quant(
     fake_universe_loader, capsys,
 ):
     """news_enabled=True but no key → no penalty, picks identical to news=off."""
-    sel_no_news, _, _ = run_pipeline(
+    sel_no_news, _, _, _ = run_pipeline(
         universe="tefas", risk_level="medium", horizon="medium",
         volume_priority="medium", fee_priority="medium",
         n=2, max_per_type=2, now=datetime(2026, 5, 2),
         news_enabled=False, news_api_key=None,
     )
-    sel_news_no_key, _, hits = run_pipeline(
+    sel_news_no_key, _, hits, _ = run_pipeline(
         universe="tefas", risk_level="medium", horizon="medium",
         volume_priority="medium", fee_priority="medium",
         n=2, max_per_type=2, now=datetime(2026, 5, 2),
