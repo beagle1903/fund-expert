@@ -260,6 +260,33 @@ def test_run_pipeline_news_meta_populates_displaced_when_top_fund_dropped(
     assert d["hits"][0]["title"] == "dava açıldı"
 
 
+def test_run_pipeline_news_meta_displaced_sorted_by_score_pre_desc(
+    fake_universe_loader,
+):
+    """Multiple displaced funds must come back in deterministic order
+    (strongest pre-penalty score first), not set-iteration order."""
+    from fundexpert.news.tavily import NewsHit
+
+    def fake_query(company_prefix, **_kw):
+        # Match every fund — penalty pushes them all out, displacing 2 of 3.
+        return [NewsHit(title=f"{company_prefix} soruşturma",
+                        url="https://x", published=None, source="x.com")]
+
+    with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
+        _, _, _, news_meta = run_pipeline(
+            universe="tefas", risk_level="medium", horizon="medium",
+            volume_priority="medium", fee_priority="medium",
+            n=1, max_per_type=2, now=datetime(2026, 5, 2),
+            news_enabled=True, news_api_key="tvly-test",
+        )
+
+    if len(news_meta["displaced"]) >= 2:
+        scores = [d["score_pre"] for d in news_meta["displaced"]]
+        assert scores == sorted(scores, reverse=True), (
+            f"Expected displaced sorted by score_pre desc, got {scores}"
+        )
+
+
 def test_run_pipeline_news_meta_displaced_empty_when_no_hits(fake_universe_loader):
     with patch("fundexpert.news.penalty.query_negative_news", return_value=[]):
         _, _, _, news_meta = run_pipeline(

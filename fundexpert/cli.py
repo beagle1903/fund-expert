@@ -151,6 +151,10 @@ def run_pipeline(
                 "score_post": float(row["score"]) - NEGATIVE_NEWS_PENALTY,
                 "hits": [hit.to_render_dict() for hit in hits],
             })
+        # Sort by pre-penalty score descending: the strongest fund we lost
+        # appears first. Set iteration above is hash-dependent and would
+        # otherwise leak into the rendered output.
+        displaced.sort(key=lambda d: d["score_pre"], reverse=True)
 
     header = {
         "timestamp": now,
