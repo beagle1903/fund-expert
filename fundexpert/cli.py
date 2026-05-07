@@ -101,6 +101,7 @@ def run_pipeline(
     # subtract a fixed penalty for any with negative-news hits. Penalty is
     # applied *before* pick_top so picks actually shift.
     hits_by_code: dict[str, list] = {}
+    scored_pre = scored  # snapshot for counterfactual pick_top
     if news_enabled:
         scored, hits_by_code = apply_negative_news_penalty(
             scored,
@@ -128,6 +129,29 @@ def run_pipeline(
         if code in picked_codes
     }
 
+    # Compute "displaced" funds: those that would have been picked without the
+    # news penalty but got pushed out by it. Only meaningful when news is on
+    # and at least one fund got hits — otherwise pre/post pick_top runs are
+    # identical by construction.
+    displaced: list[dict[str, Any]] = []
+    if news_enabled and hits_by_code:
+        would_be, _ = pick_top(
+            scored_pre, n=n, max_per_type=max_per_type, max_per_sector=max_per_sector,
+        )
+        would_be_codes = set(would_be["fon_kodu"].astype(str))
+        displaced_codes = would_be_codes - picked_codes
+        scored_pre_indexed = scored_pre.set_index(scored_pre["fon_kodu"].astype(str))
+        for code in displaced_codes:
+            row = scored_pre_indexed.loc[code]
+            hits = hits_by_code.get(code, [])
+            displaced.append({
+                "fon_kodu": code,
+                "fon_adi": str(row["fon_adi"]),
+                "score_pre":  float(row["score"]),
+                "score_post": float(row["score"]) - NEGATIVE_NEWS_PENALTY,
+                "hits": [hit.to_render_dict() for hit in hits],
+            })
+
     header = {
         "timestamp": now,
         "universe":  universe,
@@ -150,7 +174,7 @@ def run_pipeline(
             "key_present": bool(news_api_key),
             "top_k": NEWS_QUERY_TOP_K_MULTIPLIER * n,
             "total_hits": len(hits_by_code),
-            "displaced": [],  # filled in Task 2
+            "displaced": displaced,
         }
 
     return weighted, header, hits_for_render, news_meta

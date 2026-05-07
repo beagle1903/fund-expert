@@ -219,6 +219,59 @@ def test_run_pipeline_with_news_shifts_picks_when_top_fund_has_negative_news(
     assert sel_no_news.iloc[0]["fon_kodu"] != sel_with_news.iloc[0]["fon_kodu"]
 
 
+def test_run_pipeline_news_meta_populates_displaced_when_top_fund_dropped(
+    fake_universe_loader,
+):
+    """A Tavily hit on the top quant fund should land it in news_meta['displaced']."""
+    from fundexpert.news.tavily import NewsHit
+
+    sel_no_news, _, _, _ = run_pipeline(
+        universe="tefas", risk_level="medium", horizon="medium",
+        volume_priority="medium", fee_priority="medium",
+        n=1, max_per_type=2, now=datetime(2026, 5, 2),
+        news_enabled=False, news_api_key=None,
+    )
+    leader_code = sel_no_news.iloc[0]["fon_kodu"]
+    leader_prefix = sel_no_news.iloc[0]["fon_adi"].split()[0] + " FON"
+
+    def fake_query(company_prefix, **_kw):
+        if company_prefix == leader_prefix:
+            return [NewsHit(title="dava açıldı", url="https://x.com/p",
+                            published=None, source="x.com")]
+        return []
+
+    with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
+        sel_news, _, _, news_meta = run_pipeline(
+            universe="tefas", risk_level="medium", horizon="medium",
+            volume_priority="medium", fee_priority="medium",
+            n=1, max_per_type=2, now=datetime(2026, 5, 2),
+            news_enabled=True, news_api_key="tvly-test",
+        )
+
+    assert sel_news.iloc[0]["fon_kodu"] != leader_code
+    assert news_meta["enabled"] is True
+    assert news_meta["total_hits"] == 1
+    assert len(news_meta["displaced"]) == 1
+    d = news_meta["displaced"][0]
+    assert d["fon_kodu"] == leader_code
+    assert d["score_pre"] > d["score_post"]
+    assert d["score_pre"] - d["score_post"] == pytest.approx(0.20)
+    assert len(d["hits"]) == 1
+    assert d["hits"][0]["title"] == "dava açıldı"
+
+
+def test_run_pipeline_news_meta_displaced_empty_when_no_hits(fake_universe_loader):
+    with patch("fundexpert.news.penalty.query_negative_news", return_value=[]):
+        _, _, _, news_meta = run_pipeline(
+            universe="tefas", risk_level="medium", horizon="medium",
+            volume_priority="medium", fee_priority="medium",
+            n=2, max_per_type=2, now=datetime(2026, 5, 2),
+            news_enabled=True, news_api_key="tvly-test",
+        )
+    assert news_meta["total_hits"] == 0
+    assert news_meta["displaced"] == []
+
+
 def test_run_pipeline_news_enabled_without_api_key_falls_back_to_quant(
     fake_universe_loader, capsys,
 ):
