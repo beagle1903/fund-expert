@@ -18,7 +18,7 @@ from fundexpert.cli import run_pipeline, _ensure_utf8_stdio
 from fundexpert.render.table import render_portfolio
 from fundexpert.config import DEFAULT_MAX_PER_TYPE
 _ensure_utf8_stdio()
-selected, header, hits = run_pipeline(
+selected, header, hits, _ = run_pipeline(
     universe='tefas', risk_level='medium', horizon='medium',
     volume_priority='medium', fee_priority='medium',
     n=8, max_per_type=DEFAULT_MAX_PER_TYPE, now=datetime.now())
