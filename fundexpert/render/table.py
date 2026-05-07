@@ -40,6 +40,23 @@ def render_portfolio(
         f"(NaN filtreleri sonrası)"
     )
 
+    if news_meta and news_meta.get("enabled"):
+        if not news_meta.get("key_present"):
+            console.print("Haber taraması: atlandı (TAVILY_API_KEY tanımsız)")
+        else:
+            parts = [
+                "Haber taraması: aktif",
+                f"top-K={news_meta['top_k']}",
+                f"{news_meta['total_hits']} fonda olumsuz haber",
+            ]
+            displaced_count = len(news_meta.get("displaced", []))
+            if news_meta["total_hits"] > 0:
+                if displaced_count == 0:
+                    parts.append("portföy değişmedi")
+                else:
+                    parts.append(f"{displaced_count} pick değişti")
+            console.print("  •  ".join(parts), soft_wrap=True)
+
     show_sector = (
         "sector" in selected.columns
         and (selected["sector"] != "diversified").any()
