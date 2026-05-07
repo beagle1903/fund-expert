@@ -66,6 +66,7 @@ loader.load_universe(getiri, buyukluk, yonetim)
 - **Weights** are integer multiples of 5%, every selected fund gets ≥5%, sum = 100. With N=20 every fund gets exactly 5%.
 - **Tunables** live in `fundexpert/config.py` — priority weights, risk λ, horizon buckets, default cap, weight epsilon, news pass (Tavily query top-K, keywords, penalty, cache TTL).
 - **News pass** (`--news`, opt-in): Tavily search per top-K candidate by quant score; any hit on a Turkish negative-news keyword (`soruşturma`, `iflas`, etc.) deducts a fixed `−0.20` from the fund's score before `pick_top`. Requires `TAVILY_API_KEY` env var; missing key → fail-soft (warning + skip). Module: `fundexpert/news/` (`match.py`, `tavily.py`, `penalty.py`). Cache: `~/.fundexpert/news_cache/` 1h TTL.
+- **News source filtering**: `NEWS_DOMAIN_ALLOWLIST` (config.py) is forwarded to Tavily as `include_domains`, restricting search server-side to a curated list of neutral Turkish financial outlets (KAP/SPK regulators + business press). Extend the list as new neutral outlets show up — **never add issuer-owned domains** (Spotify/Instagram/complaint-sites and `*portfoy*.com.tr` were the false-positive drivers). `NEWS_EXCLUDED_DOMAIN_SUBSTRINGS` is a client-side belt-and-suspenders filter dropping any hostname containing `portfoy`/`portföy` even if mistakenly allowlisted. Cache key incorporates both lists so config changes invalidate stale entries automatically.
 
 ## Gotchas
 

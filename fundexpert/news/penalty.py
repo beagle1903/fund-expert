@@ -36,6 +36,8 @@ def apply_negative_news_penalty(
     max_age_days: int = 30,
     max_results: int = 3,
     timeout_seconds: int = 10,
+    allowed_domains: tuple[str, ...] = (),
+    excluded_domain_substrings: tuple[str, ...] = (),
 ) -> tuple[pd.DataFrame, dict[str, list[NewsHit]]]:
     """Penalise the top-K rows of ``scored`` for negative-news hits.
 
@@ -81,6 +83,8 @@ def apply_negative_news_penalty(
             max_age_days=max_age_days,
             max_results=max_results,
             timeout_seconds=timeout_seconds,
+            allowed_domains=allowed_domains,
+            excluded_domain_substrings=excluded_domain_substrings,
         )
         if hits:
             adjusted.at[idx, "score"] = float(row["score"]) - penalty

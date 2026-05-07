@@ -176,3 +176,88 @@ def test_news_hit_to_render_dict_omits_published_when_none():
     h = NewsHit(title="t", url="https://x.com/p", published=None, source="x.com")
     d = h.to_render_dict()
     assert "published" not in d
+
+
+# ---- domain allowlist + issuer exclusion --------------------------------
+
+def _capturing_urlopen(payload: dict, captured: dict):
+    """urlopen side_effect that records the POSTed JSON body for assertions."""
+    def fake(req, **_kw):
+        captured["body"] = json.loads(req.data.decode("utf-8"))
+        return _fake_response(payload)
+    return fake
+
+
+def test_query_passes_allowed_domains_to_tavily(cache_dir):
+    """Non-empty allowlist must appear as include_domains in the POST body."""
+    captured: dict = {}
+    payload = {"results": []}
+    with patch("urllib.request.urlopen",
+               side_effect=_capturing_urlopen(payload, captured)):
+        query_negative_news(
+            "AK PORTFÖY", ("ceza",), api_key="k", cache_dir=cache_dir,
+            allowed_domains=("dunya.com", "kap.org.tr"),
+        )
+    assert captured["body"]["include_domains"] == ["dunya.com", "kap.org.tr"]
+
+
+def test_query_omits_include_domains_when_allowlist_empty(cache_dir):
+    """Empty allowlist must not add include_domains (Tavily searches all)."""
+    captured: dict = {}
+    payload = {"results": []}
+    with patch("urllib.request.urlopen",
+               side_effect=_capturing_urlopen(payload, captured)):
+        query_negative_news(
+            "AK PORTFÖY", ("ceza",), api_key="k", cache_dir=cache_dir,
+            allowed_domains=(),
+        )
+    assert "include_domains" not in captured["body"]
+
+
+def test_query_filters_excluded_domain_substrings(cache_dir):
+    """Hits whose hostname contains an excluded substring are dropped client-side."""
+    payload = {"results": [
+        {"title": "Real news", "url": "https://www.dunya.com/x",
+         "published_date": "2026-04-30"},
+        {"title": "Issuer self-promo", "url": "https://www.isportfoy.com.tr/x",
+         "published_date": "2026-04-30"},
+        {"title": "Other issuer", "url": "https://akportfoy.com.tr/y",
+         "published_date": "2026-04-30"},
+    ]}
+    with patch("urllib.request.urlopen", return_value=_fake_response(payload)):
+        hits = query_negative_news(
+            "AK PORTFÖY", ("ceza",), api_key="k", cache_dir=cache_dir,
+            excluded_domain_substrings=("portfoy",),
+        )
+    assert [h.source for h in hits] == ["dunya.com"]
+
+
+def test_excluded_substrings_match_case_insensitive(cache_dir):
+    """Substring match is case-insensitive so PORTFOY/Portfoy/portföy all hit."""
+    payload = {"results": [
+        {"title": "A", "url": "https://AKPORTFOY.COM.TR/x",
+         "published_date": "2026-04-30"},
+        {"title": "B", "url": "https://www.dunya.com/y",
+         "published_date": "2026-04-30"},
+    ]}
+    with patch("urllib.request.urlopen", return_value=_fake_response(payload)):
+        hits = query_negative_news(
+            "X", ("ceza",), api_key="k", cache_dir=cache_dir,
+            excluded_domain_substrings=("portfoy",),
+        )
+    assert [h.source for h in hits] == ["dunya.com"]
+
+
+def test_cache_key_differs_per_allowlist(cache_dir):
+    """Same query + different allowlists must not share a cache entry."""
+    payload = {"results": [
+        {"title": "T", "url": "https://www.dunya.com/1",
+         "published_date": "2026-01-01"},
+    ]}
+    with patch("urllib.request.urlopen",
+               return_value=_fake_response(payload)) as mock:
+        query_negative_news("AK PORTFÖY", ("ceza",), "k", cache_dir,
+                            allowed_domains=("a.com",))
+        query_negative_news("AK PORTFÖY", ("ceza",), "k", cache_dir,
+                            allowed_domains=("b.com",))
+    assert mock.call_count == 2

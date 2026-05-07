@@ -19,6 +19,8 @@ from fundexpert.config import (
     NEWS_API_KEY_ENV,
     NEWS_CACHE_DIR,
     NEWS_CACHE_TTL_SECONDS,
+    NEWS_DOMAIN_ALLOWLIST,
+    NEWS_EXCLUDED_DOMAIN_SUBSTRINGS,
     NEWS_MAX_AGE_DAYS,
     NEWS_MAX_RESULTS_PER_FUND,
     NEWS_QUERY_TIMEOUT_SECONDS,
@@ -114,6 +116,8 @@ def run_pipeline(
             max_age_days=NEWS_MAX_AGE_DAYS,
             max_results=NEWS_MAX_RESULTS_PER_FUND,
             timeout_seconds=NEWS_QUERY_TIMEOUT_SECONDS,
+            allowed_domains=NEWS_DOMAIN_ALLOWLIST,
+            excluded_domain_substrings=NEWS_EXCLUDED_DOMAIN_SUBSTRINGS,
         )
 
     selected, warning = pick_top(
