@@ -61,13 +61,16 @@ def run_pipeline(
     max_per_sector: int = DEFAULT_MAX_PER_SECTOR,
     news_enabled: bool = False,
     news_api_key: str | None = None,
-) -> tuple[pd.DataFrame, dict[str, Any], dict[str, list]]:
+) -> tuple[pd.DataFrame, dict[str, Any], dict[str, list], dict[str, Any]]:
     """Run the full data → score → select pipeline for a single universe.
 
-    Returns (selected_df, header_dict, hits_by_pick). When `news_enabled`
-    is False, `hits_by_pick` is always {}. When True, the news pass runs
-    against the top-K candidates (K = NEWS_QUERY_TOP_K_MULTIPLIER * n)
-    and returns matched articles for any of the *finally-picked* funds.
+    Returns (selected_df, header_dict, hits_by_pick, news_meta). When
+    `news_enabled` is False, `hits_by_pick` is always {} and `news_meta`
+    is `{"enabled": False}`. When True, the news pass runs against the
+    top-K candidates (K = NEWS_QUERY_TOP_K_MULTIPLIER * n) and returns
+    matched articles for any of the *finally-picked* funds; `news_meta`
+    carries metadata about the pass (key_present, top_k, total_hits,
+    displaced).
     """
     if universe not in ("tefas", "befas"):
         raise ValueError(
@@ -98,6 +101,7 @@ def run_pipeline(
     # subtract a fixed penalty for any with negative-news hits. Penalty is
     # applied *before* pick_top so picks actually shift.
     hits_by_code: dict[str, list] = {}
+    scored_pre = scored  # snapshot for counterfactual pick_top
     if news_enabled:
         scored, hits_by_code = apply_negative_news_penalty(
             scored,
@@ -125,6 +129,33 @@ def run_pipeline(
         if code in picked_codes
     }
 
+    # Compute "displaced" funds: those that would have been picked without the
+    # news penalty but got pushed out by it. Only meaningful when news is on
+    # and at least one fund got hits — otherwise pre/post pick_top runs are
+    # identical by construction.
+    displaced: list[dict[str, Any]] = []
+    if news_enabled and hits_by_code:
+        would_be, _ = pick_top(
+            scored_pre, n=n, max_per_type=max_per_type, max_per_sector=max_per_sector,
+        )
+        would_be_codes = set(would_be["fon_kodu"].astype(str))
+        displaced_codes = would_be_codes - picked_codes
+        scored_pre_indexed = scored_pre.set_index(scored_pre["fon_kodu"].astype(str))
+        for code in displaced_codes:
+            row = scored_pre_indexed.loc[code]
+            hits = hits_by_code.get(code, [])
+            displaced.append({
+                "fon_kodu": code,
+                "fon_adi": str(row["fon_adi"]),
+                "score_pre":  float(row["score"]),
+                "score_post": float(row["score"]) - NEGATIVE_NEWS_PENALTY,
+                "hits": [hit.to_render_dict() for hit in hits],
+            })
+        # Sort by pre-penalty score descending: the strongest fund we lost
+        # appears first. Set iteration above is hash-dependent and would
+        # otherwise leak into the rendered output.
+        displaced.sort(key=lambda d: d["score_pre"], reverse=True)
+
     header = {
         "timestamp": now,
         "universe":  universe,
@@ -138,7 +169,19 @@ def run_pipeline(
         "warning": warning,
         "excluded_horizon": excluded_horizon,
     }
-    return weighted, header, hits_for_render
+
+    if not news_enabled:
+        news_meta: dict[str, Any] = {"enabled": False}
+    else:
+        news_meta = {
+            "enabled": True,
+            "key_present": bool(news_api_key),
+            "top_k": NEWS_QUERY_TOP_K_MULTIPLIER * n,
+            "total_hits": len(hits_by_code),
+            "displaced": displaced,
+        }
+
+    return weighted, header, hits_for_render, news_meta
 
 
 # --- Prompt layer (Turkish) -------------------------------------------------
@@ -268,7 +311,7 @@ def main() -> int:
     )
     now = datetime.now()
     for u in universes_to_run:
-        selected, header, hits_for_render = run_pipeline(
+        selected, header, hits_for_render, news_meta = run_pipeline(
             universe=u,
             risk_level=answers["risk_level"],
             horizon=answers["horizon"],
@@ -283,5 +326,5 @@ def main() -> int:
         )
         if header.get("warning"):
             print(f"Uyarı ({u}): {header['warning']}", file=sys.stderr)
-        render_portfolio(selected, header, news=hits_for_render or None)
+        render_portfolio(selected, header, news=hits_for_render or None, news_meta=news_meta)
     return 0
