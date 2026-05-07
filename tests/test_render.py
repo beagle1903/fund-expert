@@ -58,3 +58,10 @@ def test_render_omits_news_section_when_no_hits(capsys):
     render_portfolio(_selected(), _header(), news={})
     captured = capsys.readouterr()
     assert "Olumsuz haber" not in captured.out
+
+
+def test_render_accepts_news_meta_kwarg_without_error(capsys):
+    news_meta = {"enabled": False}
+    render_portfolio(_selected(), _header(), news=None, news_meta=news_meta)
+    captured = capsys.readouterr()
+    assert "AAA" in captured.out  # baseline output still renders

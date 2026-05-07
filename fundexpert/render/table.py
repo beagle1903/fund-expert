@@ -11,11 +11,17 @@ def render_portfolio(
     selected: pd.DataFrame,
     header: dict[str, Any],
     news: dict[str, list[dict[str, Any]]] | None,
+    news_meta: dict[str, Any] | None = None,
 ) -> None:
     """Print header block + table + (optional) news footer to stdout.
 
     `news` maps fon_kodu → list of {title, url, source, published?}. If empty
     or None, the news footer is omitted.
+
+    `news_meta` carries info about the news pass (enabled flag, top-K size,
+    total hits, displaced funds). When None, news-pass-specific output (header
+    line, row markers, displaced footer) is suppressed — used by the
+    programmatic snippet that doesn't compute news_meta.
     """
     console = Console()
 

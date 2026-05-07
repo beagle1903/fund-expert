@@ -322,5 +322,5 @@ def main() -> int:
         )
         if header.get("warning"):
             print(f"Uyarı ({u}): {header['warning']}", file=sys.stderr)
-        render_portfolio(selected, header, news=hits_for_render or None)
+        render_portfolio(selected, header, news=hits_for_render or None, news_meta=news_meta)
     return 0
