@@ -74,7 +74,7 @@ def render_portfolio(
     table.add_column("Ağırlık %", justify="right")
     table.add_column("Skor", justify="right")
 
-    show_news_marker = news_meta is not None and bool(news)
+    show_news_marker = bool(news_meta and news_meta.get("enabled") and news)
     for _, r in selected.iterrows():
         is_penalized = show_news_marker and str(r["fon_kodu"]) in (news or {})
         fon_kodu_cell = f"{r['fon_kodu']} 📰" if is_penalized else str(r["fon_kodu"])
@@ -105,9 +105,26 @@ def render_portfolio(
     console.print(table)
 
     if news:
-        console.print("\n[bold red]⚠️ Olumsuz haber:[/bold red]")
+        console.print(
+            "\n[bold red]📰 Olumsuz haberle penalize edilen fonlar "
+            "(portföyde kaldı):[/bold red]"
+        )
         for code, items in news.items():
             for item in items:
                 published = f", {item['published']:%Y-%m-%d}" if item.get("published") else ""
                 console.print(f"  {code} — \"{item['title']}\"  ({item['source']}{published})")
                 console.print(f"        {item['url']}")
+
+    if news_meta and news_meta.get("displaced"):
+        console.print(
+            "\n[bold red]⛔ Habere takılıp portföyden düşen fonlar:[/bold red]"
+        )
+        for entry in news_meta["displaced"]:
+            console.print(
+                f"  {entry['fon_kodu']} — habersiz skor {entry['score_pre']:.2f} "
+                f"→ penalize edince {entry['score_post']:.2f}"
+            )
+            for hit in entry["hits"]:
+                published = f", {hit['published']:%Y-%m-%d}" if hit.get("published") else ""
+                console.print(f"        ↳ \"{hit['title']}\"  ({hit['source']}{published})")
+                console.print(f"        ↳ {hit['url']}")

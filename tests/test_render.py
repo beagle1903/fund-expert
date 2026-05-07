@@ -49,7 +49,7 @@ def test_render_includes_news_footer_when_provided(capsys):
                      "source": "dunya.com"}]}
     render_portfolio(_selected(), _header(), news=news)
     captured = capsys.readouterr()
-    assert "Olumsuz haber" in captured.out
+    assert "Olumsuz haberle penalize edilen fonlar (portföyde kaldı)" in captured.out
     assert "soruşturma" in captured.out
     assert "AAA" in captured.out
 
@@ -133,5 +133,54 @@ def test_render_does_not_mark_rows_when_news_meta_absent(capsys):
     news = {"BBB": [{"title": "x", "url": "https://x", "source": "x.com"}]}
     render_portfolio(_selected(), _header(), news=news, news_meta=None)
     out = capsys.readouterr().out
-    assert "📰" not in out
+    # Row markers (fon_kodu cell + score delta) suppressed; footer 📰 heading is unrelated.
+    assert "BBB 📰" not in out
     assert "(−0.20)" not in out
+
+
+def test_render_displaced_footer_renders_when_news_meta_has_displaced(capsys):
+    news = {}  # no surviving penalized picks for this case
+    news_meta = {
+        "enabled": True, "key_present": True, "top_k": 9, "total_hits": 1,
+        "displaced": [{
+            "fon_kodu": "ZZZ", "fon_adi": "Z PORTFÖY HİSSE FON",
+            "score_pre": 0.55, "score_post": 0.35,
+            "hits": [{"title": "Z hakkında dava açıldı",
+                      "url": "https://news.example/z",
+                      "source": "news.example"}],
+        }],
+    }
+    render_portfolio(_selected(), _header(), news=news, news_meta=news_meta)
+    out = capsys.readouterr().out
+    assert "Habere takılıp portföyden düşen fonlar" in out
+    assert "ZZZ" in out
+    assert "habersiz skor 0.55" in out
+    assert "0.35" in out
+    assert "dava açıldı" in out
+    assert "https://news.example/z" in out
+
+
+def test_render_displaced_footer_omitted_when_no_displaced(capsys):
+    news_meta = {"enabled": True, "key_present": True, "top_k": 9,
+                 "total_hits": 0, "displaced": []}
+    render_portfolio(_selected(), _header(), news={}, news_meta=news_meta)
+    out = capsys.readouterr().out
+    assert "Habere takılıp portföyden düşen fonlar" not in out
+
+
+def test_render_both_footers_when_survivors_and_displaced(capsys):
+    news = {"BBB": [{"title": "BBB ceza", "url": "https://b", "source": "b.com"}]}
+    news_meta = {
+        "enabled": True, "key_present": True, "top_k": 9, "total_hits": 2,
+        "displaced": [{
+            "fon_kodu": "ZZZ", "fon_adi": "Z FON",
+            "score_pre": 0.55, "score_post": 0.35,
+            "hits": [{"title": "Z dava", "url": "https://z", "source": "z.com"}],
+        }],
+    }
+    render_portfolio(_selected(), _header(), news=news, news_meta=news_meta)
+    out = capsys.readouterr().out
+    assert "Olumsuz haberle penalize edilen fonlar (portföyde kaldı)" in out
+    assert "Habere takılıp portföyden düşen fonlar" in out
+    # Order: A precedes B
+    assert out.index("portföyde kaldı") < out.index("portföyden düşen")
