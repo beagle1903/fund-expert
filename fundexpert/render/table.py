@@ -6,6 +6,8 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
+from fundexpert.config import NEGATIVE_NEWS_PENALTY
+
 
 def render_portfolio(
     selected: pd.DataFrame,
@@ -72,9 +74,17 @@ def render_portfolio(
     table.add_column("Ağırlık %", justify="right")
     table.add_column("Skor", justify="right")
 
+    show_news_marker = news_meta is not None and bool(news)
     for _, r in selected.iterrows():
+        is_penalized = show_news_marker and str(r["fon_kodu"]) in (news or {})
+        fon_kodu_cell = f"{r['fon_kodu']} 📰" if is_penalized else str(r["fon_kodu"])
+        score_cell = (
+            f"{r['score']:.2f} (−{NEGATIVE_NEWS_PENALTY:.2f})"
+            if is_penalized
+            else f"{r['score']:.2f}"
+        )
         row = [
-            str(r["fon_kodu"]),
+            fon_kodu_cell,
             str(r["fon_adi"]),
             str(r["umbrella_type"]),
         ]
@@ -83,7 +93,7 @@ def render_portfolio(
         row.extend([
             str(int(r["risk"])),
             f"{int(r['display_weight_pct'])}",
-            f"{r['score']:.2f}",
+            score_cell,
         ])
         table.add_row(*row)
     total_weight = selected["display_weight_pct"].sum() if len(selected) else 0.0

@@ -111,3 +111,27 @@ def test_render_header_news_line_picks_changed(capsys):
     out = capsys.readouterr().out
     assert "3 fonda olumsuz haber" in out
     assert "1 pick değişti" in out
+
+
+def test_render_marks_penalized_pick_in_fon_kodu_and_score(capsys):
+    news = {"BBB": [{"title": "BBB hakkında soruşturma", "url": "https://x",
+                     "source": "x.com"}]}
+    news_meta = {"enabled": True, "key_present": True, "top_k": 9,
+                 "total_hits": 1, "displaced": []}
+    render_portfolio(_selected(), _header(), news=news, news_meta=news_meta)
+    out = capsys.readouterr().out
+    # Penalized row's fon_kodu cell carries the marker
+    assert "BBB 📰" in out
+    # Penalized row's score cell shows the delta (penalty value comes from config)
+    assert "(−0.20)" in out
+    # Clean row's score cell does NOT carry the delta
+    assert "0.71 (−0.20)" not in out
+
+
+def test_render_does_not_mark_rows_when_news_meta_absent(capsys):
+    """Without news_meta, row markers are suppressed even if `news` is given."""
+    news = {"BBB": [{"title": "x", "url": "https://x", "source": "x.com"}]}
+    render_portfolio(_selected(), _header(), news=news, news_meta=None)
+    out = capsys.readouterr().out
+    assert "📰" not in out
+    assert "(−0.20)" not in out
