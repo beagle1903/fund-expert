@@ -119,7 +119,9 @@ def render_portfolio(
         console.print(
             "\n[bold red]⛔ Habere takılıp portföyden düşen fonlar:[/bold red]"
         )
-        for entry in news_meta["displaced"]:
+        for idx, entry in enumerate(news_meta["displaced"]):
+            if idx > 0:
+                console.print()
             console.print(
                 f"  {entry['fon_kodu']} — habersiz skor {entry['score_pre']:.2f} "
                 f"→ penalize edince {entry['score_post']:.2f}"

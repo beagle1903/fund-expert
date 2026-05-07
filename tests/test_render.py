@@ -168,6 +168,40 @@ def test_render_displaced_footer_omitted_when_no_displaced(capsys):
     assert "Habere takılıp portföyden düşen fonlar" not in out
 
 
+def test_render_displaced_footer_separates_multiple_entries_with_blank_line(capsys):
+    """Spec: 'Multiple displaced funds → repeat the block, blank line between.'"""
+    news_meta = {
+        "enabled": True, "key_present": True, "top_k": 9, "total_hits": 2,
+        "displaced": [
+            {
+                "fon_kodu": "AAA1", "fon_adi": "A FON",
+                "score_pre": 0.55, "score_post": 0.35,
+                "hits": [{"title": "A dava", "url": "https://a", "source": "a.com"}],
+            },
+            {
+                "fon_kodu": "BBB1", "fon_adi": "B FON",
+                "score_pre": 0.50, "score_post": 0.30,
+                "hits": [{"title": "B ceza", "url": "https://b", "source": "b.com"}],
+            },
+        ],
+    }
+    render_portfolio(_selected(), _header(), news={}, news_meta=news_meta)
+    out = capsys.readouterr().out
+    # Both entries render
+    assert "AAA1" in out
+    assert "BBB1" in out
+    # And there's a blank line between them — i.e. the second entry's header
+    # is preceded by a blank line, not directly by the first entry's last url.
+    aaa_url_idx = out.index("https://a")
+    bbb_header_idx = out.index("BBB1 — habersiz skor")
+    between = out[aaa_url_idx:bbb_header_idx]
+    # Between the first entry's last line and the second entry's header,
+    # there must be at least one fully-blank line (\n\n).
+    assert "\n\n" in between, (
+        f"Expected blank line between displaced entries, got:\n{between!r}"
+    )
+
+
 def test_render_both_footers_when_survivors_and_displaced(capsys):
     news = {"BBB": [{"title": "BBB ceza", "url": "https://b", "source": "b.com"}]}
     news_meta = {
