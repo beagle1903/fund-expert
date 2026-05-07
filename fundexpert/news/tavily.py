@@ -74,8 +74,26 @@ def _parse_published(raw: str | None) -> datetime | None:
         return None
 
 
-def _cache_key(query: str) -> str:
-    return hashlib.sha256(query.encode("utf-8")).hexdigest()
+def _cache_key(query: str, allowed_domains: tuple[str, ...],
+               excluded_domain_substrings: tuple[str, ...]) -> str:
+    """Cache key includes filter config so changing it invalidates old entries."""
+    parts = [query, "|".join(sorted(allowed_domains)),
+             "|".join(sorted(excluded_domain_substrings))]
+    return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
+
+
+def _hostname(url: str) -> str:
+    try:
+        return (urllib.parse.urlparse(url).hostname or "").lower()
+    except ValueError:
+        return ""
+
+
+def _is_excluded(url: str, substrings: tuple[str, ...]) -> bool:
+    if not substrings:
+        return False
+    host = _hostname(url)
+    return any(s.lower() in host for s in substrings)
 
 
 def _read_cache(cache_dir: Path, key: str, ttl_seconds: int) -> list[NewsHit] | None:
@@ -125,15 +143,19 @@ def _write_cache(cache_dir: Path, key: str, hits: list[NewsHit]) -> None:
 
 
 def _post_tavily(query: str, api_key: str, max_age_days: int,
-                 max_results: int, timeout_seconds: int) -> list[NewsHit]:
+                 max_results: int, timeout_seconds: int,
+                 allowed_domains: tuple[str, ...] = ()) -> list[NewsHit]:
     """Single Tavily POST. Raises urllib.error.URLError or json.JSONDecodeError on failure."""
-    body = json.dumps({
+    payload: dict = {
         "api_key": api_key,
         "query": query,
         "search_depth": "basic",
         "max_results": max_results,
         "days": max_age_days,
-    }).encode("utf-8")
+    }
+    if allowed_domains:
+        payload["include_domains"] = list(allowed_domains)
+    body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         _TAVILY_ENDPOINT,
         data=body,
@@ -165,6 +187,8 @@ def query_negative_news(
     max_age_days: int = 30,
     max_results: int = 3,
     timeout_seconds: int = 10,
+    allowed_domains: tuple[str, ...] = (),
+    excluded_domain_substrings: tuple[str, ...] = (),
 ) -> list[NewsHit]:
     """Search Tavily for the company prefix + keyword OR-list.
 
@@ -172,12 +196,19 @@ def query_negative_news(
     Empty prefix or empty keywords → ``[]``. Any error (HTTP, JSON,
     timeout) → ``[]`` with a logged warning. Successful responses are
     cached on disk under ``cache_dir`` for ``ttl_seconds``.
+
+    `allowed_domains` is forwarded to Tavily as ``include_domains`` —
+    server-side restriction to trusted news outlets. Empty tuple → no
+    restriction (broad search). `excluded_domain_substrings` is applied
+    client-side: any hit whose hostname contains one of the substrings
+    (case-insensitive) is dropped. Used as defense-in-depth against
+    issuer-owned domains (e.g. ``*portfoy*``) slipping through.
     """
     query = build_query(company_prefix, keywords)
     if not query:
         return []
 
-    key = _cache_key(query)
+    key = _cache_key(query, allowed_domains, excluded_domain_substrings)
     cached = _read_cache(cache_dir, key, ttl_seconds)
     if cached is not None:
         return cached
@@ -188,11 +219,14 @@ def query_negative_news(
             max_age_days=max_age_days,
             max_results=max_results,
             timeout_seconds=timeout_seconds,
+            allowed_domains=allowed_domains,
         )
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
             json.JSONDecodeError) as e:
         print(f"Haber sorgusu başarısız ({company_prefix}): {e}", file=sys.stderr)
         return []
+
+    hits = [h for h in hits if not _is_excluded(h.url, excluded_domain_substrings)]
 
     _write_cache(cache_dir, key, hits)
     return hits

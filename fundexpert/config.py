@@ -63,6 +63,38 @@ NEGATIVE_NEWS_KEYWORDS: tuple[str, ...] = (
 # Fixed binary deduction from a fund's score when Tavily returns ≥1 hit.
 NEGATIVE_NEWS_PENALTY: float = 0.20
 
+# Trusted Turkish financial/business news outlets. Forwarded to Tavily as
+# include_domains, restricting search server-side. Empty tuple → no
+# restriction (broad search; not recommended — Spotify/Instagram/forum
+# results were the main false-positive driver before this list existed).
+NEWS_DOMAIN_ALLOWLIST: tuple[str, ...] = (
+    # Regulators / authoritative
+    "kap.org.tr",
+    "spk.gov.tr",
+    # Business specialists
+    "dunya.com",
+    "bloomberght.com",
+    "ekonomim.com",
+    "paraanaliz.com",
+    "fortuneturkey.com",
+    # Business sections of major dailies
+    "bigpara.hurriyet.com.tr",
+    "ntv.com.tr",
+    "haberturk.com",
+    "sozcu.com.tr",
+    "cumhuriyet.com.tr",
+    "t24.com.tr",
+    # News agencies
+    "aa.com.tr",
+    "reuters.com",
+)
+
+# Hostname substrings (case-insensitive) that drop a hit client-side
+# regardless of the allowlist. Issuer-owned domains (Turkish portföy
+# companies all use *portfoy*.com.tr) won't publish negative news about
+# their own funds, so any hit from them is structurally untrustworthy.
+NEWS_EXCLUDED_DOMAIN_SUBSTRINGS: tuple[str, ...] = ("portfoy", "portföy")
+
 # Disk cache for Tavily responses. Re-runs within TTL skip the network.
 NEWS_CACHE_DIR: Path = Path.home() / ".fundexpert" / "news_cache"
 NEWS_CACHE_TTL_SECONDS: int = 3600

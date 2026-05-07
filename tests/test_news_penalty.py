@@ -133,6 +133,21 @@ def test_binary_penalty_one_or_many_hits_same_amount(scored, cache_dir):
     assert len(hits["A"]) == 5  # Hits dict still carries all of them for display.
 
 
+def test_allowed_domains_and_exclusions_forwarded_to_tavily(scored, cache_dir):
+    """Allowlist + issuer-exclusion config must reach query_negative_news."""
+    with patch("fundexpert.news.penalty.query_negative_news",
+               return_value=[]) as mock:
+        apply_negative_news_penalty(
+            scored, top_k=1, keywords=("ceza",), penalty=0.20,
+            api_key="k", cache_dir=cache_dir,
+            allowed_domains=("dunya.com", "kap.org.tr"),
+            excluded_domain_substrings=("portfoy",),
+        )
+    kwargs = mock.call_args.kwargs
+    assert kwargs["allowed_domains"] == ("dunya.com", "kap.org.tr")
+    assert kwargs["excluded_domain_substrings"] == ("portfoy",)
+
+
 def test_fund_with_empty_company_prefix_is_skipped(cache_dir):
     """A fund whose name is empty-ish shouldn't generate a Tavily call."""
     df = pd.DataFrame({
