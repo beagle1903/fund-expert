@@ -5,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-import pytest
 
 from fundexpert.history.store import load_last_run, save_run
 
@@ -94,3 +93,10 @@ def test_load_last_run_filters_by_universe(tmp_path):
     save_run(_make_selected(), _make_header("befas"), history_dir=tmp_path)
     result = load_last_run("befas", history_dir=tmp_path)
     assert result["universe"] == "befas"
+
+
+def test_load_last_run_returns_none_on_corrupt_json(tmp_path):
+    corrupt = tmp_path / "2026-05-12_10-30-00_tefas.json"
+    corrupt.write_text("not valid json", encoding="utf-8")
+    result = load_last_run("tefas", history_dir=tmp_path)
+    assert result is None

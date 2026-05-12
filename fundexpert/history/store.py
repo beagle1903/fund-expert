@@ -14,7 +14,7 @@ def save_run(
 ) -> Path:
     """Save the current run to <history_dir>/YYYY-MM-DD_HH-MM-SS_<universe>.json.
 
-    Returns the path written. Never raises — caller wraps in try/except.
+    Returns the path written. May raise OSError on disk errors; caller should wrap in try/except.
     """
     history_dir.mkdir(parents=True, exist_ok=True)
     ts = header["timestamp"]
