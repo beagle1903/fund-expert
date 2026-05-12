@@ -318,3 +318,75 @@ def test_run_pipeline_news_enabled_without_api_key_falls_back_to_quant(
     assert list(sel_no_news["fon_kodu"]) == list(sel_news_no_key["fon_kodu"])
     assert hits == {}
     assert "TAVILY_API_KEY tanımlı değil" in capsys.readouterr().err
+
+
+def test_main_saves_run_on_every_execution(monkeypatch):
+    """save_run is called once per universe even without --diff-last."""
+    import sys
+    monkeypatch.setattr("sys.argv", ["fundexpert"])
+    monkeypatch.setattr("fundexpert.cli._prompt", lambda _: {
+        "universe": "tefas", "risk_level": "medium", "horizon": "medium",
+        "volume_priority": "medium", "fee_priority": "medium", "n": 5,
+    })
+    full_header = {
+        "timestamp": datetime(2026, 5, 12, 10, 0),
+        "universe": "tefas", "risk_level": "medium", "horizon": "medium",
+        "volume_priority": "medium", "fee_priority": "medium", "n": 5,
+        "candidate_total": 100, "candidate_kept": 90, "warning": None,
+        "excluded_horizon": 0,
+    }
+    from pathlib import Path
+    fake_selected = pd.DataFrame({
+        "fon_kodu": ["AAK"], "fon_adi": ["AK FON"],
+        "umbrella_type": ["Değişken"], "risk": [3],
+        "display_weight_pct": [100.0], "score": [0.7],
+    })
+    monkeypatch.setattr("fundexpert.cli.run_pipeline",
+                        lambda **kw: (fake_selected, full_header, {}, {"enabled": False}))
+    save_calls = []
+    monkeypatch.setattr("fundexpert.cli.save_run",
+                        lambda selected, header, history_dir: save_calls.append(1) or Path("/tmp/x.json"))
+    monkeypatch.setattr("fundexpert.cli.render_portfolio", lambda *a, **kw: None)
+    from fundexpert.cli import main
+    result = main()
+    assert result == 0
+    assert len(save_calls) == 1
+
+
+def test_main_diff_last_calls_render_diff_when_previous_exists(monkeypatch):
+    """--diff-last calls render_diff when a previous run is available."""
+    import sys
+    monkeypatch.setattr("sys.argv", ["fundexpert", "--diff-last"])
+    monkeypatch.setattr("fundexpert.cli._prompt", lambda _: {
+        "universe": "tefas", "risk_level": "medium", "horizon": "medium",
+        "volume_priority": "medium", "fee_priority": "medium", "n": 5,
+    })
+    full_header = {
+        "timestamp": datetime(2026, 5, 12, 10, 0),
+        "universe": "tefas", "risk_level": "medium", "horizon": "medium",
+        "volume_priority": "medium", "fee_priority": "medium", "n": 5,
+        "candidate_total": 100, "candidate_kept": 90, "warning": None,
+        "excluded_horizon": 0,
+    }
+    from pathlib import Path
+    fake_selected = pd.DataFrame({
+        "fon_kodu": ["AAK"], "fon_adi": ["AK FON"],
+        "umbrella_type": ["Değişken"], "risk": [3],
+        "display_weight_pct": [100.0], "score": [0.7],
+    })
+    fake_previous = {"timestamp": "2026-05-01T09:00:00", "universe": "tefas", "picks": []}
+    monkeypatch.setattr("fundexpert.cli.run_pipeline",
+                        lambda **kw: (fake_selected, full_header, {}, {"enabled": False}))
+    monkeypatch.setattr("fundexpert.cli.save_run",
+                        lambda selected, header, history_dir: Path("/tmp/x.json"))
+    monkeypatch.setattr("fundexpert.cli.load_last_run",
+                        lambda universe, history_dir: fake_previous)
+    monkeypatch.setattr("fundexpert.cli.render_portfolio", lambda *a, **kw: None)
+    diff_calls = []
+    monkeypatch.setattr("fundexpert.cli.render_diff",
+                        lambda selected, previous: diff_calls.append(previous))
+    from fundexpert.cli import main
+    result = main()
+    assert result == 0
+    assert len(diff_calls) == 1
+    assert diff_calls[0] == fake_previous
