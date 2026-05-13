@@ -102,3 +102,5 @@ NEWS_CACHE_TTL_SECONDS: int = 3600
 # --- Paths -------------------------------------------------------------------
 
 LAST_RUN_FILE: Path = Path.home() / ".fundexpert" / "last.json"
+
+HISTORY_DIR: Path = Path.home() / ".fundexpert" / "runs"

@@ -13,6 +13,7 @@ import pandas as pd
 from fundexpert.config import (
     DEFAULT_MAX_PER_SECTOR,
     DEFAULT_MAX_PER_TYPE,
+    HISTORY_DIR,
     LAST_RUN_FILE,
     NEGATIVE_NEWS_KEYWORDS,
     NEGATIVE_NEWS_PENALTY,
@@ -28,7 +29,9 @@ from fundexpert.config import (
 )
 from fundexpert.data.loader import load_universe
 from fundexpert.data.merge import merge_universe
+from fundexpert.history.store import load_last_run, save_run
 from fundexpert.news.penalty import apply_negative_news_penalty
+from fundexpert.render.diff import render_diff
 from fundexpert.render.table import render_portfolio
 from fundexpert.scoring.horizon import apply_horizon
 from fundexpert.scoring.score import score_candidates
@@ -296,6 +299,10 @@ def main() -> int:
         "--max-per-sector", type=int, default=DEFAULT_MAX_PER_SECTOR,
         help="Max funds per sektör (e.g. teknoloji, sağlık, enerji)",
     )
+    parser.add_argument(
+        "--diff-last", action="store_true",
+        help="Önceki run ile portföy karşılaştırması göster",
+    )
     args = parser.parse_args()
 
     last = _load_last_run()
@@ -330,5 +337,20 @@ def main() -> int:
         )
         if header.get("warning"):
             print(f"Uyarı ({u}): {header['warning']}", file=sys.stderr)
+
+        # Load previous run BEFORE saving current (so we retrieve the old one).
+        previous_run = load_last_run(u, history_dir=HISTORY_DIR) if args.diff_last else None
+
+        try:
+            save_run(selected, header, history_dir=HISTORY_DIR)
+        except Exception:
+            pass  # history is quality-of-life only; never fail the run
+
         render_portfolio(selected, header, news=hits_for_render or None, news_meta=news_meta)
+
+        if args.diff_last:
+            if previous_run is None:
+                print("(Karşılaştırma: daha önce kaydedilmiş run bulunamadı.)", file=sys.stderr)
+            else:
+                render_diff(selected, previous_run)
     return 0
