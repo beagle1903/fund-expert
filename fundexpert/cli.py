@@ -354,3 +354,6 @@ def main() -> int:
             else:
                 render_diff(selected, previous_run)
     return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

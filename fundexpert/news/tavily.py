@@ -144,7 +144,8 @@ def _write_cache(cache_dir: Path, key: str, hits: list[NewsHit]) -> None:
 
 def _post_tavily(query: str, api_key: str, max_age_days: int,
                  max_results: int, timeout_seconds: int,
-                 allowed_domains: tuple[str, ...] = ()) -> list[NewsHit]:
+                 allowed_domains: tuple[str, ...] = (),
+                 keywords: tuple[str, ...] = ()) -> list[NewsHit]:
     """Single Tavily POST. Raises urllib.error.URLError or json.JSONDecodeError on failure."""
     payload: dict = {
         "api_key": api_key,
@@ -166,16 +167,29 @@ def _post_tavily(query: str, api_key: str, max_age_days: int,
     )
     with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
         data = json.loads(resp.read().decode("utf-8"))
-    return [
-        NewsHit(
-            title=r.get("title", "").strip(),
-            url=r.get("url", ""),
-            published=_parse_published(r.get("published_date")),
-            source=_domain_of(r.get("url", "")),
+        
+    valid_results = []
+    for r in data.get("results", []):
+        title = r.get("title", "").strip()
+        url = r.get("url", "")
+        content = r.get("content", "")
+        if not title or not url:
+            continue
+            
+        # Client-side validation: ensure at least one keyword is actually present
+        text_to_check = (title + " " + content).lower()
+        if keywords and not any(k.lower() in text_to_check for k in keywords):
+            continue
+            
+        valid_results.append(
+            NewsHit(
+                title=title,
+                url=url,
+                published=_parse_published(r.get("published_date")),
+                source=_domain_of(url),
+            )
         )
-        for r in data.get("results", [])
-        if r.get("title") and r.get("url")
-    ]
+    return valid_results
 
 
 def query_negative_news(
@@ -220,6 +234,7 @@ def query_negative_news(
             max_results=max_results,
             timeout_seconds=timeout_seconds,
             allowed_domains=allowed_domains,
+            keywords=keywords,
         )
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
             json.JSONDecodeError) as e:

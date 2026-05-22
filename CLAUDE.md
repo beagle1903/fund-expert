@@ -74,3 +74,8 @@ loader.load_universe(getiri, buyukluk, yonetim)
 - Stdout encoding: `_ensure_utf8_stdio()` must be called before any rendering on Windows or Turkish characters break.
 - Last-run answers cached at `~/.fundexpert/last.json`; safe to delete.
 - `LSP` MCP tool occasionally disconnects mid-session — not a code issue.
+
+## Claude Code Insights
+- Create a parallel code review system for my repos. In `.claude/agents/` define 5 specialized review subagents: security-reviewer, architecture-reviewer, test-coverage-reviewer, performance-reviewer, and business-logic-reviewer. Each should have a focused system prompt, a clear output schema, and write to `reviews/<agent-name>.md`. Then create a `/review-parallel` slash command that launches all 5 in parallel via the Task tool against the current repo, waits for completion, and runs a final synthesizer agent that reads all 5 outputs and produces `reviews/SUMMARY.md` with prioritized P0/P1/P2 findings and suggested fixes as actionable Claude prompts. Run it once on fundexpert as a demo.
+
+- Build me a test-driven auto-healing workflow for fundexpert. (1) Write `scripts/auto-heal.ps1` that takes a failing test name, runs it, pipes the failure output to `claude -p` with a strict 'diagnose-then-fix-then-verify' system prompt, applies the patch, re-runs tests, and loops up to 5 times before escalating with a summary. (2) Add Hypothesis to the project and write property-based tests for the scoring, selection, and sector-cap modules—have Claude propose 3 invariants per module and implement them. (3) Run the auto-heal loop against any newly-failing properties and report which invariants caught real bugs vs needed loosening. Commit each successful auto-heal as a separate commit with a `auto-heal:` prefix so I can audit.

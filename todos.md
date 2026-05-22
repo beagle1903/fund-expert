@@ -8,6 +8,8 @@ Hey! Welcome back. Recap of where we left things:
 - ✅ `both` universe → two portfolios (`7c5f7cc`, May 3)
 - ✅ Per-sector cap (`d364c49`, May 4)
 - ✅ Risk semantics flipped: `risk_priority` → `risk_level` (`4398f2e`, May 4)
+- ✅ CLI execution block added so `python -m` works (`cli.py`)
+- ✅ News false positives fixed via strict client-side keyword validation (`tavily.py`)
 
 All on main, pushed.
 
