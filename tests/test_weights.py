@@ -64,3 +64,24 @@ def test_handles_n_equals_max_20():
     })
     out = compute_weights(df)
     assert out["display_weight_pct"].tolist() == [5] * 20
+
+
+def test_handles_empty_dataframe():
+    df = pd.DataFrame({"fon_kodu": [], "score": []})
+    out = compute_weights(df)
+    assert len(out) == 0
+    assert "display_weight_pct" in out.columns
+
+
+def test_handles_n_greater_than_20():
+    df = pd.DataFrame({
+        "fon_kodu": [f"F{i}" for i in range(25)],
+        "score":    [0.5] * 25,
+    })
+    out = compute_weights(df)
+    weights = out["display_weight_pct"].tolist()
+    assert sum(weights) == 100
+    assert all(int(w) % 5 == 0 for w in weights)
+    assert len(weights) == 25
+    assert weights.count(5) == 20
+    assert weights.count(0) == 5

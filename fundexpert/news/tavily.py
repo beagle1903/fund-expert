@@ -121,7 +121,7 @@ def _read_cache(cache_dir: Path, key: str, ttl_seconds: int) -> list[NewsHit] | 
 
 def _write_cache(cache_dir: Path, key: str, hits: list[NewsHit]) -> None:
     try:
-        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         path = cache_dir / f"{key}.json"
         path.write_text(
             json.dumps({
@@ -177,7 +177,7 @@ def _post_tavily(query: str, api_key: str, max_age_days: int,
             continue
             
         # Client-side validation: ensure at least one keyword is actually present
-        text_to_check = (title + " " + content).lower()
+        text_to_check = (title + " " + content).replace("I", "ı").replace("İ", "i").lower()
         if keywords and not any(k.lower() in text_to_check for k in keywords):
             continue
             

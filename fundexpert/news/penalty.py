@@ -66,14 +66,16 @@ def apply_negative_news_penalty(
     # Identify the top-K candidate indices by score.
     top_indices = scored["score"].nlargest(top_k).index
 
+    import concurrent.futures
+
     hits_by_code: dict[str, list[NewsHit]] = {}
     adjusted = scored.copy()
 
-    for idx in top_indices:
+    def _query_for_index(idx):
         row = adjusted.loc[idx]
         prefix = extract_company_prefix(row.get("fon_adi"))
         if not prefix:
-            continue
+            return idx, row, []
         hits = query_negative_news(
             company_prefix=prefix,
             keywords=keywords,
@@ -86,8 +88,14 @@ def apply_negative_news_penalty(
             allowed_domains=allowed_domains,
             excluded_domain_substrings=excluded_domain_substrings,
         )
-        if hits:
-            adjusted.at[idx, "score"] = float(row["score"]) - penalty
-            hits_by_code[str(row["fon_kodu"])] = hits
+        return idx, row, hits
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(_query_for_index, idx) for idx in top_indices]
+        for future in concurrent.futures.as_completed(futures):
+            idx, row, hits = future.result()
+            if hits:
+                adjusted.at[idx, "score"] = float(row["score"]) - penalty
+                hits_by_code[str(row["fon_kodu"])] = hits
 
     return adjusted, hits_by_code

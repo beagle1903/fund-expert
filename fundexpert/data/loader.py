@@ -49,10 +49,9 @@ def _read_one(path: Path, rename: dict[str, str]) -> pd.DataFrame:
         encoding="utf-8",
         decimal=",",
         thousands=None,
+        usecols=lambda c: c in rename.keys(),
     )
-    df = df.rename(columns=rename)
-    keep = [c for c in df.columns if c in rename.values()]
-    return df[keep]
+    return df.rename(columns=rename)
 
 
 def load_universe(

@@ -4,7 +4,8 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from fundexpert.cli import _prompt, main, run_pipeline
+from fundexpert.cli import _prompt, main, _load_one
+from fundexpert.pipeline import run_pipeline
 
 
 @pytest.fixture
@@ -46,7 +47,12 @@ def fake_universe_loader():
 
 
 def test_run_pipeline_returns_selected_with_weights(fake_universe_loader):
+    candidates = _load_one("tefas")
+
     selected, header, hits, _ = run_pipeline(
+
+        candidates=candidates,
+
         universe="tefas",
         risk_level="medium",
         horizon="medium",
@@ -65,7 +71,12 @@ def test_run_pipeline_returns_selected_with_weights(fake_universe_loader):
 
 
 def test_run_pipeline_returns_news_meta_with_enabled_false_when_news_off(fake_universe_loader):
+    candidates = _load_one("tefas")
+
     selected, header, hits, news_meta = run_pipeline(
+
+        candidates=candidates,
+
         universe="tefas", risk_level="medium", horizon="medium",
         volume_priority="medium", fee_priority="medium",
         n=2, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
@@ -117,7 +128,7 @@ def test_main_exits_cleanly_on_keyboard_interrupt(capsys):
 def test_run_pipeline_rejects_both_universe():
     with pytest.raises(ValueError, match="tefas.*befas"):
         run_pipeline(
-            universe="both", risk_level="medium", horizon="medium",
+            candidates=None, universe="both", risk_level="medium", horizon="medium",
             volume_priority="medium", fee_priority="medium",
             n=2, max_per_type=2, now=datetime(2026, 5, 2),
         )
@@ -193,7 +204,12 @@ def test_run_pipeline_with_news_shifts_picks_when_top_fund_has_negative_news(
 
     # First find what the top pick is without news, then put negative news on
     # exactly that fund and verify the next run picks something else.
+    candidates = _load_one("tefas")
+
     sel_no_news, _, hits_no_news, _ = run_pipeline(
+
+        candidates=candidates,
+
         universe="tefas", risk_level="medium", horizon="medium",
         volume_priority="medium", fee_priority="medium",
         n=1, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
@@ -209,7 +225,12 @@ def test_run_pipeline_with_news_shifts_picks_when_top_fund_has_negative_news(
         return []
 
     with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
+        candidates = _load_one("tefas")
+
         sel_with_news, _, _, _ = run_pipeline(
+
+            candidates=candidates,
+
             universe="tefas", risk_level="medium", horizon="medium",
             volume_priority="medium", fee_priority="medium",
             n=1, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
@@ -225,7 +246,15 @@ def test_run_pipeline_news_meta_populates_displaced_when_top_fund_dropped(
     """A Tavily hit on the top quant fund should land it in news_meta['displaced']."""
     from fundexpert.news.tavily import NewsHit
 
+    candidates = _load_one("tefas")
+
+
     sel_no_news, _, _, _ = run_pipeline(
+
+
+        candidates=candidates,
+
+
         universe="tefas", risk_level="medium", horizon="medium",
         volume_priority="medium", fee_priority="medium",
         n=1, max_per_type=2, now=datetime(2026, 5, 2),
@@ -241,7 +270,12 @@ def test_run_pipeline_news_meta_populates_displaced_when_top_fund_dropped(
         return []
 
     with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
+        candidates = _load_one("tefas")
+
         sel_news, _, _, news_meta = run_pipeline(
+
+            candidates=candidates,
+
             universe="tefas", risk_level="medium", horizon="medium",
             volume_priority="medium", fee_priority="medium",
             n=1, max_per_type=2, now=datetime(2026, 5, 2),
@@ -273,7 +307,12 @@ def test_run_pipeline_news_meta_displaced_sorted_by_score_pre_desc(
                         url="https://x", published=None, source="x.com")]
 
     with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
+        candidates = _load_one("tefas")
+
         _, _, _, news_meta = run_pipeline(
+
+            candidates=candidates,
+
             universe="tefas", risk_level="medium", horizon="medium",
             volume_priority="medium", fee_priority="medium",
             n=1, max_per_type=2, now=datetime(2026, 5, 2),
@@ -289,7 +328,12 @@ def test_run_pipeline_news_meta_displaced_sorted_by_score_pre_desc(
 
 def test_run_pipeline_news_meta_displaced_empty_when_no_hits(fake_universe_loader):
     with patch("fundexpert.news.penalty.query_negative_news", return_value=[]):
+        candidates = _load_one("tefas")
+
         _, _, _, news_meta = run_pipeline(
+
+            candidates=candidates,
+
             universe="tefas", risk_level="medium", horizon="medium",
             volume_priority="medium", fee_priority="medium",
             n=2, max_per_type=2, now=datetime(2026, 5, 2),
@@ -303,13 +347,23 @@ def test_run_pipeline_news_enabled_without_api_key_falls_back_to_quant(
     fake_universe_loader, capsys,
 ):
     """news_enabled=True but no key → no penalty, picks identical to news=off."""
+    candidates = _load_one("tefas")
+
     sel_no_news, _, _, _ = run_pipeline(
+
+        candidates=candidates,
+
         universe="tefas", risk_level="medium", horizon="medium",
         volume_priority="medium", fee_priority="medium",
         n=2, max_per_type=2, now=datetime(2026, 5, 2),
         news_enabled=False, news_api_key=None,
     )
+    candidates = _load_one("tefas")
+
     sel_news_no_key, _, hits, _ = run_pipeline(
+
+        candidates=candidates,
+
         universe="tefas", risk_level="medium", horizon="medium",
         volume_priority="medium", fee_priority="medium",
         n=2, max_per_type=2, now=datetime(2026, 5, 2),

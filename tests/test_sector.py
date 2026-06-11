@@ -28,3 +28,7 @@ def test_sector_handles_lowercase_turkish_i():
 
 def test_sector_from_name_handles_none():
     assert sector_from_name(None) == "diversified"
+
+def test_sector_from_name_handles_whitespace():
+    assert sector_from_name("   ") == "diversified"
+    assert sector_from_name("\t\n") == "diversified"

@@ -59,7 +59,7 @@ def test_query_returns_parsed_hits_on_success(cache_dir):
             "title": "İkinci başlık",
             "url": "https://bigpara.hurriyet.com.tr/x",
             "published_date": "2026-04-29T08:15:00",
-            "content": "...",
+            "content": "... soruşturma ...",
         },
     ]}
     with patch("urllib.request.urlopen", return_value=_fake_response(payload)):
@@ -79,7 +79,7 @@ def test_query_skips_results_missing_title_or_url(cache_dir):
     """Defensive: malformed result entries are dropped, not crash the parse."""
     payload = {"results": [
         {"title": "", "url": "https://x", "published_date": "2026-01-01"},
-        {"title": "Real one", "url": "https://y/p", "published_date": "2026-01-02"},
+        {"title": "Real one ceza", "url": "https://y/p", "published_date": "2026-01-02"},
         {"title": "No url", "url": "", "published_date": "2026-01-03"},
     ]}
     with patch("urllib.request.urlopen", return_value=_fake_response(payload)):
@@ -87,7 +87,7 @@ def test_query_skips_results_missing_title_or_url(cache_dir):
             "FOO PORTFÖY", ("ceza",), api_key="k", cache_dir=cache_dir,
         )
     assert len(hits) == 1
-    assert hits[0].title == "Real one"
+    assert hits[0].title == "Real one ceza"
 
 
 def test_query_returns_empty_on_http_error(cache_dir, capsys):
@@ -217,11 +217,11 @@ def test_query_omits_include_domains_when_allowlist_empty(cache_dir):
 def test_query_filters_excluded_domain_substrings(cache_dir):
     """Hits whose hostname contains an excluded substring are dropped client-side."""
     payload = {"results": [
-        {"title": "Real news", "url": "https://www.dunya.com/x",
+        {"title": "Real news ceza", "url": "https://www.dunya.com/x",
          "published_date": "2026-04-30"},
-        {"title": "Issuer self-promo", "url": "https://www.isportfoy.com.tr/x",
+        {"title": "Issuer self-promo ceza", "url": "https://www.isportfoy.com.tr/x",
          "published_date": "2026-04-30"},
-        {"title": "Other issuer", "url": "https://akportfoy.com.tr/y",
+        {"title": "Other issuer ceza", "url": "https://akportfoy.com.tr/y",
          "published_date": "2026-04-30"},
     ]}
     with patch("urllib.request.urlopen", return_value=_fake_response(payload)):
@@ -235,9 +235,9 @@ def test_query_filters_excluded_domain_substrings(cache_dir):
 def test_excluded_substrings_match_case_insensitive(cache_dir):
     """Substring match is case-insensitive so PORTFOY/Portfoy/portföy all hit."""
     payload = {"results": [
-        {"title": "A", "url": "https://AKPORTFOY.COM.TR/x",
+        {"title": "A ceza", "url": "https://AKPORTFOY.COM.TR/x",
          "published_date": "2026-04-30"},
-        {"title": "B", "url": "https://www.dunya.com/y",
+        {"title": "B ceza", "url": "https://www.dunya.com/y",
          "published_date": "2026-04-30"},
     ]}
     with patch("urllib.request.urlopen", return_value=_fake_response(payload)):

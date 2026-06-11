@@ -22,7 +22,7 @@ def compute_weights(selected: pd.DataFrame) -> pd.DataFrame:
     if n * _STEP > 100:
         # Defensive: would never happen with the CLI's N≤20 cap, but stay safe
         # by falling back to equal weighting in 5% units.
-        units_each = max(1, (100 // _STEP) // n)
+        units_each = (100 // _STEP) // n
         display = pd.Series([units_each * _STEP] * n, index=out.index, dtype=int)
         # Top-up to 100 by adding leftover units to highest-score funds
         leftover = (100 // _STEP) - units_each * n

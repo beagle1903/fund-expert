@@ -53,4 +53,6 @@ def test_bucket_from_name_handles_lowercase_and_whitespace() -> None:
 
 def test_bucket_from_name_empty_or_none() -> None:
     assert bucket_from_name("") == "other"
+    assert bucket_from_name("   ") == "other"
+    assert bucket_from_name("\n\t ") == "other"
     assert bucket_from_name(None) == "other"  # type: ignore[arg-type]

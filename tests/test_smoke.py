@@ -2,12 +2,15 @@ from datetime import datetime
 
 import pytest
 
-from fundexpert.cli import run_pipeline
+from fundexpert.pipeline import run_pipeline
+from fundexpert.cli import _load_one
 
 
 @pytest.mark.parametrize("universe", ["tefas", "befas"])
 def test_pipeline_runs_against_real_csvs(universe):
+    candidates = _load_one(universe)
     selected, header, hits, _ = run_pipeline(
+        candidates=candidates,
         universe=universe,
         risk_level="medium",
         horizon="medium",
@@ -27,7 +30,9 @@ def test_pipeline_runs_against_real_csvs(universe):
 
 
 def test_pipeline_long_horizon_drops_funds_with_no_long_history():
+    candidates = _load_one("tefas")
     selected, header, _, _ = run_pipeline(
+        candidates=candidates,
         universe="tefas",
         risk_level="high",
         horizon="long",

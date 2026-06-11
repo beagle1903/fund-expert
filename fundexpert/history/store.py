@@ -16,7 +16,7 @@ def save_run(
 
     Returns the path written. May raise on serialization or disk errors; caller should wrap in try/except.
     """
-    history_dir.mkdir(parents=True, exist_ok=True)
+    history_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     ts = header["timestamp"]
     filename = f"{ts.strftime('%Y-%m-%d_%H-%M-%S')}_{header['universe']}.json"
     record: dict[str, Any] = {
