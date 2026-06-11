@@ -13,7 +13,7 @@ Thumbs.db
 # IDE / agent
 .idea/
 .vscode/
-.claude/
+.Agent/
 
 # Tool runtime data (last-run cache, news cache)
 .fundexpert/
