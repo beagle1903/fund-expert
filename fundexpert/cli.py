@@ -88,6 +88,9 @@ def run_pipeline(
     # Drop funds with NaN primary fee (per missing-value policy)
     candidates = candidates[candidates["applied_management_fee_pct"].notna()]
 
+    # Drop funds without at least 3 months of performance history
+    candidates = candidates[candidates["ret_3m"].notna()]
+
     horizoned = apply_horizon(candidates, horizon)
     excluded_horizon = horizoned.attrs.get("excluded_count", 0)
 
