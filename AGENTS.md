@@ -11,7 +11,7 @@ User-facing strings are Turkish; code/identifiers are English.
 # or after `pip install -e .`
 fundexpert
 
-# Non-interactive (skip prompts, useful from Claude shell)
+# Non-interactive (skip prompts, useful from Agent shell)
 .venv/Scripts/python.exe -c "
 from datetime import datetime
 from fundexpert.cli import run_pipeline, _ensure_utf8_stdio
@@ -34,7 +34,7 @@ render_portfolio(selected, header, news=hits or None)
 .venv/Scripts/python.exe -m pytest tests/
 ```
 
-Smoke tests in `tests/test_smoke.py` read real CSVs from `data/`. When working in a git worktree under `.claude/worktrees/`, junction the data dir in:
+Smoke tests in `tests/test_smoke.py` read real CSVs from `data/`. When working in a git worktree under `.Agent/worktrees/`, junction the data dir in:
 
 ```powershell
 New-Item -ItemType Junction -Path "<worktree>/data" -Target "<repo>/data"
@@ -75,7 +75,13 @@ loader.load_universe(getiri, buyukluk, yonetim)
 - Last-run answers cached at `~/.fundexpert/last.json`; safe to delete.
 - `LSP` MCP tool occasionally disconnects mid-session — not a code issue.
 
-## Claude Code Insights
-- Create a parallel code review system for my repos. In `.claude/agents/` define 5 specialized review subagents: security-reviewer, architecture-reviewer, test-coverage-reviewer, performance-reviewer, and business-logic-reviewer. Each should have a focused system prompt, a clear output schema, and write to `reviews/<agent-name>.md`. Then create a `/review-parallel` slash command that launches all 5 in parallel via the Task tool against the current repo, waits for completion, and runs a final synthesizer agent that reads all 5 outputs and produces `reviews/SUMMARY.md` with prioritized P0/P1/P2 findings and suggested fixes as actionable Claude prompts. Run it once on fundexpert as a demo.
+## AI Harness Protocol (Post-Feature Routine)
 
-- Build me a test-driven auto-healing workflow for fundexpert. (1) Write `scripts/auto-heal.ps1` that takes a failing test name, runs it, pipes the failure output to `claude -p` with a strict 'diagnose-then-fix-then-verify' system prompt, applies the patch, re-runs tests, and loops up to 5 times before escalating with a summary. (2) Add Hypothesis to the project and write property-based tests for the scoring, selection, and sector-cap modules—have Claude propose 3 invariants per module and implement them. (3) Run the auto-heal loop against any newly-failing properties and report which invariants caught real bugs vs needed loosening. Commit each successful auto-heal as a separate commit with a `auto-heal:` prefix so I can audit.
+Whenever we finish implementing a new feature, the AI assistant MUST automatically run a wrap-up routine before moving on. This includes:
+1. **Dead Code Analysis**: Run a dead-code finder (e.g. `vulture fundexpert/`) and actively clean up any orphaned code or unused imports.
+2. **Documentation Update**: Run doc generators (e.g. `pdoc -o docs/ fundexpert/` or similar) to ensure the `docs/` folder is up to date, and revise `AGENTS.md` / `todos.md` if the architecture changed.
+
+## Agent Insights
+- Create a parallel code review system for my repos. In `.Agent/agents/` define 5 specialized review subagents: security-reviewer, architecture-reviewer, test-coverage-reviewer, performance-reviewer, and business-logic-reviewer. Each should have a focused system prompt, a clear output schema, and write to `reviews/<agent-name>.md`. Then create a `/review-parallel` slash command that launches all 5 in parallel via the Task tool against the current repo, waits for completion, and runs a final synthesizer agent that reads all 5 outputs and produces `reviews/SUMMARY.md` with prioritized P0/P1/P2 findings and suggested fixes as actionable Agent prompts. Run it once on fundexpert as a demo.
+
+- Build me a test-driven auto-healing workflow for fundexpert. (1) Write `scripts/auto-heal.ps1` that takes a failing test name, runs it, pipes the failure output to `Agent -p` with a strict 'diagnose-then-fix-then-verify' system prompt, applies the patch, re-runs tests, and loops up to 5 times before escalating with a summary. (2) Add Hypothesis to the project and write property-based tests for the scoring, selection, and sector-cap modules—have Agent propose 3 invariants per module and implement them. (3) Run the auto-heal loop against any newly-failing properties and report which invariants caught real bugs vs needed loosening. Commit each successful auto-heal as a separate commit with a `auto-heal:` prefix so I can audit.
