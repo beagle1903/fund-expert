@@ -34,21 +34,10 @@ def score_candidates(
     base_score = R_contrib + V_contrib + F_contrib
 
     lam = RISK_LEVEL_LAMBDAS[risk_level]
-    risk_norm = (out["risk"].astype(float) - 1.0) / 6.0
+    risk_norm = (out["risk"].astype(float).fillna(7.0) - 1.0) / 6.0
     risk_penalty = lam * (risk_norm ** 2)
 
     score = base_score - risk_penalty
     out["score"] = score
 
-    out["_breakdown"] = [
-        {
-            "base_score":   float(b),
-            "R_contrib":    float(r),
-            "V_contrib":    float(v),
-            "F_contrib":    float(f),
-            "risk_penalty": float(p),
-            "score":        float(s),
-        }
-        for b, r, v, f, p, s in zip(base_score, R_contrib, V_contrib, F_contrib, risk_penalty, score)
-    ]
     return out

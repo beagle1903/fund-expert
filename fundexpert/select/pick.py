@@ -19,21 +19,22 @@ def pick_top(
     The sector cap is only applied when `max_per_sector` is provided AND the
     DataFrame has a `sector` column, so existing callers keep working unchanged.
     """
-    sorted_df = scored.sort_values("score", ascending=False)
+    sorted_df = scored.sort_values(["score", "fon_kodu"], ascending=[False, True])
     strat_counts: dict[str, int] = {}
     sector_counts: dict[str, int] = {}
     selected_indices: list = []
 
     apply_sector_cap = max_per_sector is not None and "sector" in sorted_df.columns
 
-    for idx, row in sorted_df.iterrows():
+    for row in sorted_df.itertuples(index=True, name='Row'):
+        idx = row.Index
         if len(selected_indices) >= n:
             break
-        bucket = row["strategy"]
+        bucket = row.strategy
         if strat_counts.get(bucket, 0) >= max_per_type:
             continue
         if apply_sector_cap:
-            sector = row["sector"]
+            sector = getattr(row, "sector")
             if sector != "diversified" and sector_counts.get(sector, 0) >= max_per_sector:
                 continue
             sector_counts[sector] = sector_counts.get(sector, 0) + 1

@@ -81,9 +81,8 @@ def test_lower_fee_scores_higher(horizon_ready):
     assert out_sorted.iloc[0]["fon_kodu"] == "C"
 
 
-def test_breakdown_dict_per_fund(horizon_ready):
-    out = score_candidates(horizon_ready, "medium", "medium", "medium")
-    assert "_breakdown" in out.columns
-    bd = out.iloc[0]["_breakdown"]
-    assert set(bd.keys()) == {"base_score", "R_contrib", "V_contrib",
-                              "F_contrib", "risk_penalty", "score"}
+def test_score_handles_empty_dataframe():
+    df = pd.DataFrame(columns=["fon_kodu", "R", "aum_change_pct", "applied_management_fee_pct", "risk", "fon_adi"])
+    out = score_candidates(df, "medium", "medium", "medium")
+    assert out.empty
+    assert "score" in out.columns

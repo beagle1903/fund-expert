@@ -10,6 +10,7 @@ from fundexpert.pipeline import run_pipeline
 
 @pytest.fixture
 def fake_universe_loader():
+    from fundexpert.data.loader import UniverseData
     """Patch loaders so cli.run_pipeline doesn't read the filesystem."""
     getiri = pd.DataFrame({
         "fon_kodu": ["A", "B", "C"],
@@ -41,7 +42,7 @@ def fake_universe_loader():
         "bylaw_management_fee_pct": [1.0, 2.0, 0.5],
         "max_total_expense_pct": [3.0, 4.0, 1.5],
     })
-    frames = {"getiri": getiri, "buyukluk": buyukluk, "yonetim_ucreti": yonetim}
+    frames = UniverseData(getiri=getiri, buyukluk=buyukluk, yonetim_ucreti=yonetim)
     with patch("fundexpert.cli.load_universe", return_value=frames):
         yield
 
@@ -444,3 +445,24 @@ def test_main_diff_last_calls_render_diff_when_previous_exists(monkeypatch):
     assert result == 0
     assert len(diff_calls) == 1
     assert diff_calls[0] == fake_previous
+
+
+def test_ensure_utf8_stdio():
+    from fundexpert.cli import _ensure_utf8_stdio
+    from unittest.mock import MagicMock
+    import sys
+    mock_stdout = MagicMock()
+    mock_stderr = MagicMock()
+    
+    orig_stdout = sys.stdout
+    orig_stderr = sys.stderr
+    
+    try:
+        sys.stdout = mock_stdout
+        sys.stderr = mock_stderr
+        _ensure_utf8_stdio()
+        mock_stdout.reconfigure.assert_called_once_with(encoding="utf-8", errors="replace")
+        mock_stderr.reconfigure.assert_called_once_with(encoding="utf-8", errors="replace")
+    finally:
+        sys.stdout = orig_stdout
+        sys.stderr = orig_stderr

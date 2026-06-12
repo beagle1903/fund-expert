@@ -67,9 +67,14 @@ def _load_last_run() -> dict[str, Any]:
 
 
 def _save_last_run(answers: dict[str, Any]) -> None:
+    import tempfile
+    import os
     try:
         LAST_RUN_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        LAST_RUN_FILE.write_text(json.dumps(answers, ensure_ascii=False), encoding="utf-8")
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=LAST_RUN_FILE.parent, delete=False) as tmp:
+            tmp.write(json.dumps(answers, ensure_ascii=False))
+            tmp_name = tmp.name
+        os.replace(tmp_name, LAST_RUN_FILE)
     except OSError:
         pass  # quality-of-life only — never fail the run on cache write errors
 

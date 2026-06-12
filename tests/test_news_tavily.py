@@ -90,7 +90,7 @@ def test_query_skips_results_missing_title_or_url(cache_dir):
     assert hits[0].title == "Real one ceza"
 
 
-def test_query_returns_empty_on_http_error(cache_dir, capsys):
+def test_query_returns_empty_on_http_error(cache_dir, caplog):
     err = urllib.error.HTTPError(
         url="https://api.tavily.com/search", code=503,
         msg="Service Unavailable", hdrs=None, fp=io.BytesIO(b"down"),
@@ -100,21 +100,20 @@ def test_query_returns_empty_on_http_error(cache_dir, capsys):
             "AK PORTFÖY", ("soruşturma",), api_key="k", cache_dir=cache_dir,
         )
     assert hits == []
-    err_out = capsys.readouterr().err
-    assert "Haber sorgusu başarısız" in err_out
+    assert "Haber sorgusu başarısız" in caplog.text
 
 
-def test_query_returns_empty_on_url_error(cache_dir, capsys):
+def test_query_returns_empty_on_url_error(cache_dir, caplog):
     with patch("urllib.request.urlopen",
                side_effect=urllib.error.URLError("dns failed")):
         hits = query_negative_news(
             "AK PORTFÖY", ("ceza",), api_key="k", cache_dir=cache_dir,
         )
     assert hits == []
-    assert "Haber sorgusu başarısız" in capsys.readouterr().err
+    assert "Haber sorgusu başarısız" in caplog.text
 
 
-def test_query_returns_empty_on_malformed_json(cache_dir, capsys):
+def test_query_returns_empty_on_malformed_json(cache_dir, caplog):
     class _BadResp:
         def __enter__(self_inner): return self_inner
         def __exit__(self_inner, *_a): return False
@@ -124,7 +123,7 @@ def test_query_returns_empty_on_malformed_json(cache_dir, capsys):
             "X PORTFÖY", ("dava",), api_key="k", cache_dir=cache_dir,
         )
     assert hits == []
-    assert "başarısız" in capsys.readouterr().err
+    assert "başarısız" in caplog.text
 
 
 def test_query_skips_when_prefix_or_keywords_empty(cache_dir):
@@ -261,3 +260,34 @@ def test_cache_key_differs_per_allowlist(cache_dir):
         query_negative_news("AK PORTFÖY", ("ceza",), "k", cache_dir,
                             allowed_domains=("b.com",))
     assert mock.call_count == 2
+
+
+def test_query_filters_out_hits_missing_keywords(cache_dir):
+    """Client-side filter drops hits that don't actually contain any of the keywords."""
+    payload = {"results": [
+        {"title": "Real ceza", "url": "https://x", "published_date": "2026-01-01", "content": "ceza yedi"},
+        {"title": "False positive", "url": "https://y", "published_date": "2026-01-01", "content": "hello world"},
+        {"title": "Another match", "url": "https://z", "published_date": "2026-01-01", "content": "SORUŞTURMA"},
+    ]}
+    from unittest.mock import patch
+    with patch("urllib.request.urlopen", return_value=_fake_response(payload)):
+        hits = query_negative_news(
+            "FOO", ("ceza", "soruşturma"), api_key="k", cache_dir=cache_dir,
+        )
+    assert len(hits) == 2
+    assert hits[0].title == "Real ceza"
+    assert hits[1].title == "Another match"
+
+def test_keyword_validation_is_turkish_case_insensitive(cache_dir):
+    """Client-side filter handles Turkish I/ı correctly when checking keywords."""
+    payload = {"results": [
+        {"title": "Title with dolandırıcılık", "url": "https://x", "published_date": "2026-01-01", "content": "dolandırıcı"},
+        {"title": "DOLANDIRICILIK", "url": "https://y", "published_date": "2026-01-01", "content": "büyük"},
+        {"title": "İFLAS", "url": "https://z", "published_date": "2026-01-01", "content": "iflas etti"},
+    ]}
+    from unittest.mock import patch
+    with patch("urllib.request.urlopen", return_value=_fake_response(payload)):
+        hits = query_negative_news(
+            "FOO", ("dolandırıcılık", "iflas"), api_key="k", cache_dir=cache_dir,
+        )
+    assert len(hits) == 3

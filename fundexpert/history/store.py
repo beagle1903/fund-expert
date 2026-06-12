@@ -41,7 +41,11 @@ def save_run(
         ],
     }
     path = history_dir / filename
-    path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+    import tempfile, os
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=history_dir, delete=False) as tmp:
+        tmp.write(json.dumps(record, ensure_ascii=False, indent=2))
+        tmp_name = tmp.name
+    os.replace(tmp_name, path)
     return path
 
 

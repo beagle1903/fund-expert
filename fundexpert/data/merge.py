@@ -3,11 +3,13 @@
 import pandas as pd
 
 
-def merge_universe(frames: dict[str, pd.DataFrame], universe: str) -> pd.DataFrame:
+from fundexpert.data.loader import UniverseData
+
+def merge_universe(frames: UniverseData, universe: str) -> pd.DataFrame:
     """Inner-join getiri + buyukluk + yonetim_ucreti on fon_kodu."""
-    getiri = frames["getiri"]
-    buyukluk = frames["buyukluk"]
-    yonetim = frames["yonetim_ucreti"]
+    getiri = frames.getiri
+    buyukluk = frames.buyukluk
+    yonetim = frames.yonetim_ucreti
 
     # Drop duplicated identity columns from buyukluk and yonetim before merge
     buyukluk_keep = buyukluk.drop(
@@ -20,4 +22,10 @@ def merge_universe(frames: dict[str, pd.DataFrame], universe: str) -> pd.DataFra
     df = getiri.merge(buyukluk_keep, on="fon_kodu", how="inner")
     df = df.merge(yonetim_keep, on="fon_kodu", how="inner")
     df["universe"] = universe
+    return df
+
+def clean_candidates(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop funds with missing fee or short history."""
+    df = df[df["applied_management_fee_pct"].notna()]
+    df = df[df["ret_3m"].notna()]
     return df

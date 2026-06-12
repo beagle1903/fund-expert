@@ -2,9 +2,7 @@
 
 import pandas as pd
 
-from fundexpert.config import WEIGHT_EPSILON
-
-_STEP = 5  # display weights are integer multiples of 5%
+from fundexpert.config import WEIGHT_EPSILON, WEIGHT_STEP_PCT
 
 
 def compute_weights(selected: pd.DataFrame) -> pd.DataFrame:
@@ -19,20 +17,20 @@ def compute_weights(selected: pd.DataFrame) -> pd.DataFrame:
     if n == 0:
         out["display_weight_pct"] = pd.Series(dtype=int)
         return out
-    if n * _STEP > 100:
+    if n * WEIGHT_STEP_PCT > 100:
         # Defensive: would never happen with the CLI's N≤20 cap, but stay safe
         # by falling back to equal weighting in 5% units.
-        units_each = (100 // _STEP) // n
-        display = pd.Series([units_each * _STEP] * n, index=out.index, dtype=int)
+        units_each = (100 // WEIGHT_STEP_PCT) // n
+        display = pd.Series([units_each * WEIGHT_STEP_PCT] * n, index=out.index, dtype=int)
         # Top-up to 100 by adding leftover units to highest-score funds
-        leftover = (100 // _STEP) - units_each * n
+        leftover = (100 // WEIGHT_STEP_PCT) - units_each * n
         for idx in out["score"].astype(float).nlargest(leftover).index:
-            display.loc[idx] += _STEP
+            display.loc[idx] += WEIGHT_STEP_PCT
         out["display_weight_pct"] = display
         return out
 
     scores = out["score"].astype(float).clip(lower=WEIGHT_EPSILON)
-    total_units = 100 // _STEP                      # 20 units of 5% each
+    total_units = 100 // WEIGHT_STEP_PCT                      # 20 units of 5% each
     base_units = 1                                   # 5% floor per fund
     remaining_units = total_units - base_units * n   # units to distribute by score
 
@@ -50,5 +48,5 @@ def compute_weights(selected: pd.DataFrame) -> pd.DataFrame:
         for idx in winners:
             units.loc[idx] += 1
 
-    out["display_weight_pct"] = (units * _STEP).astype(int)
+    out["display_weight_pct"] = (units * WEIGHT_STEP_PCT).astype(int)
     return out

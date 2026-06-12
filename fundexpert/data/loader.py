@@ -1,8 +1,11 @@
 """Read TEFAS/BEFAS CSV exports and rename columns to internal snake_case names."""
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
+
+from fundexpert.config import MAX_CSV_SIZE_BYTES
 
 GETIRI_RENAME: dict[str, str] = {
     "Fon Kodu": "fon_kodu",
@@ -38,18 +41,24 @@ YONETIM_RENAME: dict[str, str] = {
     "Uygulanan Yönetim Ücreti Yıllık (%)": "applied_management_fee_pct",
     "Fon İç Tüzüğünde Yer Alan Yönetim Ücreti Yıllık (%)": "bylaw_management_fee_pct",
     # "Yıllık Getiri Oranı (%)" intentionally dropped — redundant with getiri.csv
-    "Yıllık Azami Fon Toplam Gider Oranı (%)": "max_total_expense_pct",
 }
+
+@dataclass
+class UniverseData:
+    getiri: pd.DataFrame
+    buyukluk: pd.DataFrame
+    yonetim_ucreti: pd.DataFrame
 
 
 def _read_one(path: Path, rename: dict[str, str]) -> pd.DataFrame:
+    if path.stat().st_size > MAX_CSV_SIZE_BYTES:
+        raise ValueError(f"File {path.name} exceeds size limit of {MAX_CSV_SIZE_BYTES} bytes.")
     df = pd.read_csv(
         path,
         skiprows=3,        # rows 0-2: export metadata; row 3: header
         encoding="utf-8",
         decimal=",",
-        thousands=None,
-        usecols=lambda c: c in rename.keys(),
+        usecols=list(rename.keys()),
     )
     return df.rename(columns=rename)
 
@@ -58,10 +67,10 @@ def load_universe(
     getiri_path: Path,
     buyukluk_path: Path,
     yonetim_path: Path,
-) -> dict[str, pd.DataFrame]:
+) -> UniverseData:
     """Load the three CSVs for a single universe (tefas or befas)."""
-    return {
-        "getiri":         _read_one(getiri_path,  GETIRI_RENAME),
-        "buyukluk":       _read_one(buyukluk_path, BUYUKLUK_RENAME),
-        "yonetim_ucreti": _read_one(yonetim_path,  YONETIM_RENAME),
-    }
+    return UniverseData(
+        getiri=_read_one(getiri_path,  GETIRI_RENAME),
+        buyukluk=_read_one(buyukluk_path, BUYUKLUK_RENAME),
+        yonetim_ucreti=_read_one(yonetim_path,  YONETIM_RENAME),
+    )

@@ -1,5 +1,7 @@
 import pandas as pd
 import pytest
+from hypothesis import given, strategies as st
+from hypothesis.extra.pandas import column, data_frames
 
 from fundexpert.select.pick import pick_top
 
@@ -96,3 +98,31 @@ def test_pick_top_sector_cap_is_optional_for_legacy_callers():
     })
     out, _ = pick_top(df, n=3, max_per_type=2)  # no max_per_sector
     assert list(out["fon_kodu"]) == ["A", "B", "C"]
+
+@given(
+    df=data_frames(
+        columns=[
+            column("fon_kodu", elements=st.text(min_size=1)),
+            column("strategy", elements=st.sampled_from(["equity", "debt", "mixed", "money_market"])),
+            column("sector", elements=st.sampled_from(["tech", "health", "diversified", "finance"])),
+            column("score", elements=st.floats(min_value=-1, max_value=1, allow_nan=False, allow_infinity=False))
+        ]
+    ),
+    n=st.integers(min_value=1, max_value=20),
+    max_per_type=st.integers(min_value=1, max_value=5),
+    max_per_sector=st.integers(min_value=1, max_value=5)
+)
+def test_pick_property_invariants(df, n, max_per_type, max_per_sector):
+    if len(df) == 0:
+        return
+    out, _ = pick_top(df, n=n, max_per_type=max_per_type, max_per_sector=max_per_sector)
+    assert len(out) <= n
+    if len(out) > 0:
+        strat_counts = out["strategy"].value_counts()
+        assert strat_counts.max() <= max_per_type
+        non_div = out[out["sector"] != "diversified"]
+        if len(non_div) > 0:
+            sector_counts = non_div["sector"].value_counts()
+            assert sector_counts.max() <= max_per_sector
+        scores = out["score"].tolist()
+        assert all(scores[i] >= scores[i+1] for i in range(len(scores)-1))

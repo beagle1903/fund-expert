@@ -4,6 +4,7 @@ from typing import Any
 
 import pandas as pd
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from fundexpert.config import NEGATIVE_NEWS_PENALTY
@@ -77,7 +78,8 @@ def render_portfolio(
     show_news_marker = bool(news_meta and news_meta.get("enabled") and news)
     for _, r in selected.iterrows():
         is_penalized = show_news_marker and str(r["fon_kodu"]) in (news or {})
-        fon_kodu_cell = f"{r['fon_kodu']} 📰" if is_penalized else str(r["fon_kodu"])
+        fon_kodu_raw = str(r["fon_kodu"])
+        fon_kodu_cell = escape(f"{fon_kodu_raw} 📰") if is_penalized else escape(fon_kodu_raw)
         score_cell = (
             f"{r['score']:.2f} (−{NEGATIVE_NEWS_PENALTY:.2f})"
             if is_penalized
@@ -85,13 +87,13 @@ def render_portfolio(
         )
         row = [
             fon_kodu_cell,
-            str(r["fon_adi"]),
-            str(r["umbrella_type"]),
+            escape(str(r["fon_adi"])),
+            escape(str(r["umbrella_type"])),
         ]
         if show_sector:
-            row.append(str(r["sector"]))
+            row.append(escape(str(r["sector"])))
         row.extend([
-            str(int(r["risk"])),
+            str(int(r["risk"])) if pd.notna(r["risk"]) else "-",
             f"{int(r['display_weight_pct'])}",
             score_cell,
         ])
@@ -112,8 +114,8 @@ def render_portfolio(
         for code, items in news.items():
             for item in items:
                 published = f", {item['published']:%Y-%m-%d}" if item.get("published") else ""
-                console.print(f"  {code} — \"{item['title']}\"  ({item['source']}{published})")
-                console.print(f"        {item['url']}")
+                console.print(f"  {escape(code)} — \"{escape(item['title'])}\"  ({escape(item['source'])}{published})")
+                console.print(f"        {escape(item['url'])}")
 
     if news_meta and news_meta.get("displaced"):
         console.print(
@@ -123,10 +125,10 @@ def render_portfolio(
             if idx > 0:
                 console.print()
             console.print(
-                f"  {entry['fon_kodu']} — habersiz skor {entry['score_pre']:.2f} "
+                f"  {escape(entry['fon_kodu'])} — habersiz skor {entry['score_pre']:.2f} "
                 f"→ penalize edince {entry['score_post']:.2f}"
             )
             for hit in entry["hits"]:
                 published = f", {hit['published']:%Y-%m-%d}" if hit.get("published") else ""
-                console.print(f"        ↳ \"{hit['title']}\"  ({hit['source']}{published})")
-                console.print(f"        ↳ {hit['url']}")
+                console.print(f"        ↳ \"{escape(hit['title'])}\"  ({escape(hit['source'])}{published})")
+                console.print(f"        ↳ {escape(hit['url'])}")

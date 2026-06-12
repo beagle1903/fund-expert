@@ -38,3 +38,11 @@ def test_minmax_handles_all_nan():
     s = pd.Series([float("nan"), float("nan")])
     out = minmax_normalize(s)
     assert (out == 0.5).all()
+
+
+def test_minmax_handles_empty_dataframe():
+    from fundexpert.scoring.normalize import minmax_normalize
+    import pandas as pd
+    s = pd.Series([], dtype=float)
+    res = minmax_normalize(s)
+    assert res.empty

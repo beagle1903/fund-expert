@@ -8,6 +8,8 @@ negative news about that company is a reasonable proxy for fund-level risk.
 
 from __future__ import annotations
 
+from fundexpert.utils.text import turkish_upper
+
 _PORTFOY_VARIANTS = ("PORTFÖY", "PORTFOY")  # second guards against missing diacritics
 
 
@@ -34,7 +36,7 @@ def extract_company_prefix(fon_adi: str | None) -> str:
         return ""
 
     # Turkish-i fix: str.upper() is locale-blind, 'i' → 'I' not 'İ'.
-    upper = stripped.replace("i", "İ").replace("ı", "I").upper()
+    upper = turkish_upper(stripped)
     tokens = upper.split()
 
     for i, token in enumerate(tokens):

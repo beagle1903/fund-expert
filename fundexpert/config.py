@@ -35,7 +35,9 @@ DEFAULT_MAX_PER_TYPE: int = 2
 DEFAULT_MAX_PER_SECTOR: int = 2
 
 WEIGHT_EPSILON: float = 0.01  # shift used by select/weights.py to avoid zero weights
+WEIGHT_STEP_PCT: int = 5
 
+MAX_CSV_SIZE_BYTES: int = 50 * 1024 * 1024
 # --- News pass (optional, opt-in via --news) ---------------------------------
 
 # Env var holding the Tavily search API key. Never accept the key as a CLI arg

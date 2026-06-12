@@ -14,7 +14,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -27,6 +29,8 @@ _TAVILY_ENDPOINT = "https://api.tavily.com/search"
 _USER_AGENT = "fundexpert/0.1 (+local)"
 
 logger = logging.getLogger(__name__)
+
+from fundexpert.utils.text import turkish_lower
 
 
 @dataclass(frozen=True)
@@ -123,8 +127,8 @@ def _write_cache(cache_dir: Path, key: str, hits: list[NewsHit]) -> None:
     try:
         cache_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         path = cache_dir / f"{key}.json"
-        path.write_text(
-            json.dumps({
+        with tempfile.NamedTemporaryFile("w", delete=False, dir=cache_dir, encoding="utf-8") as tmp:
+            json.dump({
                 "queried_at": time.time(),
                 "hits": [
                     {
@@ -135,9 +139,9 @@ def _write_cache(cache_dir: Path, key: str, hits: list[NewsHit]) -> None:
                     }
                     for h in hits
                 ],
-            }, ensure_ascii=False),
-            encoding="utf-8",
-        )
+            }, tmp, ensure_ascii=False)
+            tmp_name = tmp.name
+        os.replace(tmp_name, path)
     except OSError as e:
         logger.info("News cache write failed: %s", e)
 
@@ -177,8 +181,8 @@ def _post_tavily(query: str, api_key: str, max_age_days: int,
             continue
             
         # Client-side validation: ensure at least one keyword is actually present
-        text_to_check = (title + " " + content).replace("I", "ı").replace("İ", "i").lower()
-        if keywords and not any(k.lower() in text_to_check for k in keywords):
+        text_to_check = turkish_lower(title + " " + content)
+        if keywords and not any(turkish_lower(k) in text_to_check for k in keywords):
             continue
             
         valid_results.append(
@@ -238,7 +242,7 @@ def query_negative_news(
         )
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
             json.JSONDecodeError) as e:
-        print(f"Haber sorgusu başarısız ({company_prefix}): {e}", file=sys.stderr)
+        logger.warning("Haber sorgusu başarısız (%s): %s", company_prefix, e)
         return []
 
     hits = [h for h in hits if not _is_excluded(h.url, excluded_domain_substrings)]

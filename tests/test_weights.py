@@ -1,5 +1,7 @@
 import pandas as pd
 import pytest
+from hypothesis import given, strategies as st
+from hypothesis.extra.pandas import column, data_frames
 
 from fundexpert.select.weights import compute_weights
 
@@ -85,3 +87,20 @@ def test_handles_n_greater_than_20():
     assert len(weights) == 25
     assert weights.count(5) == 20
     assert weights.count(0) == 5
+
+@given(
+    df=data_frames(
+        columns=[
+            column("fon_kodu", elements=st.text(min_size=1)),
+            column("score", elements=st.floats(min_value=-1, max_value=1, allow_nan=False, allow_infinity=False))
+        ]
+    )
+)
+def test_weights_property_sum_to_100_and_multiples_of_5(df):
+    if len(df) == 0:
+        return
+    out = compute_weights(df)
+    weights = out["display_weight_pct"].tolist()
+    assert sum(weights) == 100
+    assert all(int(w) % 5 == 0 for w in weights)
+    assert all(w >= 0 for w in weights)

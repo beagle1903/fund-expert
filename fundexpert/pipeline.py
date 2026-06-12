@@ -23,6 +23,7 @@ from fundexpert.select.pick import pick_top
 from fundexpert.select.sector import sector_from_name
 from fundexpert.select.strategy import bucket_from_name
 from fundexpert.select.weights import compute_weights
+from fundexpert.data.merge import clean_candidates
 
 
 def run_pipeline(
@@ -56,11 +57,8 @@ def run_pipeline(
         )
     total = len(candidates)
 
-    # Drop funds with NaN primary fee (per missing-value policy)
-    candidates = candidates[candidates["applied_management_fee_pct"].notna()]
-
-    # Drop funds without at least 3 months of performance history
-    candidates = candidates[candidates["ret_3m"].notna()]
+    # Drop funds with NaN primary fee and short history
+    candidates = clean_candidates(candidates)
 
     horizoned = apply_horizon(candidates, horizon)
     excluded_horizon = horizoned.attrs.get("excluded_count", 0)
@@ -71,9 +69,10 @@ def run_pipeline(
         fee_priority=fee_priority,
         risk_level=risk_level,
     )
+    scored_fon_adi_upper = scored["fon_adi"].fillna("").str.replace("i", "İ").str.replace("ı", "I").str.upper()
     scored = scored.assign(
-        strategy=scored["fon_adi"].map(bucket_from_name),
-        sector=scored["fon_adi"].map(sector_from_name),
+        strategy=scored_fon_adi_upper.map(bucket_from_name),
+        sector=scored_fon_adi_upper.map(sector_from_name),
     )
 
     # Optional news pass: query Tavily for top-K candidates by quant score,

@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 
+from fundexpert.data.loader import UniverseData
 from fundexpert.data.merge import merge_universe
 
 
@@ -38,7 +39,7 @@ def small_frames():
         "bylaw_management_fee_pct":   [1.5, 2.0, 0.8],
         "max_total_expense_pct":      [3.65, 4.50, 1.20],
     })
-    return {"getiri": getiri, "buyukluk": buyukluk, "yonetim_ucreti": yonetim}
+    return UniverseData(getiri=getiri, buyukluk=buyukluk, yonetim_ucreti=yonetim)
 
 
 def test_merge_universe_inner_joins_on_fon_kodu(small_frames):
@@ -57,13 +58,13 @@ def test_merge_universe_includes_all_internal_columns(small_frames):
     expected = {"fon_kodu", "fon_adi", "umbrella_type", "risk",
                 "ret_1m", "ret_3m", "ret_6m", "ret_ytd", "ret_1y", "ret_3y", "ret_5y",
                 "aum_change_pct", "applied_management_fee_pct",
-                "max_total_expense_pct", "universe"}
+                "universe"}
     assert expected.issubset(set(df.columns))
 
 
 def test_merge_universe_drops_funds_missing_in_one_file(small_frames):
-    small_frames["yonetim_ucreti"] = small_frames["yonetim_ucreti"][
-        small_frames["yonetim_ucreti"]["fon_kodu"] != "BBB"
+    small_frames.yonetim_ucreti = small_frames.yonetim_ucreti[
+        small_frames.yonetim_ucreti["fon_kodu"] != "BBB"
     ]
     df = merge_universe(small_frames, universe="tefas")
     assert set(df["fon_kodu"]) == {"AAA", "CCC"}

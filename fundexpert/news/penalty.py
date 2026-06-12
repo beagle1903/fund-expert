@@ -71,11 +71,14 @@ def apply_negative_news_penalty(
     hits_by_code: dict[str, list[NewsHit]] = {}
     adjusted = scored.copy()
 
-    def _query_for_index(idx):
+    prefix_to_indices = {}
+    for idx in top_indices:
         row = adjusted.loc[idx]
         prefix = extract_company_prefix(row.get("fon_adi"))
-        if not prefix:
-            return idx, row, []
+        if prefix:
+            prefix_to_indices.setdefault(prefix, []).append((idx, row))
+
+    def _query_for_prefix(prefix):
         hits = query_negative_news(
             company_prefix=prefix,
             keywords=keywords,
@@ -88,14 +91,18 @@ def apply_negative_news_penalty(
             allowed_domains=allowed_domains,
             excluded_domain_substrings=excluded_domain_substrings,
         )
-        return idx, row, hits
+        return prefix, hits
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(_query_for_index, idx) for idx in top_indices]
+        futures = [executor.submit(_query_for_prefix, p) for p in prefix_to_indices]
         for future in concurrent.futures.as_completed(futures):
-            idx, row, hits = future.result()
-            if hits:
-                adjusted.at[idx, "score"] = float(row["score"]) - penalty
-                hits_by_code[str(row["fon_kodu"])] = hits
+            try:
+                prefix, hits = future.result()
+                if hits:
+                    for idx, row in prefix_to_indices[prefix]:
+                        adjusted.at[idx, "score"] = float(row["score"]) - penalty
+                        hits_by_code[str(row["fon_kodu"])] = hits
+            except Exception as e:
+                print(f"Uyarı: Haber sorgusu sırasında hata oluştu: {e}", file=sys.stderr)
 
     return adjusted, hits_by_code
