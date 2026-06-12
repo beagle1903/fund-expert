@@ -30,7 +30,7 @@ from fundexpert.config import (
 from fundexpert.data.loader import load_universe
 from fundexpert.data.merge import merge_universe
 from fundexpert.history.store import load_last_run, save_run
-from fundexpert.pipeline import run_pipeline
+from fundexpert.pipeline import run_pipeline, PipelineConfig
 from fundexpert.render.diff import render_diff
 from fundexpert.render.table import render_portfolio
 
@@ -74,6 +74,7 @@ def _save_last_run(answers: dict[str, Any]) -> None:
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=LAST_RUN_FILE.parent, delete=False) as tmp:
             tmp.write(json.dumps(answers, ensure_ascii=False))
             tmp_name = tmp.name
+        os.chmod(tmp_name, 0o600)
         os.replace(tmp_name, LAST_RUN_FILE)
     except OSError:
         pass  # quality-of-life only — never fail the run on cache write errors
@@ -187,8 +188,7 @@ def main() -> int:
     now = datetime.now()
     for u in universes_to_run:
         candidates = _load_one(u)
-        selected, header, hits_for_render, news_meta = run_pipeline(
-            candidates=candidates,
+        config = PipelineConfig(
             universe=u,
             risk_level=answers["risk_level"],
             horizon=answers["horizon"],
@@ -200,6 +200,10 @@ def main() -> int:
             now=now,
             news_enabled=args.news,
             news_api_key=news_api_key,
+        )
+        selected, header, hits_for_render, news_meta = run_pipeline(
+            candidates=candidates,
+            config=config,
         )
         if header.get("warning"):
             print(f"Uyarı ({u}): {header['warning']}", file=sys.stderr)

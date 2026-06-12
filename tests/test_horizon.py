@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import pytest
 
 from fundexpert.scoring.horizon import apply_horizon
@@ -29,9 +30,16 @@ def test_medium_horizon_uses_6m_ytd_1y(candidates):
     assert out.loc[out["fon_kodu"] == "B", "R"].iloc[0] == pytest.approx(expected_b)
 
 
-def test_long_horizon_takes_mean_when_one_nan(candidates):
-    out = apply_horizon(candidates, "long")
-    assert out.loc[out["fon_kodu"] == "B", "R"].iloc[0] == 300.0
+def test_long_horizon_takes_mean_when_one_nan():
+    # Enforcing data completeness: if any column in the bucket is NaN, row is dropped.
+    df = pd.DataFrame({
+        "fon_kodu": ["A"],
+        "ret_3y": [30.0],
+        "ret_5y": [np.nan],
+    })
+    out = apply_horizon(df, "long")
+    assert len(out) == 0
+    assert out.attrs["excluded_count"] == 1
 
 
 def test_long_horizon_excludes_fund_with_all_bucket_nans(candidates):

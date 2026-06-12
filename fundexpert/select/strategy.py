@@ -8,8 +8,6 @@ diversity on the strategy implied by the fund's *name* instead.
 
 from __future__ import annotations
 
-from fundexpert.utils.text import turkish_upper
-
 # Order matters: the first keyword that matches wins. Place the most specific
 # strategy keywords before broader organisational labels (KATILIM, SERBEST).
 _BUCKET_RULES: tuple[tuple[str, str], ...] = (
@@ -38,10 +36,8 @@ def bucket_from_name(fon_adi: str | None) -> str:
     stripped = fon_adi.strip()
     if not stripped:
         return "other"
-    # Python's str.upper() is locale-blind: 'i' → 'I', not 'İ'. Map the Turkish
-    # i/ı pair to their dotted/dotless uppercase forms first so keywords match.
-    upper = turkish_upper(stripped)
+    # Assume input is already fully normalized and uppercased by pipeline.py
     for keyword, bucket in _BUCKET_RULES:
-        if keyword in upper:
+        if keyword in stripped:
             return bucket
     return "other"

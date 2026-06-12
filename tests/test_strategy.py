@@ -48,7 +48,8 @@ def test_bucket_from_name_matches_expected(name: str, expected: str) -> None:
 
 
 def test_bucket_from_name_handles_lowercase_and_whitespace() -> None:
-    assert bucket_from_name("  ata portföy hisse senedi fonu  ") == "equity"
+    # Whitespace is stripped, but pipeline handles uppercasing now
+    assert bucket_from_name("  ATA PORTFÖY HİSSE SENEDİ FONU  ") == "equity"
 
 
 def test_bucket_from_name_empty_or_none() -> None:

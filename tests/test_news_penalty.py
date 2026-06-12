@@ -164,3 +164,14 @@ def test_fund_with_empty_company_prefix_is_skipped(cache_dir):
     # Only the second fund had a real prefix; only it gets queried.
     assert mock.call_count == 1
     assert mock.call_args.kwargs["company_prefix"] == "REAL PORTFÖY"
+
+def test_network_exception_is_caught_gracefully(scored, cache_dir, capsys):
+    with patch("fundexpert.news.penalty.query_negative_news", side_effect=Exception("Network down")):
+        out, hits = apply_negative_news_penalty(
+            scored, top_k=5, keywords=("ceza",), penalty=0.20,
+            api_key="k", cache_dir=cache_dir,
+        )
+    pd.testing.assert_frame_equal(out, scored)
+    assert hits == {}
+    err = capsys.readouterr().err
+    assert "Network down" in err

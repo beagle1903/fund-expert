@@ -23,22 +23,28 @@ from fundexpert.select.pick import pick_top
 from fundexpert.select.sector import sector_from_name
 from fundexpert.select.strategy import bucket_from_name
 from fundexpert.select.weights import compute_weights
+from dataclasses import dataclass
 from fundexpert.data.merge import clean_candidates
+
+
+@dataclass
+class PipelineConfig:
+    universe: str
+    risk_level: str
+    horizon: str
+    volume_priority: str
+    fee_priority: str
+    n: int
+    max_per_type: int
+    now: datetime
+    max_per_sector: int = DEFAULT_MAX_PER_SECTOR
+    news_enabled: bool = False
+    news_api_key: str | None = None
 
 
 def run_pipeline(
     candidates: pd.DataFrame,
-    universe: str,
-    risk_level: str,
-    horizon: str,
-    volume_priority: str,
-    fee_priority: str,
-    n: int,
-    max_per_type: int,
-    now: datetime,
-    max_per_sector: int = DEFAULT_MAX_PER_SECTOR,
-    news_enabled: bool = False,
-    news_api_key: str | None = None,
+    config: PipelineConfig,
 ) -> tuple[pd.DataFrame, dict[str, Any], dict[str, list], dict[str, Any]]:
     """Run the full data → score → select pipeline for a single universe.
 
@@ -50,9 +56,9 @@ def run_pipeline(
     carries metadata about the pass (key_present, top_k, total_hits,
     displaced).
     """
-    if universe not in ("tefas", "befas"):
+    if config.universe not in ("tefas", "befas"):
         raise ValueError(
-            f"run_pipeline accepts 'tefas' or 'befas', got {universe!r}. "
+            f"run_pipeline accepts 'tefas' or 'befas', got {config.universe!r}. "
             "Use main()'s 'both' option for dual-portfolio output."
         )
     total = len(candidates)
@@ -60,14 +66,14 @@ def run_pipeline(
     # Drop funds with NaN primary fee and short history
     candidates = clean_candidates(candidates)
 
-    horizoned = apply_horizon(candidates, horizon)
+    horizoned = apply_horizon(candidates, config.horizon)
     excluded_horizon = horizoned.attrs.get("excluded_count", 0)
 
     scored = score_candidates(
         horizoned,
-        volume_priority=volume_priority,
-        fee_priority=fee_priority,
-        risk_level=risk_level,
+        volume_priority=config.volume_priority,
+        fee_priority=config.fee_priority,
+        risk_level=config.risk_level,
     )
     scored_fon_adi_upper = scored["fon_adi"].fillna("").str.replace("i", "İ").str.replace("ı", "I").str.upper()
     scored = scored.assign(
@@ -80,13 +86,13 @@ def run_pipeline(
     # applied *before* pick_top so picks actually shift.
     hits_by_code: dict[str, list] = {}
     scored_pre = scored  # snapshot for counterfactual pick_top
-    if news_enabled:
+    if config.news_enabled:
         scored, hits_by_code = apply_negative_news_penalty(
             scored,
-            top_k=NEWS_QUERY_TOP_K_MULTIPLIER * n,
+            top_k=NEWS_QUERY_TOP_K_MULTIPLIER * config.n,
             keywords=NEGATIVE_NEWS_KEYWORDS,
             penalty=NEGATIVE_NEWS_PENALTY,
-            api_key=news_api_key,
+            api_key=config.news_api_key,
             cache_dir=NEWS_CACHE_DIR,
             ttl_seconds=NEWS_CACHE_TTL_SECONDS,
             max_age_days=NEWS_MAX_AGE_DAYS,
@@ -97,7 +103,7 @@ def run_pipeline(
         )
 
     selected, warning = pick_top(
-        scored, n=n, max_per_type=max_per_type, max_per_sector=max_per_sector,
+        scored, n=config.n, max_per_type=config.max_per_type, max_per_sector=config.max_per_sector,
     )
     weighted = compute_weights(selected)
 
@@ -114,9 +120,9 @@ def run_pipeline(
     # and at least one fund got hits — otherwise pre/post pick_top runs are
     # identical by construction.
     displaced: list[dict[str, Any]] = []
-    if news_enabled and hits_by_code:
+    if config.news_enabled and hits_by_code:
         would_be, _ = pick_top(
-            scored_pre, n=n, max_per_type=max_per_type, max_per_sector=max_per_sector,
+            scored_pre, n=config.n, max_per_type=config.max_per_type, max_per_sector=config.max_per_sector,
         )
         would_be_codes = set(would_be["fon_kodu"].astype(str))
         displaced_codes = would_be_codes - picked_codes
@@ -137,26 +143,26 @@ def run_pipeline(
         displaced.sort(key=lambda d: d["score_pre"], reverse=True)
 
     header = {
-        "timestamp": now,
-        "universe":  universe,
+        "timestamp": config.now,
+        "universe":  config.universe,
         "candidate_total": total,
         "candidate_kept":  len(horizoned),
-        "horizon":  horizon,
-        "risk_level": risk_level,
-        "volume_priority": volume_priority,
-        "fee_priority": fee_priority,
-        "n": n,
+        "horizon":  config.horizon,
+        "risk_level": config.risk_level,
+        "volume_priority": config.volume_priority,
+        "fee_priority": config.fee_priority,
+        "n": config.n,
         "warning": warning,
         "excluded_horizon": excluded_horizon,
     }
 
-    if not news_enabled:
+    if not config.news_enabled:
         news_meta: dict[str, Any] = {"enabled": False}
     else:
         news_meta = {
             "enabled": True,
-            "key_present": bool(news_api_key),
-            "top_k": NEWS_QUERY_TOP_K_MULTIPLIER * n,
+            "key_present": bool(config.news_api_key),
+            "top_k": NEWS_QUERY_TOP_K_MULTIPLIER * config.n,
             "total_hits": len(hits_by_code),
             "displaced": displaced,
         }

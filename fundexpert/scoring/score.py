@@ -13,11 +13,9 @@ def score_candidates(
     risk_level: str,
 ) -> pd.DataFrame:
     """Add `score` and `_breakdown` columns. Input must already have `R` (from horizon)."""
-    out = df.copy()
-
-    R_hat = minmax_normalize(out["R"])
-    V_hat = minmax_normalize(out["aum_change_pct"])
-    F_hat = minmax_normalize(out["applied_management_fee_pct"])
+    R_hat = minmax_normalize(df["R"])
+    V_hat = minmax_normalize(df["aum_change_pct"])
+    F_hat = minmax_normalize(df["applied_management_fee_pct"])
 
     # Priority → renormalized weights summing to 1.0
     w_return = 1.0
@@ -34,10 +32,8 @@ def score_candidates(
     base_score = R_contrib + V_contrib + F_contrib
 
     lam = RISK_LEVEL_LAMBDAS[risk_level]
-    risk_norm = (out["risk"].astype(float).fillna(7.0) - 1.0) / 6.0
+    risk_norm = (df["risk"].astype(float).fillna(7.0) - 1.0) / 6.0
     risk_penalty = lam * (risk_norm ** 2)
 
     score = base_score - risk_penalty
-    out["score"] = score
-
-    return out
+    return df.assign(score=score)

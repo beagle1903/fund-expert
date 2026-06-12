@@ -11,7 +11,7 @@ def apply_horizon(df: pd.DataFrame, horizon: str) -> pd.DataFrame:
     `df.attrs["excluded_count"]` is set to the number of rows dropped.
     """
     cols = list(HORIZON_BUCKETS[horizon])
-    R = df[cols].mean(axis=1, skipna=True)
+    R = df[cols].mean(axis=1, skipna=False)
     keep_mask = R.notna()
     out = df.loc[keep_mask].copy()
     out["R"] = R[keep_mask]

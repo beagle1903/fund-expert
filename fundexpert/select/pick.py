@@ -25,16 +25,14 @@ def pick_top(
     selected_indices: list = []
 
     apply_sector_cap = max_per_sector is not None and "sector" in sorted_df.columns
+    sectors = sorted_df["sector"] if apply_sector_cap else [None] * len(sorted_df)
 
-    for row in sorted_df.itertuples(index=True, name='Row'):
-        idx = row.Index
+    for idx, bucket, sector in zip(sorted_df.index, sorted_df["strategy"], sectors):
         if len(selected_indices) >= n:
             break
-        bucket = row.strategy
         if strat_counts.get(bucket, 0) >= max_per_type:
             continue
         if apply_sector_cap:
-            sector = getattr(row, "sector")
             if sector != "diversified" and sector_counts.get(sector, 0) >= max_per_sector:
                 continue
             sector_counts[sector] = sector_counts.get(sector, 0) + 1

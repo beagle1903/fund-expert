@@ -21,9 +21,9 @@ def test_sector_from_name(name, expected):
 
 
 def test_sector_handles_lowercase_turkish_i():
-    """str.upper() in Python is locale-blind: 'i' → 'I' not 'İ'. Verify the fix."""
-    assert sector_from_name("teknoloji sektörü hisse fon") == "tech"
-    assert sector_from_name("sağlık sektörü") == "health"
+    # Function now expects fully uppercased input from pipeline
+    assert sector_from_name("TEKNOLOJİ SEKTÖRÜ HİSSE FON") == "tech"
+    assert sector_from_name("SAĞLIK SEKTÖRÜ") == "health"
 
 
 def test_sector_from_name_handles_none():

@@ -11,8 +11,6 @@ sector cap (most non-themed funds live there).
 
 from __future__ import annotations
 
-from fundexpert.utils.text import turkish_upper
-
 # Order matters: first match wins. Place narrower keywords before broader ones.
 _SECTOR_RULES: tuple[tuple[str, str], ...] = (
     ("TEKNOLOJİ", "tech"),
@@ -55,9 +53,8 @@ def sector_from_name(fon_adi: str | None) -> str:
     stripped = fon_adi.strip()
     if not stripped:
         return "diversified"
-    # Same Turkish dotted-i workaround as strategy.py — str.upper() is locale-blind.
-    upper = turkish_upper(stripped)
+    # Assume input is already fully normalized and uppercased by pipeline.py
     for keyword, bucket in _SECTOR_RULES:
-        if keyword in upper:
+        if keyword in stripped:
             return bucket
     return "diversified"

@@ -11,10 +11,11 @@ dependencies = [
     "pandas>=2.2",
     "rich>=13.7",
     "questionary>=2.0",
+    "pandera>=0.18.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "vulture>=2.11"]
+dev = ["pytest>=8.0", "vulture>=2.11", "pytest-cov>=4.1.0"]
 
 [project.scripts]
 fundexpert = "fundexpert.cli:main"
@@ -25,4 +26,4 @@ exclude = ["tests*", "docs*", "data*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v"
+addopts = "-v --cov=fundexpert --cov-fail-under=90"
