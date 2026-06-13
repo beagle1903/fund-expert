@@ -25,6 +25,7 @@ from fundexpert.select.strategy import bucket_from_name
 from fundexpert.select.weights import compute_weights
 from dataclasses import dataclass
 from fundexpert.data.merge import clean_candidates
+from fundexpert.utils.text import turkish_upper
 
 
 @dataclass
@@ -42,10 +43,18 @@ class PipelineConfig:
     news_api_key: str | None = None
 
 
+@dataclass
+class PipelineResult:
+    weighted: pd.DataFrame
+    header: dict[str, Any]
+    hits_for_render: dict[str, list]
+    news_meta: dict[str, Any]
+
+
 def run_pipeline(
     candidates: pd.DataFrame,
     config: PipelineConfig,
-) -> tuple[pd.DataFrame, dict[str, Any], dict[str, list], dict[str, Any]]:
+) -> PipelineResult:
     """Run the full data → score → select pipeline for a single universe.
 
     Returns (selected_df, header_dict, hits_by_pick, news_meta). When
@@ -75,7 +84,10 @@ def run_pipeline(
         fee_priority=config.fee_priority,
         risk_level=config.risk_level,
     )
-    scored_fon_adi_upper = scored["fon_adi"].fillna("").str.replace("i", "İ").str.replace("ı", "I").str.upper()
+    scored_fon_adi_upper = pd.Series(
+        [turkish_upper(s) for s in scored["fon_adi"].fillna("")],
+        index=scored.index
+    )
     scored = scored.assign(
         strategy=scored_fon_adi_upper.map(bucket_from_name),
         sector=scored_fon_adi_upper.map(sector_from_name),
@@ -121,8 +133,9 @@ def run_pipeline(
     # identical by construction.
     displaced: list[dict[str, Any]] = []
     if config.news_enabled and hits_by_code:
+        scored_pre = scored_pre.sort_values(["score", "fon_kodu"], ascending=[False, True])
         would_be, _ = pick_top(
-            scored_pre, n=config.n, max_per_type=config.max_per_type, max_per_sector=config.max_per_sector,
+            scored_pre, n=config.n, max_per_type=config.max_per_type, max_per_sector=config.max_per_sector, is_sorted=True
         )
         would_be_codes = set(would_be["fon_kodu"].astype(str))
         displaced_codes = would_be_codes - picked_codes
@@ -167,4 +180,9 @@ def run_pipeline(
             "displaced": displaced,
         }
 
-    return weighted, header, hits_for_render, news_meta
+    return PipelineResult(
+        weighted=weighted,
+        header=header,
+        hits_for_render=hits_for_render,
+        news_meta=news_meta,
+    )

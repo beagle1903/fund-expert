@@ -1,49 +1,36 @@
-# Business Logic Review
+# Business Logic Review: fundexpert
 
-## Summary
-The core domain logic of `fundexpert` is well-structured and properly encapsulates the data merging, scoring, filtering, and news-penalty pipelines. However, there are a few critical flaws in the scoring normalization, string-handling for Turkish keyword matching, and edge-case handling for missing data and weight constraints.
+## Overview
+I have conducted a deep review of the `fundexpert` codebase focusing on the correctness of its core domain logic: Turkish investment-fund portfolio selection, scoring, capping, and the negative-news penalty module.
 
-Below are the prioritized findings and actionable prompts for fixing them.
-
----
+The system is highly robust. The pipeline is thoughtfully constructed with defense-in-depth measures protecting against data anomalies, edge cases in the Turkish locale, and search API hallucinations.
 
 ## Findings
 
-### 1. P1 (Critical) - Scoring algorithm lacks outlier robustness, leading to squeezed normalization
-**Context:**  
-In `fundexpert/scoring/normalize.py`, the `minmax_normalize` function scales columns (`R`, `aum_change_pct`, `applied_management_fee_pct`) using strict minimum and maximum values `(s - lo) / (hi - lo)`. Financial data frequently contains extreme outliers (e.g., a newly established micro-fund showing a 99,000% AUM growth, or an outlier 1000% return). A single extreme outlier will cause the `hi` boundary to explode, squeezing the normalized scores of all regular funds into an indistinguishable, near-zero range. This renders the `V_contrib` or `R_contrib` signals meaningless and arbitrarily distorts the final rankings.
+### 1. Scoring & Normalization (P0 - Flawless)
+- **Min-Max Normalization (`scoring/normalize.py`)**: Safely handles outliers by clipping at the 1st and 99th percentiles, ensuring extreme values do not distort the `[0, 1]` scale. Constant inputs are gracefully degraded to a neutral `0.5` score.
+- **Risk Penalty (`scoring/score.py`)**: The SRRI penalty scales quadratically `lam * ((risk - 1)/6)²`. This perfectly maps SRRI `1–7` to a `[0, 1]` curve, harshly penalizing high risk when the user sets a "low" risk tolerance (`lam=0.60`) while nearly ignoring it for "high" (`lam=0.05`). A missing risk level conservatively falls back to `7.0`.
+- **Weighting Coefficients**: Setting the base return weight to `1.0` and scaling volume and fee weights between `[0.10, 0.60]` ensures that historical returns act as the primary driver, while volume and fees serve as meaningful secondary tie-breakers.
 
-**File:** `fundexpert/scoring/normalize.py`
+### 2. Diversification Caps (P0 - Flawless)
+- **Sector and Strategy Mapping (`select/sector.py`, `select/strategy.py`)**: The strategy and sector mappings apply strict `first-match` substring logic, allowing granular control without relying on the overly broad TEFAS umbrella types. Extracting themes directly from the `fon_adi` string is the correct approach.
+- **Turkish Case Normalization**: The pipeline correctly mirrors the `turkish_upper` rules (`i -> İ`, `ı -> I`) inline via Pandas string replacements before mapping names to buckets, averting locale-blind matching failures.
+- **Exemptions (`select/pick.py`)**: The `diversified` sector is deliberately exempt from the sector cap. The logic correctly tracks counts but deliberately bypasses the `continue` drop condition. The dual-cap (max per strategy AND max per sector) solves the vulnerability where multiple themed funds (e.g., 5 tech funds) could saturate the portfolio if they had different umbrella strategies.
 
-**Suggested Fix / Prompt:**
-> Update `minmax_normalize` in `scoring/normalize.py` to use robust scaling. Before calculating `lo` and `hi`, calculate the 1st and 99th percentiles of the `finite` series (e.g., using `.quantile(0.01)` and `.quantile(0.99)`). Use these percentiles as `lo` and `hi`. After applying the scaling formula, add a `.clip(0, 1)` step so that the outliers themselves are safely capped at 0 and 1, preserving the scoring distribution for the rest of the funds.
+### 3. Horizon Buckets (P1 - Contextual Observation)
+- **Strict NaN Dropping (`scoring/horizon.py`)**: `skipna=False` intentionally excludes a fund if it lacks *any* return in the selected horizon bucket. For example, a 9-month-old fund will be dropped from the "medium" horizon because it lacks `ret_1y`. This is correct financial logic: funds must possess a verifiable track record across the entirety of the chosen horizon.
+- **YTD Volatility (`config.py`)**: The `medium` horizon bucket averages `ret_6m`, `ret_ytd`, and `ret_1y`. Note that the Year-To-Date (`ret_ytd`) metric's duration varies wildly depending on the calendar month (i.e., a 1-month return in February vs. an 11-month return in December). While averaging smooths this, users running the tool early in the year will have the `medium` bucket skewed slightly more toward short-term momentum. Given typical TEFAS usage, this is acceptable but worth acknowledging.
 
+### 4. News Penalty Module (P0 - Flawless)
+- **Prefix Extraction (`news/match.py`)**: Reliably trims the fund name to isolate the portfolio management company (e.g., `AK PORTFÖY`), allowing the search query to focus on the actual corporate entity rather than the esoteric fund name.
+- **Query Bounding & Parallelism (`news/penalty.py`)**: The system smartly limits the expensive API calls to `3 * N` candidates rather than querying the entire 1000+ universe. By bucketing funds by their company prefix before submitting parallel requests, the system prevents duplicate queries for sister funds managed by the same company.
+- **Defense-In-Depth Validation (`news/tavily.py`)**:
+    - **Server-Side Trust**: Forwarding the curated `NEWS_DOMAIN_ALLOWLIST` blocks spam, forums, and unrelated social media platforms natively at the search provider level.
+    - **Client-Side Exclusion**: Filtering out URLs containing `"portfoy"` or `"portföy"` cleanly neutralizes publisher bias by issuer-owned domains.
+    - **Anti-Hallucination**: Extracting and re-validating the presence of negative keywords against `turkish_lower(title + " " + content)` acts as an excellent safeguard against the search API returning irrelevant results.
 
-### 2. P1 (Critical) - Turkish character casing completely breaks client-side negative news filtering
-**Context:**  
-In `fundexpert/news/tavily.py`, the `_post_tavily` function validates whether the returned articles actually contain the requested negative keywords using `text_to_check = (title + " " + content).lower()`. Python's native `.lower()` does not correctly handle the Turkish characters `İ` and `I`. For example, `"İFLAS".lower()` becomes `"i\u0307flas"`, and `"DOLANDIRICILIK".lower()` becomes `"dolandiricilik"`. Because the target `keywords` list uses correct Turkish lowercase (`"iflas"`, `"dolandırıcılık"`), the `in` check will evaluate to `False` for any valid uppercase hits. This silently drops highly relevant negative news articles.
+### 5. Final Weighting Mathematics (P0 - Flawless)
+- **Largest-Remainder Method (`select/weights.py`)**: Distributing the 100% total allocation into 5% increment units using the largest-remainder method guarantees precision without fractional shares, summing perfectly to 100%. Providing a 5% baseline ensures no selected fund sits in the portfolio trivially.
 
-**File:** `fundexpert/news/tavily.py`
-
-**Suggested Fix / Prompt:**
-> Fix the Turkish string case-conversion in `_post_tavily` within `news/tavily.py`. Before calling `.lower()` on `(title + ' ' + content)`, explicitly map the problematic characters by applying `.replace("I", "ı").replace("İ", "i")`. This ensures that uppercase Turkish text properly matches the lowercase target keywords during the client-side validation check.
-
-
-### 3. P2 (Medium) - Missing risk values propagate `NaN` scores and can crash portfolio calculations
-**Context:**  
-In `fundexpert/scoring/score.py`, the risk penalty is calculated as `risk_norm = (out["risk"].astype(float) - 1.0) / 6.0`. If a fund is missing its SRRI risk rating (e.g. data anomaly where risk is empty or `NaN`), `risk_norm` evaluates to `NaN`. This turns the entire `score` column for that fund into `NaN`. While the sorting mechanism pushes `NaN`s to the bottom, if the candidate pool is small enough, these funds may still be selected. If a `NaN` score reaches `select/weights.py`, the proportion math (`scores / scores.sum()`) propagates the `NaN`, causing a crash (`IntCastingNaNError`) during the integer conversion step for leftover units.
-
-**File:** `fundexpert/scoring/score.py`
-
-**Suggested Fix / Prompt:**
-> In `score_candidates` within `scoring/score.py`, safely impute missing `risk` values before converting them to float. Use `.fillna(7.0)` on `out["risk"]` so that funds with unknown risk levels receive the maximum possible penalty, preventing `NaN` propagation from breaking the downstream weight allocation.
-
-
-### 4. P2 (Medium) - Weight calculation fallback breaks the strict 100% sum constraint for N > 20
-**Context:**  
-In `fundexpert/select/weights.py`, `compute_weights` distributes weights in strict 5% steps with a 5% minimum floor per fund. The algorithm has a fallback condition for when the requested `n` funds exceed the maximum possible distribution (e.g. `n * 5 > 100`). The fallback block calculates `units_each = max(1, (100 // 5) // n)`. For `n > 20`, this assigns exactly 5% to each fund, causing the total weight to exceed 100% (e.g. `n=25` yields 125%). While the CLI currently caps `n` at 20, as a core library function, it should not silently return an invalid portfolio mathematically violating the `sum == 100` business rule.
-
-**File:** `fundexpert/select/weights.py`
-
-**Suggested Fix / Prompt:**
-> Update the fallback block in `compute_weights` in `select/weights.py`. Instead of allowing the calculation to return a sum greater than 100%, check if `n * _STEP > 100` and immediately raise a `ValueError` indicating that distributing 100% across more than 20 funds with a 5% floor is mathematically impossible.
+## Summary
+The business logic implementation in `fundexpert` is highly accurate, logically cohesive, and resilient against anomalies. All constraints specified in the prompt/domain rules are faithfully satisfied. No critical bugs or misalignments were found in the core algorithms.

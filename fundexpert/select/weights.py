@@ -24,8 +24,8 @@ def compute_weights(selected: pd.DataFrame) -> pd.DataFrame:
         display = pd.Series([units_each * WEIGHT_STEP_PCT] * n, index=out.index, dtype=int)
         # Top-up to 100 by adding leftover units to highest-score funds
         leftover = (100 // WEIGHT_STEP_PCT) - units_each * n
-        for idx in out["score"].astype(float).nlargest(leftover).index:
-            display.loc[idx] += WEIGHT_STEP_PCT
+        winners_idx = out["score"].astype(float).nlargest(leftover).index
+        display.loc[winners_idx] += WEIGHT_STEP_PCT
         out["display_weight_pct"] = display
         return out
 
@@ -45,8 +45,7 @@ def compute_weights(selected: pd.DataFrame) -> pd.DataFrame:
         # biggest fractional part. Stable on ties (pandas keeps insertion order).
         remainders = raw_extra - floor_extra
         winners = remainders.nlargest(leftover).index
-        for idx in winners:
-            units.loc[idx] += 1
+        units.loc[winners] += 1
 
     out["display_weight_pct"] = (units * WEIGHT_STEP_PCT).astype(int)
     return out

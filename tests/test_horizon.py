@@ -30,7 +30,7 @@ def test_medium_horizon_uses_6m_ytd_1y(candidates):
     assert out.loc[out["fon_kodu"] == "B", "R"].iloc[0] == pytest.approx(expected_b)
 
 
-def test_long_horizon_takes_mean_when_one_nan():
+def test_long_horizon_drops_incomplete_data():
     # Enforcing data completeness: if any column in the bucket is NaN, row is dropped.
     df = pd.DataFrame({
         "fon_kodu": ["A"],

@@ -53,6 +53,5 @@ def merge_universe(frames: UniverseData, universe: str) -> pd.DataFrame:
 
 def clean_candidates(df: pd.DataFrame) -> pd.DataFrame:
     """Drop funds with missing fee or short history."""
-    df = df[df["applied_management_fee_pct"].notna()]
-    df = df[df["ret_3m"].notna()]
-    return df
+    mask = df["applied_management_fee_pct"].notna() & df["ret_3m"].notna()
+    return df[mask]

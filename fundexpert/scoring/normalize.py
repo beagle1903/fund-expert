@@ -14,7 +14,8 @@ def minmax_normalize(series: pd.Series) -> pd.Series:
     if len(finite) == 0:
         return pd.Series([0.5] * len(s), index=s.index)
 
-    lo, hi = finite.quantile(0.01), finite.quantile(0.99)
+    quantiles = finite.quantile([0.01, 0.99])
+    lo, hi = quantiles[0.01], quantiles[0.99]
     if hi == lo:
         return pd.Series([0.5] * len(s), index=s.index)
 

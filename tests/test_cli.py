@@ -4,8 +4,9 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from fundexpert.cli import _prompt, main, _load_one
-from fundexpert.pipeline import run_pipeline, PipelineConfig
+from fundexpert.cli import main, _load_one
+from fundexpert.pipeline import run_pipeline, PipelineConfig, PipelineResult
+from fundexpert.ui import prompt_user, ensure_utf8_stdio
 
 
 @pytest.fixture
@@ -50,20 +51,20 @@ def fake_universe_loader():
 def test_run_pipeline_returns_selected_with_weights(fake_universe_loader):
     candidates = _load_one("tefas")
 
-    selected, header, hits, _ = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2, 11, 42)))
-    assert len(selected) == 2
-    assert "display_weight_pct" in selected.columns
-    assert sum(selected["display_weight_pct"]) == pytest.approx(100.0)
-    assert header["candidate_total"] == 3
+    res = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2, 11, 42)))
+    assert len(res.weighted) == 2
+    assert "display_weight_pct" in res.weighted.columns
+    assert sum(res.weighted["display_weight_pct"]) == pytest.approx(100.0)
+    assert res.header["candidate_total"] == 3
     # News disabled by default → empty hits dict.
-    assert hits == {}
+    assert res.hits_for_render == {}
 
 
 def test_run_pipeline_returns_news_meta_with_enabled_false_when_news_off(fake_universe_loader):
     candidates = _load_one("tefas")
 
-    selected, header, hits, news_meta = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2, 11, 42)))
-    assert news_meta == {"enabled": False}
+    res = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2, 11, 42)))
+    assert res.news_meta == {"enabled": False}
 
 
 def _make_questionary_mock(answers: list):
@@ -88,12 +89,12 @@ def test_prompt_returns_none_when_user_cancels(cancel_at):
     answers[cancel_at] = None
     qmock = _make_questionary_mock(answers)
     with patch.dict("sys.modules", {"questionary": qmock}):
-        assert _prompt(last={}) is None
+        assert prompt_user(last={}) is None
 
 
 def test_main_exits_cleanly_on_cancellation(capsys):
     with patch("sys.argv", ["fundexpert"]), \
-         patch("fundexpert.cli._prompt", return_value=None):
+         patch("fundexpert.cli.prompt_user", return_value=None):
         rc = main()
     assert rc == 130
     assert "İptal" in capsys.readouterr().err
@@ -101,7 +102,7 @@ def test_main_exits_cleanly_on_cancellation(capsys):
 
 def test_main_exits_cleanly_on_keyboard_interrupt(capsys):
     with patch("sys.argv", ["fundexpert"]), \
-         patch("fundexpert.cli._prompt", side_effect=KeyboardInterrupt):
+         patch("fundexpert.cli.prompt_user", side_effect=KeyboardInterrupt):
         rc = main()
     assert rc == 130
     assert "İptal" in capsys.readouterr().err
@@ -118,14 +119,19 @@ def test_main_renders_two_portfolios_when_universe_is_both():
         "universe": "both", "risk_level": "medium", "horizon": "medium",
         "volume_priority": "medium", "fee_priority": "medium", "n": 3,
     }
-    fake_selected = pd.DataFrame({"display_weight_pct": [50, 50]})
-    fake_header = {"warning": None}
-    fake_hits: dict = {}
+    fake_selected = pd.DataFrame({
+        "fon_kodu": ["AAK", "BBK"], "fon_adi": ["AK FON", "BK FON"],
+        "umbrella_type": ["Değişken", "Hisse"], "risk": [3, 4],
+        "display_weight_pct": [50.0, 50.0], "score": [0.7, 0.6],
+    })
+    fake_header = {"warning": None, "timestamp": datetime(2026, 1, 1), "universe": "both", "risk_level": "medium", "horizon": "medium", "volume_priority": "medium", "fee_priority": "medium", "n": 3, "candidate_total": 2}
+    
+    mock_res = PipelineResult(weighted=fake_selected, header=fake_header, hits_for_render={}, news_meta={"enabled": False})
+    
     with patch("sys.argv", ["fundexpert"]), \
-         patch("fundexpert.cli._prompt", return_value=answers), \
-         patch("fundexpert.cli._save_last_run"), \
-         patch("fundexpert.cli.run_pipeline",
-               return_value=(fake_selected, fake_header, fake_hits, {"enabled": False})) as run_mock, \
+         patch("fundexpert.cli.prompt_user", return_value=answers), \
+         patch("fundexpert.cli.save_last_run_state"), \
+         patch("fundexpert.cli.run_pipeline", return_value=mock_res) as run_mock, \
          patch("fundexpert.cli.render_portfolio") as render_mock:
         rc = main()
     assert rc == 0
@@ -140,14 +146,20 @@ def test_main_passes_news_api_key_when_news_flag_set(monkeypatch):
         "universe": "tefas", "risk_level": "medium", "horizon": "medium",
         "volume_priority": "medium", "fee_priority": "medium", "n": 3,
     }
-    fake_selected = pd.DataFrame({"display_weight_pct": [100]})
-    fake_header = {"warning": None}
+    fake_selected = pd.DataFrame({
+        "fon_kodu": ["AAK"], "fon_adi": ["AK FON"],
+        "umbrella_type": ["Değişken"], "risk": [3],
+        "display_weight_pct": [100.0], "score": [0.7],
+    })
+    fake_header = {"warning": None, "timestamp": datetime(2026, 1, 1), "universe": "tefas", "risk_level": "medium", "horizon": "medium", "volume_priority": "medium", "fee_priority": "medium", "n": 3, "candidate_total": 1}
     monkeypatch.setenv("TAVILY_API_KEY", "tvly-test-key")
+    
+    mock_res = PipelineResult(weighted=fake_selected, header=fake_header, hits_for_render={}, news_meta={"enabled": True, "key_present": True, "top_k": 9, "total_hits": 0, "displaced": []})
+    
     with patch("sys.argv", ["fundexpert", "--news"]), \
-         patch("fundexpert.cli._prompt", return_value=answers), \
-         patch("fundexpert.cli._save_last_run"), \
-         patch("fundexpert.cli.run_pipeline",
-               return_value=(fake_selected, fake_header, {}, {"enabled": True, "key_present": True, "top_k": 9, "total_hits": 0, "displaced": []})) as run_mock, \
+         patch("fundexpert.cli.prompt_user", return_value=answers), \
+         patch("fundexpert.cli.save_last_run_state"), \
+         patch("fundexpert.cli.run_pipeline", return_value=mock_res) as run_mock, \
          patch("fundexpert.cli.render_portfolio"):
         rc = main()
     assert rc == 0
@@ -161,13 +173,20 @@ def test_main_default_run_does_not_pass_news_key(monkeypatch):
         "universe": "tefas", "risk_level": "medium", "horizon": "medium",
         "volume_priority": "medium", "fee_priority": "medium", "n": 3,
     }
-    fake_selected = pd.DataFrame({"display_weight_pct": [100]})
+    fake_selected = pd.DataFrame({
+        "fon_kodu": ["AAK"], "fon_adi": ["AK FON"],
+        "umbrella_type": ["Değişken"], "risk": [3],
+        "display_weight_pct": [100.0], "score": [0.7],
+    })
+    fake_header = {"warning": None, "timestamp": datetime(2026, 1, 1), "universe": "tefas", "risk_level": "medium", "horizon": "medium", "volume_priority": "medium", "fee_priority": "medium", "n": 3, "candidate_total": 1}
     monkeypatch.setenv("TAVILY_API_KEY", "tvly-shouldnt-be-used")
+    
+    mock_res = PipelineResult(weighted=fake_selected, header=fake_header, hits_for_render={}, news_meta={"enabled": False})
+    
     with patch("sys.argv", ["fundexpert"]), \
-         patch("fundexpert.cli._prompt", return_value=answers), \
-         patch("fundexpert.cli._save_last_run"), \
-         patch("fundexpert.cli.run_pipeline",
-               return_value=(fake_selected, {"warning": None}, {}, {"enabled": False})) as run_mock, \
+         patch("fundexpert.cli.prompt_user", return_value=answers), \
+         patch("fundexpert.cli.save_last_run_state"), \
+         patch("fundexpert.cli.run_pipeline", return_value=mock_res) as run_mock, \
          patch("fundexpert.cli.render_portfolio"):
         main()
     assert run_mock.call_args.kwargs["config"].news_enabled is False
@@ -184,10 +203,10 @@ def test_run_pipeline_with_news_shifts_picks_when_top_fund_has_negative_news(
     # exactly that fund and verify the next run picks something else.
     candidates = _load_one("tefas")
 
-    sel_no_news, _, hits_no_news, _ = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=1, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
+    res_no_news = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=1, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
         news_enabled=False, news_api_key=None))
-    leader_code = sel_no_news.iloc[0]["fon_kodu"]
-    leader_prefix = sel_no_news.iloc[0]["fon_adi"].split()[0] + " FON"
+    leader_code = res_no_news.weighted.iloc[0]["fon_kodu"]
+    leader_prefix = res_no_news.weighted.iloc[0]["fon_adi"].split()[0] + " FON"
 
     def fake_query(company_prefix, **_kw):
         if company_prefix == leader_prefix:
@@ -198,10 +217,10 @@ def test_run_pipeline_with_news_shifts_picks_when_top_fund_has_negative_news(
     with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
         candidates = _load_one("tefas")
 
-        sel_with_news, _, _, _ = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=1, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
+        res_news = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=1, max_per_type=2, now=datetime(2026, 5, 2, 11, 42),
             news_enabled=True, news_api_key="tvly-test"))
-    assert hits_no_news == {}
-    assert sel_no_news.iloc[0]["fon_kodu"] != sel_with_news.iloc[0]["fon_kodu"]
+    assert res_no_news.hits_for_render == {}
+    assert res_no_news.weighted.iloc[0]["fon_kodu"] != res_news.weighted.iloc[0]["fon_kodu"]
 
 
 def test_run_pipeline_news_meta_populates_displaced_when_top_fund_dropped(
@@ -212,11 +231,10 @@ def test_run_pipeline_news_meta_populates_displaced_when_top_fund_dropped(
 
     candidates = _load_one("tefas")
 
-
-    sel_no_news, _, _, _ = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=1, max_per_type=2, now=datetime(2026, 5, 2),
+    res_no_news = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=1, max_per_type=2, now=datetime(2026, 5, 2),
         news_enabled=False, news_api_key=None))
-    leader_code = sel_no_news.iloc[0]["fon_kodu"]
-    leader_prefix = sel_no_news.iloc[0]["fon_adi"].split()[0] + " FON"
+    leader_code = res_no_news.weighted.iloc[0]["fon_kodu"]
+    leader_prefix = res_no_news.weighted.iloc[0]["fon_adi"].split()[0] + " FON"
 
     def fake_query(company_prefix, **_kw):
         if company_prefix == leader_prefix:
@@ -227,14 +245,14 @@ def test_run_pipeline_news_meta_populates_displaced_when_top_fund_dropped(
     with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
         candidates = _load_one("tefas")
 
-        sel_news, _, _, news_meta = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=1, max_per_type=2, now=datetime(2026, 5, 2),
+        res_news = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=1, max_per_type=2, now=datetime(2026, 5, 2),
             news_enabled=True, news_api_key="tvly-test"))
 
-    assert sel_news.iloc[0]["fon_kodu"] != leader_code
-    assert news_meta["enabled"] is True
-    assert news_meta["total_hits"] == 1
-    assert len(news_meta["displaced"]) == 1
-    d = news_meta["displaced"][0]
+    assert res_news.weighted.iloc[0]["fon_kodu"] != leader_code
+    assert res_news.news_meta["enabled"] is True
+    assert res_news.news_meta["total_hits"] == 1
+    assert len(res_news.news_meta["displaced"]) == 1
+    d = res_news.news_meta["displaced"][0]
     assert d["fon_kodu"] == leader_code
     assert d["score_pre"] > d["score_post"]
     assert d["score_pre"] - d["score_post"] == pytest.approx(0.20)
@@ -257,11 +275,11 @@ def test_run_pipeline_news_meta_displaced_sorted_by_score_pre_desc(
     with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
         candidates = _load_one("tefas")
 
-        _, _, _, news_meta = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=1, max_per_type=2, now=datetime(2026, 5, 2),
+        res = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=1, max_per_type=2, now=datetime(2026, 5, 2),
             news_enabled=True, news_api_key="tvly-test"))
 
-    if len(news_meta["displaced"]) >= 2:
-        scores = [d["score_pre"] for d in news_meta["displaced"]]
+    if len(res.news_meta["displaced"]) >= 2:
+        scores = [d["score_pre"] for d in res.news_meta["displaced"]]
         assert scores == sorted(scores, reverse=True), (
             f"Expected displaced sorted by score_pre desc, got {scores}"
         )
@@ -271,10 +289,10 @@ def test_run_pipeline_news_meta_displaced_empty_when_no_hits(fake_universe_loade
     with patch("fundexpert.news.penalty.query_negative_news", return_value=[]):
         candidates = _load_one("tefas")
 
-        _, _, _, news_meta = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2),
+        res = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2),
             news_enabled=True, news_api_key="tvly-test"))
-    assert news_meta["total_hits"] == 0
-    assert news_meta["displaced"] == []
+    assert res.news_meta["total_hits"] == 0
+    assert res.news_meta["displaced"] == []
 
 
 def test_run_pipeline_news_enabled_without_api_key_falls_back_to_quant(
@@ -283,14 +301,14 @@ def test_run_pipeline_news_enabled_without_api_key_falls_back_to_quant(
     """news_enabled=True but no key → no penalty, picks identical to news=off."""
     candidates = _load_one("tefas")
 
-    sel_no_news, _, _, _ = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2),
+    res_no_news = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2),
         news_enabled=False, news_api_key=None))
     candidates = _load_one("tefas")
 
-    sel_news_no_key, _, hits, _ = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2),
+    res_news_no_key = run_pipeline(candidates=candidates, config=PipelineConfig(universe="tefas", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2),
         news_enabled=True, news_api_key=None))
-    assert list(sel_no_news["fon_kodu"]) == list(sel_news_no_key["fon_kodu"])
-    assert hits == {}
+    assert list(res_no_news.weighted["fon_kodu"]) == list(res_news_no_key.weighted["fon_kodu"])
+    assert res_news_no_key.hits_for_render == {}
     assert "TAVILY_API_KEY tanımlı değil" in capsys.readouterr().err
 
 
@@ -298,7 +316,7 @@ def test_main_saves_run_on_every_execution(monkeypatch):
     """save_run is called once per universe even without --diff-last."""
     import sys
     monkeypatch.setattr("sys.argv", ["fundexpert"])
-    monkeypatch.setattr("fundexpert.cli._prompt", lambda _: {
+    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: {
         "universe": "tefas", "risk_level": "medium", "horizon": "medium",
         "volume_priority": "medium", "fee_priority": "medium", "n": 5,
     })
@@ -315,8 +333,10 @@ def test_main_saves_run_on_every_execution(monkeypatch):
         "umbrella_type": ["Değişken"], "risk": [3],
         "display_weight_pct": [100.0], "score": [0.7],
     })
-    monkeypatch.setattr("fundexpert.cli.run_pipeline",
-                        lambda **kw: (fake_selected, full_header, {}, {"enabled": False}))
+    
+    mock_res = PipelineResult(weighted=fake_selected, header=full_header, hits_for_render={}, news_meta={"enabled": False})
+    
+    monkeypatch.setattr("fundexpert.cli.run_pipeline", lambda **kw: mock_res)
     save_calls = []
     monkeypatch.setattr("fundexpert.cli.save_run",
                         lambda selected, header, history_dir: save_calls.append(1) or Path("/tmp/x.json"))
@@ -331,7 +351,7 @@ def test_main_diff_last_calls_render_diff_when_previous_exists(monkeypatch):
     """--diff-last calls render_diff when a previous run is available."""
     import sys
     monkeypatch.setattr("sys.argv", ["fundexpert", "--diff-last"])
-    monkeypatch.setattr("fundexpert.cli._prompt", lambda _: {
+    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: {
         "universe": "tefas", "risk_level": "medium", "horizon": "medium",
         "volume_priority": "medium", "fee_priority": "medium", "n": 5,
     })
@@ -349,8 +369,10 @@ def test_main_diff_last_calls_render_diff_when_previous_exists(monkeypatch):
         "display_weight_pct": [100.0], "score": [0.7],
     })
     fake_previous = {"timestamp": "2026-05-01T09:00:00", "universe": "tefas", "picks": []}
-    monkeypatch.setattr("fundexpert.cli.run_pipeline",
-                        lambda **kw: (fake_selected, full_header, {}, {"enabled": False}))
+    
+    mock_res = PipelineResult(weighted=fake_selected, header=full_header, hits_for_render={}, news_meta={"enabled": False})
+    
+    monkeypatch.setattr("fundexpert.cli.run_pipeline", lambda **kw: mock_res)
     monkeypatch.setattr("fundexpert.cli.save_run",
                         lambda selected, header, history_dir: Path("/tmp/x.json"))
     monkeypatch.setattr("fundexpert.cli.load_last_run",
@@ -367,7 +389,6 @@ def test_main_diff_last_calls_render_diff_when_previous_exists(monkeypatch):
 
 
 def test_ensure_utf8_stdio():
-    from fundexpert.cli import _ensure_utf8_stdio
     from unittest.mock import MagicMock
     import sys
     mock_stdout = MagicMock()
@@ -379,7 +400,7 @@ def test_ensure_utf8_stdio():
     try:
         sys.stdout = mock_stdout
         sys.stderr = mock_stderr
-        _ensure_utf8_stdio()
+        ensure_utf8_stdio()
         mock_stdout.reconfigure.assert_called_once_with(encoding="utf-8", errors="replace")
         mock_stderr.reconfigure.assert_called_once_with(encoding="utf-8", errors="replace")
     finally:

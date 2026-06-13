@@ -169,6 +169,8 @@ def _post_tavily(query: str, api_key: str, max_age_days: int,
             "User-Agent": _USER_AGENT,
         },
     )
+    if not req.full_url.startswith("https://"):
+        raise ValueError(f"Sadece HTTPS desteklenir, verilen URL: {req.full_url}")
     with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
         data = json.loads(resp.read().decode("utf-8"))
         

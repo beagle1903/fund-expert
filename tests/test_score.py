@@ -75,8 +75,16 @@ def test_high_risk_level_barely_penalises_risky_funds():
     assert pytest.approx(low_risk - high_risk, abs=1e-6) == 0.05
 
 
-def test_lower_fee_scores_higher(horizon_ready):
-    out = score_candidates(horizon_ready, "medium", "high", "low")
+def test_lower_fee_scores_higher():
+    df = pd.DataFrame({
+        "fon_kodu": ["A", "B", "C"],
+        "umbrella_type": ["X", "X", "X"],
+        "R":                          [10.0, 10.0, 10.0],
+        "aum_change_pct":             [5.0, 5.0, 5.0],
+        "applied_management_fee_pct": [3.0, 2.0, 1.0],
+        "risk":                       [3, 3, 3],
+    })
+    out = score_candidates(df, "medium", "high", "low")
     out_sorted = out.sort_values("score", ascending=False)
     assert out_sorted.iloc[0]["fon_kodu"] == "C"
 

@@ -47,6 +47,14 @@ def save_run(
         tmp_name = tmp.name
     os.chmod(tmp_name, 0o600)
     os.replace(tmp_name, path)
+    
+    import shutil
+    latest_path = history_dir / f"latest_{header['universe']}.json"
+    try:
+        shutil.copy2(path, latest_path)
+    except OSError:
+        pass
+
     return path
 
 
@@ -54,7 +62,17 @@ def load_last_run(universe: str, history_dir: Path) -> dict[str, Any] | None:
     """Return the most recent saved run record for *universe*, or None."""
     if not history_dir.exists():
         return None
-    candidates = sorted(history_dir.glob(f"*_{universe}.json"), reverse=True)
+
+    latest_path = history_dir / f"latest_{universe}.json"
+    if latest_path.exists():
+        try:
+            return json.loads(latest_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Fallback to globbing
+    candidates = [p for p in history_dir.glob(f"*_{universe}.json") if not p.name.startswith("latest_")]
+    candidates.sort(reverse=True)
     if not candidates:
         return None
     try:

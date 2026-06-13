@@ -93,6 +93,7 @@ def apply_negative_news_penalty(
         )
         return prefix, hits
 
+    updates = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(_query_for_prefix, p) for p in prefix_to_indices]
         for future in concurrent.futures.as_completed(futures):
@@ -100,9 +101,12 @@ def apply_negative_news_penalty(
                 prefix, hits = future.result()
                 if hits:
                     for idx, row in prefix_to_indices[prefix]:
-                        adjusted.at[idx, "score"] = float(row["score"]) - penalty
-                        hits_by_code[str(row["fon_kodu"])] = hits
+                        updates.append((idx, float(row["score"]) - penalty, str(row["fon_kodu"]), hits))
             except Exception as e:
                 print(f"Uyarı: Haber sorgusu sırasında hata oluştu: {e}", file=sys.stderr)
+
+    for idx, new_score, code, hits in updates:
+        adjusted.at[idx, "score"] = new_score
+        hits_by_code[code] = hits
 
     return adjusted, hits_by_code

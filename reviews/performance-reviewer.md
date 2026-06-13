@@ -1,38 +1,104 @@
-# Performance Review
+# Performance Review: FundExpert
 
-## Summary
-The codebase is generally well-structured, but suffers from a few key performance bottlenecks, specifically relating to sequential network I/O and inefficient pandas idioms. 
+## Executive Summary
+Overall, the `fundexpert` codebase is well-structured and handles small tabular datasets appropriately. However, there are a few Pandas performance anti-patterns and one critical concurrency issue that must be addressed. Additionally, a missing file `fundexpert/utils/text.py` currently prevents `tavily.py` from executing successfully.
 
-## Findings
+---
 
-### 1. Sequential Network I/O in News Penalty Pass (P0 - Critical)
-**Context:** `fundexpert/news/penalty.py` -> `apply_negative_news_penalty()`
-**Description:** The function iterates over the top-K fund candidates and issues synchronous HTTP requests via `query_negative_news` (which calls `urllib.request.urlopen`) sequentially. When the cache is cold and `--news` is active, this can result in up to 40 sequential network calls, slowing down the CLI significantly (taking 20-40+ seconds).
-**Suggested Fix:**
-```text
-Refactor `apply_negative_news_penalty` in `fundexpert/news/penalty.py` to use `concurrent.futures.ThreadPoolExecutor`. Instead of sequentially calling `query_negative_news` in a for-loop, submit the tasks to a thread pool and gather the results asynchronously. Ensure to associate the hits correctly with the fund indices.
+## P0: Critical Issues (Correctness & Concurrency)
+
+### 1. Concurrent Pandas DataFrame Mutation (`news/penalty.py`)
+**Location:** `news/penalty.py` around line 100-103
+```python
+with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    # ...
+    for idx, row in prefix_to_indices[prefix]:
+        adjusted.at[idx, "score"] = float(row["score"]) - penalty
+```
+**Issue:** Modifying a Pandas DataFrame from multiple threads concurrently is thread-unsafe and can lead to silent memory corruption, race conditions, or segmentation faults depending on the underlying C/Cython extensions.
+**Fix:** Collect the results inside the thread pool, then apply the updates in the main thread sequentially or in a vectorized manner.
+
+### 2. Missing `utils/text.py` File Breaks Imports
+**Location:** `news/tavily.py` line 33 (`from fundexpert.utils.text import turkish_lower`)
+**Issue:** The file `fundexpert/utils/text.py` is missing from the repository. Attempting to run the news penalty module causes a `ModuleNotFoundError`.
+**Fix:** Restore `text.py` or implement the `turkish_lower` function directly inside `news/tavily.py` or `__init__.py`.
+
+---
+
+## P1: Performance Bottlenecks & Redundancies
+
+### 1. Repeated Masking Creates Intermediate DataFrames
+**Location:** `data/merge.py` -> `clean_candidates`
+```python
+def clean_candidates(df: pd.DataFrame) -> pd.DataFrame:
+    df = df[df["applied_management_fee_pct"].notna()]
+    df = df[df["ret_3m"].notna()]
+    return df
+```
+**Issue:** Filtering sequentially creates intermediate dataframe copies, increasing memory allocation overhead.
+**Fix:** Combine the boolean masks using the `&` operator to filter in a single pass.
+```python
+mask = df["applied_management_fee_pct"].notna() & df["ret_3m"].notna()
+return df[mask]
 ```
 
-### 2. Inefficient CSV Parsing (P1 - High)
-**Context:** `fundexpert/data/loader.py` -> `_read_one()`
-**Description:** `pd.read_csv` reads all columns from the TEFAS/BEFAS CSV exports before filtering them down using a dictionary (`rename`). This consumes unnecessary memory and CPU cycles during parsing, as TEFAS exports can be very wide.
-**Suggested Fix:**
-```text
-Optimize `_read_one` in `fundexpert/data/loader.py` by adding `usecols=lambda c: c in rename.keys()` to the `pd.read_csv` call. This ensures pandas only parses the columns we actually care about, reducing peak memory and speeding up file reading.
+### 2. Chained `.str` Operations Create Intermediate Series
+**Location:** `pipeline.py` line 78
+```python
+scored_fon_adi_upper = scored["fon_adi"].fillna("").str.replace("i", "İ").str.replace("ı", "I").str.upper()
+```
+**Issue:** Each `.str` method iterates over the entire series and allocates a new array of strings. Chaining three of them is O(3N) and allocates heavily.
+**Fix:** For a dataset of this size, a single list comprehension passing through pure Python string methods is faster and allocates less memory:
+```python
+scored_fon_adi_upper = pd.Series(
+    [s.replace("i", "İ").replace("ı", "I").upper() for s in scored["fon_adi"].fillna("")],
+    index=scored.index
+)
 ```
 
-### 3. Iterating Over DataFrames with iterrows() (P2 - Medium)
-**Context:** `fundexpert/select/pick.py` -> `pick_top()`
-**Description:** The function uses `sorted_df.iterrows()` to walk through candidates. `iterrows()` creates a new Pandas Series for each row, which carries a large performance penalty. While the number of rows is bounded (the size of the universe), this is an anti-pattern that slows down the selection loop unnecessarily.
-**Suggested Fix:**
-```text
-Refactor `pick_top` in `fundexpert/select/pick.py` to use `sorted_df.itertuples()` instead of `iterrows()`. Access row elements via named tuple attributes (e.g., `row.strategy`, `row.sector`) or `.Index` instead of standard dictionary-like lookup. This will speed up the loop by an order of magnitude.
+### 3. Iterative Pandas `.loc` Assignments inside Loops
+**Location:** `select/weights.py` line 27 and 48
+```python
+for idx in out["score"].astype(float).nlargest(leftover).index:
+    display.loc[idx] += WEIGHT_STEP_PCT
+# and
+for idx in winners:
+    units.loc[idx] += 1
+```
+**Issue:** Single-row assignments inside a `for` loop are a known Pandas anti-pattern. While `N` is small (~20), this breaks vectorization.
+**Fix:** Pass the list of indices directly to `.loc` for vectorized assignments.
+```python
+winners_idx = out["score"].astype(float).nlargest(leftover).index
+display.loc[winners_idx] += WEIGHT_STEP_PCT
+# and
+units.loc[winners] += 1
 ```
 
-### 4. Sequential Pandas Index Updates (P2 - Medium)
-**Context:** `fundexpert/select/weights.py` -> `compute_weights()`
-**Description:** In two places, the code uses a python for-loop to iterate over index values and update a Series element-by-element (`display.loc[idx] += _STEP` and `units.loc[idx] += 1`). This bypasses Pandas' vectorized operations and adds overhead.
-**Suggested Fix:**
-```text
-Update `compute_weights` in `fundexpert/select/weights.py` to use vectorized assignment. Replace the `for idx in ...` loops with `.loc` on an index array. For example: `units.loc[winners] += 1`.
+### 4. Double Quantile Sorting
+**Location:** `scoring/normalize.py` line 17
+```python
+lo, hi = finite.quantile(0.01), finite.quantile(0.99)
 ```
+**Issue:** Computing quantiles separately forces Pandas to sort or partition the array twice. 
+**Fix:** Compute both quantiles in one pass.
+```python
+quantiles = finite.quantile([0.01, 0.99])
+lo, hi = quantiles[0.01], quantiles[0.99]
+```
+
+---
+
+## P2: Minor Optimizations
+
+### 1. Redundant Dataframe Sorting in `pick_top`
+**Location:** `select/pick.py` and `pipeline.py`
+**Issue:** When computing the `displaced` funds, `pipeline.py` calls `pick_top` a second time with `scored_pre`. `pick_top` internally runs `scored.sort_values(["score", "fon_kodu"])`. The original dataframe `scored` is sorted on the exact same columns. This leads to double-sorting the same dataset.
+**Fix:** Sort `scored_pre` once in `pipeline.py`, and pass an optional `is_sorted=True` flag to `pick_top` to bypass redundant sorting.
+
+### 2. Inefficient Globs for History
+**Location:** `history/store.py` -> `load_last_run`
+```python
+candidates = sorted(history_dir.glob(f"*_{universe}.json"), reverse=True)
+```
+**Issue:** `history_dir.glob` reads all entries and `sorted` loads them into memory. If the history folder grows to thousands of runs, this slows down startup. 
+**Fix:** Consider limiting the depth or storing a symlink/pointer `latest_tefas.json` that is updated on each run to skip the directory read.
