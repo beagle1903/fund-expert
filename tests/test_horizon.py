@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 
 from fundexpert.scoring.horizon import apply_horizon
+from fundexpert.config import DEFAULT_SCORING_CONFIG
 
 
 @pytest.fixture
@@ -20,12 +21,12 @@ def candidates():
 
 
 def test_short_horizon_uses_1m_and_3m(candidates):
-    out = apply_horizon(candidates, "short")
+    out = apply_horizon(candidates, "short", DEFAULT_SCORING_CONFIG)
     assert out.loc[out["fon_kodu"] == "A", "R"].iloc[0] == 3.0
 
 
 def test_medium_horizon_uses_6m_ytd_1y(candidates):
-    out = apply_horizon(candidates, "medium")
+    out = apply_horizon(candidates, "medium", DEFAULT_SCORING_CONFIG)
     expected_b = (12.0 + 16.0 + 50.0) / 3
     assert out.loc[out["fon_kodu"] == "B", "R"].iloc[0] == pytest.approx(expected_b)
 
@@ -37,18 +38,18 @@ def test_long_horizon_drops_incomplete_data():
         "ret_3y": [30.0],
         "ret_5y": [np.nan],
     })
-    out = apply_horizon(df, "long")
+    out = apply_horizon(df, "long", DEFAULT_SCORING_CONFIG)
     assert len(out) == 0
     assert out.attrs["excluded_count"] == 1
 
 
 def test_long_horizon_excludes_fund_with_all_bucket_nans(candidates):
-    out = apply_horizon(candidates, "long")
+    out = apply_horizon(candidates, "long", DEFAULT_SCORING_CONFIG)
     assert "C" not in out["fon_kodu"].values
 
 
 def test_short_horizon_excludes_fund_with_all_bucket_nans(candidates):
-    out = apply_horizon(candidates, "short")
+    out = apply_horizon(candidates, "short", DEFAULT_SCORING_CONFIG)
     assert "D" not in out["fon_kodu"].values
 
 
@@ -58,5 +59,5 @@ def test_excluded_count_returned():
         "ret_3y": [float("nan"), 10.0],
         "ret_5y": [float("nan"), 20.0],
     })
-    out = apply_horizon(df, "long")
+    out = apply_horizon(df, "long", DEFAULT_SCORING_CONFIG)
     assert out.attrs["excluded_count"] == 1

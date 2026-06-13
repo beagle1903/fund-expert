@@ -20,6 +20,9 @@ def pick_top(
     The sector cap is only applied when `max_per_sector` is provided AND the
     DataFrame has a `sector` column, so existing callers keep working unchanged.
     """
+    if n > 20:
+        raise ValueError("Cannot pick more than 20 funds due to weight granularity constraints.")
+
     if not is_sorted:
         sorted_df = scored.sort_values(["score", "fon_kodu"], ascending=[False, True])
     else:

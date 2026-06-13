@@ -1,0 +1,43 @@
+{
+  "bucket_rules": [
+    ["HİSSE SENEDİ", "equity"],
+    ["PARA PİYASASI", "money_market"],
+    ["ALTIN", "precious_metals"],
+    ["KIYMETLİ MADEN", "precious_metals"],
+    ["BORÇLANMA ARAÇLARI", "debt"],
+    ["EUROBOND", "debt"],
+    ["KİRA SERTİFİKALARI", "debt"],
+    ["FON SEPETİ", "fund_of_funds"],
+    ["ENDEKS", "index"],
+    ["DEĞİŞKEN", "mixed"],
+    ["KARMA", "mixed"],
+    ["ÇOKLU VARLIK", "mixed"]
+  ],
+  "sector_rules": [
+    ["TEKNOLOJİ", "tech"],
+    ["DİJİTAL OYUN", "tech"],
+    ["YAZILIM", "tech"],
+    ["BİLİŞİM", "tech"],
+    ["SAĞLIK", "health"],
+    ["İLAÇ", "health"],
+    ["PETROL", "energy"],
+    ["ENERJİ", "energy"],
+    ["BANKACILIK", "finance"],
+    ["FİNANS", "finance"],
+    ["GAYRİMENKUL", "real_estate"],
+    ["İNŞAAT", "real_estate"],
+    ["SANAYİ", "industrial"],
+    ["METAL", "metals"],
+    ["KİMYA", "chemicals"],
+    ["GIDA", "consumer"],
+    ["İÇECEK", "consumer"],
+    ["PERAKENDE", "consumer"],
+    ["TARIM", "agriculture"],
+    ["TURİZM", "tourism"],
+    ["TELEKOMÜNİKASYON", "telecom"],
+    ["İLETİŞİM", "telecom"],
+    ["ULAŞTIRMA", "transport"],
+    ["HAVACILIK", "transport"],
+    ["SAVUNMA", "defense"]
+  ]
+}

@@ -160,6 +160,23 @@ def test_query_refetches_when_cache_expired(cache_dir):
         query_negative_news("AK PORTFÖY", ("ceza",), "k", cache_dir, ttl_seconds=1)
     assert mock.call_count == 2
 
+def test_cache_read_ignores_oserror_and_jsondecodeerror(cache_dir):
+    from unittest.mock import patch
+    # create a corrupt cache file
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    with patch("pathlib.Path.read_text", side_effect=OSError("locked")):
+        # If read_text throws OSError, it should gracefully fall back to network
+        payload = {"results": []}
+        with patch("urllib.request.urlopen", return_value=_fake_response(payload)) as mock:
+            query_negative_news("AK PORTFÖY", ("ceza",), "k", cache_dir)
+            assert mock.call_count == 1
+    
+    with patch("json.loads", side_effect=json.JSONDecodeError("bad", "", 0)):
+        payload = {"results": []}
+        with patch("urllib.request.urlopen", return_value=_fake_response(payload)) as mock:
+            query_negative_news("AK PORTFÖY", ("ceza",), "k", cache_dir)
+            assert mock.call_count == 1
+
 
 def test_news_hit_to_render_dict_round_trip():
     h = NewsHit(title="t", url="https://x.com/p", published=datetime(2026, 1, 1),

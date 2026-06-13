@@ -11,36 +11,12 @@ sector cap (most non-themed funds live there).
 
 from __future__ import annotations
 
-# Order matters: first match wins. Place narrower keywords before broader ones.
-_SECTOR_RULES: tuple[tuple[str, str], ...] = (
-    ("TEKNOLOJİ", "tech"),
-    ("DİJİTAL OYUN", "tech"),
-    ("YAZILIM", "tech"),
-    ("BİLİŞİM", "tech"),
-    ("SAĞLIK", "health"),
-    ("İLAÇ", "health"),
-    ("PETROL", "energy"),
-    ("ENERJİ", "energy"),
-    ("BANKACILIK", "finance"),
-    ("FİNANS", "finance"),
-    ("GAYRİMENKUL", "real_estate"),
-    ("İNŞAAT", "real_estate"),
-    ("SANAYİ", "industrial"),
-    ("ALTIN", "precious_metals"),
-    ("KIYMETLİ MADEN", "precious_metals"),
-    ("METAL", "metals"),  # falls *after* precious metals are caught by strategy
-    ("KİMYA", "chemicals"),
-    ("GIDA", "consumer"),
-    ("İÇECEK", "consumer"),
-    ("PERAKENDE", "consumer"),
-    ("TARIM", "agriculture"),
-    ("TURİZM", "tourism"),
-    ("TELEKOMÜNİKASYON", "telecom"),
-    ("İLETİŞİM", "telecom"),
-    ("ULAŞTIRMA", "transport"),
-    ("HAVACILIK", "transport"),
-    ("SAVUNMA", "defense"),
-)
+import json
+from pathlib import Path
+
+_RULES_PATH = Path(__file__).resolve().parent.parent / "rules.json"
+_RULES = json.loads(_RULES_PATH.read_text(encoding="utf-8"))
+_SECTOR_RULES: tuple[tuple[str, str], ...] = tuple(tuple(r) for r in _RULES["sector_rules"])
 
 
 def sector_from_name(fon_adi: str | None) -> str:

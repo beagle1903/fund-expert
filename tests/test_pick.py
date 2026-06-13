@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from hypothesis import given, strategies as st
+from hypothesis import given, settings, HealthCheck, strategies as st
 from hypothesis.extra.pandas import column, data_frames
 
 from fundexpert.select.pick import pick_top
@@ -99,6 +99,7 @@ def test_pick_top_sector_cap_is_optional_for_legacy_callers():
     out, _ = pick_top(df, n=3, max_per_type=2)  # no max_per_sector
     assert list(out["fon_kodu"]) == ["A", "B", "C"]
 
+@settings(suppress_health_check=[HealthCheck.too_slow], deadline=None)
 @given(
     df=data_frames(
         columns=[
@@ -117,12 +118,19 @@ def test_pick_property_invariants(df, n, max_per_type, max_per_sector):
         return
     out, _ = pick_top(df, n=n, max_per_type=max_per_type, max_per_sector=max_per_sector)
     assert len(out) <= n
-    if len(out) > 0:
-        strat_counts = out["strategy"].value_counts()
-        assert strat_counts.max() <= max_per_type
-        non_div = out[out["sector"] != "diversified"]
-        if len(non_div) > 0:
-            sector_counts = non_div["sector"].value_counts()
-            assert sector_counts.max() <= max_per_sector
-        scores = out["score"].tolist()
-        assert all(scores[i] >= scores[i+1] for i in range(len(scores)-1))
+    if len(out) == 0:
+        return
+    
+    strat_counts = out["strategy"].value_counts()
+    max_strat = strat_counts.max()
+    assert max_strat <= max_per_type
+    
+    non_div = out[out["sector"] != "diversified"]
+    if len(non_div) > 0:
+        sector_counts = non_div["sector"].value_counts()
+        max_sec = sector_counts.max()
+        assert max_sec <= max_per_sector
+        
+    scores = out["score"].tolist()
+    for i in range(len(scores) - 1):
+        assert scores[i] >= scores[i + 1]

@@ -2,6 +2,9 @@ import pandas as pd
 import pytest
 
 from fundexpert.scoring.score import score_candidates
+from fundexpert.config import DEFAULT_SCORING_CONFIG
+from hypothesis import given, settings
+import hypothesis.strategies as st
 
 
 @pytest.fixture
@@ -20,7 +23,8 @@ def test_score_returns_score_column(horizon_ready):
     out = score_candidates(horizon_ready,
                            volume_priority="medium",
                            fee_priority="medium",
-                           risk_level="medium")
+                           risk_level="medium",
+                           scoring_config=DEFAULT_SCORING_CONFIG)
     assert "score" in out.columns
     assert len(out) == 3
 
@@ -34,7 +38,7 @@ def test_higher_R_with_equal_other_features_scores_higher():
         "applied_management_fee_pct": [1.0, 1.0],
         "risk":                       [3, 3],
     })
-    out = score_candidates(df, "medium", "medium", "medium")
+    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     hi = out.loc[out["fon_kodu"] == "HI", "score"].iloc[0]
     lo = out.loc[out["fon_kodu"] == "LO", "score"].iloc[0]
     assert hi > lo
@@ -51,7 +55,7 @@ def test_higher_risk_loses_score_under_low_risk_level():
         "applied_management_fee_pct": [1.0, 1.0],
         "risk":                       [1, 7],
     })
-    out = score_candidates(df, "medium", "medium", risk_level="low")
+    out = score_candidates(df, "medium", "medium", risk_level="low", scoring_config=DEFAULT_SCORING_CONFIG)
     low_risk = out.loc[out["fon_kodu"] == "L", "score"].iloc[0]
     high_risk = out.loc[out["fon_kodu"] == "H", "score"].iloc[0]
     assert low_risk > high_risk
@@ -69,7 +73,7 @@ def test_high_risk_level_barely_penalises_risky_funds():
         "applied_management_fee_pct": [1.0, 1.0],
         "risk":                       [1, 7],
     })
-    out = score_candidates(df, "medium", "medium", risk_level="high")
+    out = score_candidates(df, "medium", "medium", risk_level="high", scoring_config=DEFAULT_SCORING_CONFIG)
     low_risk = out.loc[out["fon_kodu"] == "L", "score"].iloc[0]
     high_risk = out.loc[out["fon_kodu"] == "H", "score"].iloc[0]
     assert pytest.approx(low_risk - high_risk, abs=1e-6) == 0.05
@@ -84,13 +88,57 @@ def test_lower_fee_scores_higher():
         "applied_management_fee_pct": [3.0, 2.0, 1.0],
         "risk":                       [3, 3, 3],
     })
-    out = score_candidates(df, "medium", "high", "low")
+    out = score_candidates(df, "medium", "high", "low", scoring_config=DEFAULT_SCORING_CONFIG)
     out_sorted = out.sort_values("score", ascending=False)
     assert out_sorted.iloc[0]["fon_kodu"] == "C"
 
 
 def test_score_handles_empty_dataframe():
     df = pd.DataFrame(columns=["fon_kodu", "R", "aum_change_pct", "applied_management_fee_pct", "risk", "fon_adi"])
-    out = score_candidates(df, "medium", "medium", "medium")
+    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     assert out.empty
     assert "score" in out.columns
+
+@given(
+    R=st.floats(min_value=-100.0, max_value=100.0, allow_nan=False, allow_infinity=False),
+    V=st.floats(min_value=-100.0, max_value=100.0, allow_nan=False, allow_infinity=False),
+    F=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+    risk=st.integers(min_value=1, max_value=7),
+)
+@settings(max_examples=50, deadline=None)
+def test_score_bounds_invariant(R, V, F, risk):
+    df = pd.DataFrame({
+        "fon_kodu": ["A", "B"],
+        "R": [R, 0.0],
+        "aum_change_pct": [V, 0.0],
+        "applied_management_fee_pct": [F, 1.0],
+        "risk": [risk, 3],
+        "fon_adi": ["A", "B"],
+    })
+    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
+    score = out.loc[0, "score"]
+    assert -2.0 <= score <= 2.0
+
+@given(
+    R1=st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+    R2=st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+)
+@settings(max_examples=20, deadline=None)
+def test_score_monotonicity_invariant(R1, R2):
+    if R1 == R2:
+        return
+    df = pd.DataFrame({
+        "fon_kodu": ["A", "B", "C"],
+        "R": [R1, R2, min(R1,R2)-1],
+        "aum_change_pct": [0.0, 0.0, 0.0],
+        "applied_management_fee_pct": [1.0, 1.0, 1.0],
+        "risk": [3, 3, 3],
+        "fon_adi": ["A", "B", "C"],
+    })
+    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
+    s1 = out.loc[0, "score"]
+    s2 = out.loc[1, "score"]
+    if R1 > R2:
+        assert s1 >= s2
+    elif R1 < R2:
+        assert s1 <= s2

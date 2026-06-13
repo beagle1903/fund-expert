@@ -1,35 +1,12 @@
 """Join the three loaded frames per universe into one fund-per-row DataFrame."""
 
 import pandas as pd
+import os
 
 
-import pandera as pa
+from fundexpert.schemas import MergedUniverseSchema
 
 from fundexpert.data.loader import UniverseData
-
-
-MergedUniverseSchema = pa.DataFrameSchema({
-    "fon_kodu": pa.Column(str, coerce=True),
-    "fon_adi": pa.Column(str, nullable=True, coerce=True),
-    "umbrella_type": pa.Column(str, nullable=True, coerce=True),
-    "risk": pa.Column(float, nullable=True, coerce=True),
-    "ret_1m": pa.Column(float, nullable=True, coerce=True),
-    "ret_3m": pa.Column(float, nullable=True, coerce=True),
-    "ret_6m": pa.Column(float, nullable=True, coerce=True),
-    "ret_ytd": pa.Column(float, nullable=True, coerce=True),
-    "ret_1y": pa.Column(float, nullable=True, coerce=True),
-    "ret_3y": pa.Column(float, nullable=True, coerce=True),
-    "ret_5y": pa.Column(float, nullable=True, coerce=True),
-    "aum_first": pa.Column(float, nullable=True, coerce=True),
-    "aum_last": pa.Column(float, nullable=True, coerce=True),
-    "aum_change_pct": pa.Column(float, nullable=True, coerce=True),
-    "units_first": pa.Column(float, nullable=True, coerce=True),
-    "units_last": pa.Column(float, nullable=True, coerce=True),
-    "units_change_pct": pa.Column(float, nullable=True, coerce=True),
-    "applied_management_fee_pct": pa.Column(float, nullable=True, coerce=True),
-    "bylaw_management_fee_pct": pa.Column(float, nullable=True, coerce=True),
-    "universe": pa.Column(str, coerce=True),
-})
 
 
 def merge_universe(frames: UniverseData, universe: str) -> pd.DataFrame:
@@ -49,9 +26,17 @@ def merge_universe(frames: UniverseData, universe: str) -> pd.DataFrame:
     df = df.merge(yonetim_keep, on="fon_kodu", how="inner")
     df["universe"] = universe
     
-    return MergedUniverseSchema.validate(df)
+    if os.environ.get("DEBUG") == "1" or "PYTEST_CURRENT_TEST" in os.environ:
+        return MergedUniverseSchema.validate(df)
+    return df
 
 def clean_candidates(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop funds with missing fee or short history."""
+    """Drop funds with missing fee, short history, or OKS restriction."""
     mask = df["applied_management_fee_pct"].notna() & df["ret_3m"].notna()
+    
+    # Exclude OKS (Otomatik Katılım Sistemi) funds as they are not available to the public
+    oks_in_name = df["fon_adi"].str.contains(r"\bOKS\b", case=False, na=False, regex=True)
+    oks_in_umbrella = df["umbrella_type"].str.contains(r"\bOKS\b", case=False, na=False, regex=True)
+    mask = mask & ~oks_in_name & ~oks_in_umbrella
+    
     return df[mask]

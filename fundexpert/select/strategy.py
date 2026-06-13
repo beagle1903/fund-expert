@@ -8,22 +8,12 @@ diversity on the strategy implied by the fund's *name* instead.
 
 from __future__ import annotations
 
-# Order matters: the first keyword that matches wins. Place the most specific
-# strategy keywords before broader organisational labels (KATILIM, SERBEST).
-_BUCKET_RULES: tuple[tuple[str, str], ...] = (
-    ("HİSSE SENEDİ", "equity"),
-    ("PARA PİYASASI", "money_market"),
-    ("ALTIN", "precious_metals"),
-    ("KIYMETLİ MADEN", "precious_metals"),
-    ("BORÇLANMA ARAÇLARI", "debt"),
-    ("EUROBOND", "debt"),
-    ("KİRA SERTİFİKALARI", "debt"),
-    ("FON SEPETİ", "fund_of_funds"),
-    ("ENDEKS", "index"),
-    ("DEĞİŞKEN", "mixed"),
-    ("KARMA", "mixed"),
-    ("ÇOKLU VARLIK", "mixed"),
-)
+import json
+from pathlib import Path
+
+_RULES_PATH = Path(__file__).resolve().parent.parent / "rules.json"
+_RULES = json.loads(_RULES_PATH.read_text(encoding="utf-8"))
+_BUCKET_RULES: tuple[tuple[str, str], ...] = tuple(tuple(r) for r in _RULES["bucket_rules"])
 
 
 def bucket_from_name(fon_adi: str | None) -> str:

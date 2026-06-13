@@ -8,32 +8,26 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
-
 from fundexpert.config import (
     DEFAULT_MAX_PER_SECTOR,
     DEFAULT_MAX_PER_TYPE,
     HISTORY_DIR,
     LAST_RUN_FILE,
-    NEGATIVE_NEWS_KEYWORDS,
-    NEGATIVE_NEWS_PENALTY,
     NEWS_API_KEY_ENV,
-    NEWS_MAX_RESULTS_PER_FUND,
-    NEWS_QUERY_TIMEOUT_SECONDS,
-    NEWS_QUERY_TOP_K_MULTIPLIER,
 )
-from fundexpert.data.loader import load_universe
-from fundexpert.data.merge import merge_universe
-from fundexpert.history.store import load_last_run, save_run
+from fundexpert.ui import ensure_utf8_stdio, load_last_run_state, prompt_user, save_last_run_state
 from fundexpert.pipeline import run_pipeline, PipelineConfig
+from fundexpert.history.store import load_last_run, save_run
 from fundexpert.render.diff import render_diff
 from fundexpert.render.table import render_portfolio
-from fundexpert.ui import ensure_utf8_stdio, load_last_run_state, prompt_user, save_last_run_state
+import pandas as pd
+from fundexpert.data.loader import load_universe
+from fundexpert.data.merge import merge_universe
 
 DATA_ROOT = Path(__file__).resolve().parent.parent / "data"
 
 
-def _load_one(universe: str) -> pd.DataFrame:
+def _load_one(universe: str):
     """Load and merge a single universe (tefas or befas) into a candidate frame."""
     folder = DATA_ROOT / universe
     frames = load_universe(
@@ -83,6 +77,7 @@ def main() -> int:
         ["tefas", "befas"] if answers["universe"] == "both" else [answers["universe"]]
     )
     now = datetime.now()
+    
     for u in universes_to_run:
         candidates = _load_one(u)
         config = PipelineConfig(

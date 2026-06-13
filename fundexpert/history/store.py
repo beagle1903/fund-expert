@@ -33,7 +33,7 @@ def save_run(
                 "fon_adi": str(r["fon_adi"]),
                 "score": float(r["score"]),
                 "weight_pct": int(r["display_weight_pct"]),
-                "risk": int(r["risk"]),
+                "risk": int(r["risk"]) if pd.notna(r["risk"]) else None,
                 "strategy": str(r.get("strategy", "")),
                 "sector": str(r.get("sector", "")),
             }

@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from fundexpert.config import PRIORITY_WEIGHTS, RISK_LEVEL_LAMBDAS
+from fundexpert.config import ScoringConfig
 from fundexpert.scoring.normalize import minmax_normalize
 
 
@@ -11,6 +11,7 @@ def score_candidates(
     volume_priority: str,
     fee_priority: str,
     risk_level: str,
+    scoring_config: ScoringConfig,
 ) -> pd.DataFrame:
     """Add `score` and `_breakdown` columns. Input must already have `R` (from horizon)."""
     R_hat = minmax_normalize(df["R"])
@@ -19,8 +20,8 @@ def score_candidates(
 
     # Priority → renormalized weights summing to 1.0
     w_return = 1.0
-    w_volume = PRIORITY_WEIGHTS[volume_priority]
-    w_fee    = PRIORITY_WEIGHTS[fee_priority]
+    w_volume = scoring_config.priority_weights[volume_priority]
+    w_fee    = scoring_config.priority_weights[fee_priority]
     total = w_return + w_volume + w_fee
     w_return /= total
     w_volume /= total
@@ -31,7 +32,7 @@ def score_candidates(
     F_contrib = w_fee * (1 - F_hat)
     base_score = R_contrib + V_contrib + F_contrib
 
-    lam = RISK_LEVEL_LAMBDAS[risk_level]
+    lam = scoring_config.risk_level_lambdas[risk_level]
     risk_norm = (df["risk"].astype(float).fillna(7.0) - 1.0) / 6.0
     risk_penalty = lam * (risk_norm ** 2)
 

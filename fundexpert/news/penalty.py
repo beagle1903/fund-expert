@@ -27,6 +27,7 @@ from fundexpert.news.tavily import NewsHit, query_negative_news
 
 def apply_negative_news_penalty(
     scored: pd.DataFrame,
+    executor: "concurrent.futures.Executor",
     top_k: int,
     keywords: tuple[str, ...],
     penalty: float,
@@ -94,16 +95,15 @@ def apply_negative_news_penalty(
         return prefix, hits
 
     updates = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(_query_for_prefix, p) for p in prefix_to_indices]
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                prefix, hits = future.result()
-                if hits:
-                    for idx, row in prefix_to_indices[prefix]:
-                        updates.append((idx, float(row["score"]) - penalty, str(row["fon_kodu"]), hits))
-            except Exception as e:
-                print(f"Uyarı: Haber sorgusu sırasında hata oluştu: {e}", file=sys.stderr)
+    futures = [executor.submit(_query_for_prefix, p) for p in prefix_to_indices]
+    for future in concurrent.futures.as_completed(futures):
+        try:
+            prefix, hits = future.result()
+            if hits:
+                for idx, row in prefix_to_indices[prefix]:
+                    updates.append((idx, float(row["score"]) - penalty, str(row["fon_kodu"]), hits))
+        except Exception as e:
+            print(f"Uyarı: Haber sorgusu sırasında hata oluştu: {e}", file=sys.stderr)
 
     for idx, new_score, code, hits in updates:
         adjusted.at[idx, "score"] = new_score
