@@ -75,3 +75,14 @@ def load_universe(
         buyukluk=_read_one(buyukluk_path, BUYUKLUK_RENAME),
         yonetim_ucreti=_read_one(yonetim_path,  YONETIM_RENAME),
     )
+
+def load_candidates_for_universe(universe: str, data_root: Path) -> pd.DataFrame:
+    """Helper to load and merge a single universe (tefas or befas) into a candidate frame."""
+    from fundexpert.data.merge import merge_universe
+    folder = data_root / universe
+    frames = load_universe(
+        getiri_path=folder / "getiri.csv",
+        buyukluk_path=folder / "buyukluk.csv",
+        yonetim_path=folder / "yonetim ucreti.csv",
+    )
+    return merge_universe(frames, universe=universe)

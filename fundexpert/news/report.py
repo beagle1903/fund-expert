@@ -32,7 +32,7 @@ def compute_displaced_funds(
             "fon_kodu": code,
             "fon_adi": str(row["fon_adi"]),
             "score_pre":  float(row["score"]),
-            "score_post": float(row["score"]) - penalty,
+            "score_post": float(row["score"]) - penalty if hits else float(row["score"]),
             "hits": [hit.to_render_dict() for hit in hits],
         })
     

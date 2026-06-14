@@ -60,6 +60,9 @@
             <li>
                     <a class="function" href="#load_universe">load_universe</a>
             </li>
+            <li>
+                    <a class="function" href="#load_candidates_for_universe">load_candidates_for_universe</a>
+            </li>
     </ul>
 
 
@@ -160,6 +163,17 @@
 </span><span id="L-75"><a href="#L-75"><span class="linenos">75</span></a>        <span class="n">buyukluk</span><span class="o">=</span><span class="n">_read_one</span><span class="p">(</span><span class="n">buyukluk_path</span><span class="p">,</span> <span class="n">BUYUKLUK_RENAME</span><span class="p">),</span>
 </span><span id="L-76"><a href="#L-76"><span class="linenos">76</span></a>        <span class="n">yonetim_ucreti</span><span class="o">=</span><span class="n">_read_one</span><span class="p">(</span><span class="n">yonetim_path</span><span class="p">,</span>  <span class="n">YONETIM_RENAME</span><span class="p">),</span>
 </span><span id="L-77"><a href="#L-77"><span class="linenos">77</span></a>    <span class="p">)</span>
+</span><span id="L-78"><a href="#L-78"><span class="linenos">78</span></a>
+</span><span id="L-79"><a href="#L-79"><span class="linenos">79</span></a><span class="k">def</span><span class="w"> </span><span class="nf">load_candidates_for_universe</span><span class="p">(</span><span class="n">universe</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data_root</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+</span><span id="L-80"><a href="#L-80"><span class="linenos">80</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Helper to load and merge a single universe (tefas or befas) into a candidate frame.&quot;&quot;&quot;</span>
+</span><span id="L-81"><a href="#L-81"><span class="linenos">81</span></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">fundexpert.data.merge</span><span class="w"> </span><span class="kn">import</span> <span class="n">merge_universe</span>
+</span><span id="L-82"><a href="#L-82"><span class="linenos">82</span></a>    <span class="n">folder</span> <span class="o">=</span> <span class="n">data_root</span> <span class="o">/</span> <span class="n">universe</span>
+</span><span id="L-83"><a href="#L-83"><span class="linenos">83</span></a>    <span class="n">frames</span> <span class="o">=</span> <span class="n">load_universe</span><span class="p">(</span>
+</span><span id="L-84"><a href="#L-84"><span class="linenos">84</span></a>        <span class="n">getiri_path</span><span class="o">=</span><span class="n">folder</span> <span class="o">/</span> <span class="s2">&quot;getiri.csv&quot;</span><span class="p">,</span>
+</span><span id="L-85"><a href="#L-85"><span class="linenos">85</span></a>        <span class="n">buyukluk_path</span><span class="o">=</span><span class="n">folder</span> <span class="o">/</span> <span class="s2">&quot;buyukluk.csv&quot;</span><span class="p">,</span>
+</span><span id="L-86"><a href="#L-86"><span class="linenos">86</span></a>        <span class="n">yonetim_path</span><span class="o">=</span><span class="n">folder</span> <span class="o">/</span> <span class="s2">&quot;yonetim ucreti.csv&quot;</span><span class="p">,</span>
+</span><span id="L-87"><a href="#L-87"><span class="linenos">87</span></a>    <span class="p">)</span>
+</span><span id="L-88"><a href="#L-88"><span class="linenos">88</span></a>    <span class="k">return</span> <span class="n">merge_universe</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="n">universe</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -297,6 +311,35 @@
 
 
             <div class="docstring"><p>Load the three CSVs for a single universe (tefas or befas).</p>
+</div>
+
+
+                </section>
+                <section id="load_candidates_for_universe">
+                            <input id="load_candidates_for_universe-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">load_candidates_for_universe</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">universe</span><span class="p">:</span> <span class="nb">str</span>, </span><span class="param"><span class="n">data_root</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">_local</span><span class="o">.</span><span class="n">Path</span></span><span class="return-annotation">) -> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>:</span></span>
+
+                <label class="view-source-button" for="load_candidates_for_universe-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#load_candidates_for_universe"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="load_candidates_for_universe-80"><a href="#load_candidates_for_universe-80"><span class="linenos">80</span></a><span class="k">def</span><span class="w"> </span><span class="nf">load_candidates_for_universe</span><span class="p">(</span><span class="n">universe</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data_root</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+</span><span id="load_candidates_for_universe-81"><a href="#load_candidates_for_universe-81"><span class="linenos">81</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Helper to load and merge a single universe (tefas or befas) into a candidate frame.&quot;&quot;&quot;</span>
+</span><span id="load_candidates_for_universe-82"><a href="#load_candidates_for_universe-82"><span class="linenos">82</span></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">fundexpert.data.merge</span><span class="w"> </span><span class="kn">import</span> <span class="n">merge_universe</span>
+</span><span id="load_candidates_for_universe-83"><a href="#load_candidates_for_universe-83"><span class="linenos">83</span></a>    <span class="n">folder</span> <span class="o">=</span> <span class="n">data_root</span> <span class="o">/</span> <span class="n">universe</span>
+</span><span id="load_candidates_for_universe-84"><a href="#load_candidates_for_universe-84"><span class="linenos">84</span></a>    <span class="n">frames</span> <span class="o">=</span> <span class="n">load_universe</span><span class="p">(</span>
+</span><span id="load_candidates_for_universe-85"><a href="#load_candidates_for_universe-85"><span class="linenos">85</span></a>        <span class="n">getiri_path</span><span class="o">=</span><span class="n">folder</span> <span class="o">/</span> <span class="s2">&quot;getiri.csv&quot;</span><span class="p">,</span>
+</span><span id="load_candidates_for_universe-86"><a href="#load_candidates_for_universe-86"><span class="linenos">86</span></a>        <span class="n">buyukluk_path</span><span class="o">=</span><span class="n">folder</span> <span class="o">/</span> <span class="s2">&quot;buyukluk.csv&quot;</span><span class="p">,</span>
+</span><span id="load_candidates_for_universe-87"><a href="#load_candidates_for_universe-87"><span class="linenos">87</span></a>        <span class="n">yonetim_path</span><span class="o">=</span><span class="n">folder</span> <span class="o">/</span> <span class="s2">&quot;yonetim ucreti.csv&quot;</span><span class="p">,</span>
+</span><span id="load_candidates_for_universe-88"><a href="#load_candidates_for_universe-88"><span class="linenos">88</span></a>    <span class="p">)</span>
+</span><span id="load_candidates_for_universe-89"><a href="#load_candidates_for_universe-89"><span class="linenos">89</span></a>    <span class="k">return</span> <span class="n">merge_universe</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="n">universe</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Helper to load and merge a single universe (tefas or befas) into a candidate frame.</p>
 </div>
 
 

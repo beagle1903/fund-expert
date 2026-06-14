@@ -124,11 +124,17 @@ def render_portfolio(
         for idx, entry in enumerate(news_meta["displaced"]):
             if idx > 0:
                 console.print()
-            console.print(
-                f"  {escape(entry['fon_kodu'])} — habersiz skor {entry['score_pre']:.2f} "
-                f"→ penalize edince {entry['score_post']:.2f}"
-            )
-            for hit in entry["hits"]:
-                published = f", {hit['published']:%Y-%m-%d}" if hit.get("published") else ""
-                console.print(f"        ↳ \"{escape(hit['title'])}\"  ({escape(hit['source'])}{published})")
-                console.print(f"        ↳ {escape(hit['url'])}")
+            if entry["hits"]:
+                console.print(
+                    f"  {escape(entry['fon_kodu'])} — habersiz skor {entry['score_pre']:.2f} "
+                    f"→ penalize edince {entry['score_post']:.2f}"
+                )
+                for hit in entry["hits"]:
+                    published = f", {hit['published']:%Y-%m-%d}" if hit.get("published") else ""
+                    console.print(f"        ↳ \"{escape(hit['title'])}\"  ({escape(hit['source'])}{published})")
+                    console.print(f"        ↳ {escape(hit['url'])}")
+            else:
+                console.print(
+                    f"  {escape(entry['fon_kodu'])} — {entry['score_pre']:.2f} "
+                    f"(Başka bir fonun düşmesiyle sektör/strateji limitine takıldı)"
+                )

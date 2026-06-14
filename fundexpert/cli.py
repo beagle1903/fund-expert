@@ -24,18 +24,10 @@ import pandas as pd
 from fundexpert.data.loader import load_universe
 from fundexpert.data.merge import merge_universe
 
-DATA_ROOT = Path(__file__).resolve().parent.parent / "data"
+DATA_ROOT = Path(os.environ.get("FUNDEXPERT_DATA_DIR", Path(__file__).resolve().parent.parent / "data"))
 
 
-def _load_one(universe: str):
-    """Load and merge a single universe (tefas or befas) into a candidate frame."""
-    folder = DATA_ROOT / universe
-    frames = load_universe(
-        getiri_path=folder / "getiri.csv",
-        buyukluk_path=folder / "buyukluk.csv",
-        yonetim_path=folder / "yonetim ucreti.csv",
-    )
-    return merge_universe(frames, universe=universe)
+from fundexpert.data.loader import load_candidates_for_universe
 
 
 
@@ -79,7 +71,7 @@ def main() -> int:
     now = datetime.now()
     
     for u in universes_to_run:
-        candidates = _load_one(u)
+        candidates = load_candidates_for_universe(u, DATA_ROOT)
         config = PipelineConfig(
             universe=u,
             risk_level=answers["risk_level"],

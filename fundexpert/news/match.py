@@ -42,7 +42,7 @@ def extract_company_prefix(fon_adi: str | None) -> str:
     for i, token in enumerate(tokens):
         # Strip trailing punctuation so e.g. "PORTFÖY," still matches.
         bare = token.rstrip(".,;:")
-        if bare in _PORTFOY_VARIANTS:
+        if bare in _PORTFOY_VARIANTS or bare.endswith("PORTFÖY") or bare.endswith("PORTFOY"):
             return " ".join(tokens[: i + 1]).rstrip(".,;:")
 
     # Fallback: first 3 words.

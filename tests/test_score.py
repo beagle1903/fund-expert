@@ -13,7 +13,7 @@ def horizon_ready():
         "fon_kodu": ["A", "B", "C"],
         "umbrella_type": ["X", "Y", "Z"],
         "R":                          [10.0, 30.0, 20.0],
-        "aum_change_pct":             [5.0, -2.0, 8.0],
+        "aum_last":             [5.0, -2.0, 8.0],
         "applied_management_fee_pct": [1.0, 2.0, 0.5],
         "risk":                       [3, 6, 2],
     })
@@ -34,7 +34,7 @@ def test_higher_R_with_equal_other_features_scores_higher():
         "fon_kodu": ["LO", "HI"],
         "umbrella_type": ["X", "X"],
         "R":                          [10.0, 50.0],
-        "aum_change_pct":             [0.0, 0.0],
+        "aum_last":             [0.0, 0.0],
         "applied_management_fee_pct": [1.0, 1.0],
         "risk":                       [3, 3],
     })
@@ -51,7 +51,7 @@ def test_higher_risk_loses_score_under_low_risk_level():
         "fon_kodu": ["L", "H"],
         "umbrella_type": ["X", "X"],
         "R":                          [10.0, 10.0],
-        "aum_change_pct":             [0.0, 0.0],
+        "aum_last":             [0.0, 0.0],
         "applied_management_fee_pct": [1.0, 1.0],
         "risk":                       [1, 7],
     })
@@ -69,7 +69,7 @@ def test_high_risk_level_barely_penalises_risky_funds():
         "fon_kodu": ["L", "H"],
         "umbrella_type": ["X", "X"],
         "R":                          [10.0, 10.0],
-        "aum_change_pct":             [0.0, 0.0],
+        "aum_last":             [0.0, 0.0],
         "applied_management_fee_pct": [1.0, 1.0],
         "risk":                       [1, 7],
     })
@@ -84,7 +84,7 @@ def test_lower_fee_scores_higher():
         "fon_kodu": ["A", "B", "C"],
         "umbrella_type": ["X", "X", "X"],
         "R":                          [10.0, 10.0, 10.0],
-        "aum_change_pct":             [5.0, 5.0, 5.0],
+        "aum_last":             [5.0, 5.0, 5.0],
         "applied_management_fee_pct": [3.0, 2.0, 1.0],
         "risk":                       [3, 3, 3],
     })
@@ -94,7 +94,7 @@ def test_lower_fee_scores_higher():
 
 
 def test_score_handles_empty_dataframe():
-    df = pd.DataFrame(columns=["fon_kodu", "R", "aum_change_pct", "applied_management_fee_pct", "risk", "fon_adi"])
+    df = pd.DataFrame(columns=["fon_kodu", "R", "aum_last", "applied_management_fee_pct", "risk", "fon_adi"])
     out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     assert out.empty
     assert "score" in out.columns
@@ -110,7 +110,7 @@ def test_score_bounds_invariant(R, V, F, risk):
     df = pd.DataFrame({
         "fon_kodu": ["A", "B"],
         "R": [R, 0.0],
-        "aum_change_pct": [V, 0.0],
+        "aum_last": [V, 0.0],
         "applied_management_fee_pct": [F, 1.0],
         "risk": [risk, 3],
         "fon_adi": ["A", "B"],
@@ -130,7 +130,7 @@ def test_score_monotonicity_invariant(R1, R2):
     df = pd.DataFrame({
         "fon_kodu": ["A", "B", "C"],
         "R": [R1, R2, min(R1,R2)-1],
-        "aum_change_pct": [0.0, 0.0, 0.0],
+        "aum_last": [0.0, 0.0, 0.0],
         "applied_management_fee_pct": [1.0, 1.0, 1.0],
         "risk": [3, 3, 3],
         "fon_adi": ["A", "B", "C"],
@@ -142,3 +142,26 @@ def test_score_monotonicity_invariant(R1, R2):
         assert s1 >= s2
     elif R1 < R2:
         assert s1 <= s2
+
+@given(
+    F1=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+    F2=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+)
+@settings(max_examples=20, deadline=None)
+def test_score_fee_monotonicity_invariant(F1, F2):
+    if F1 == F2: return
+    df = pd.DataFrame({
+        "fon_kodu": ["A", "B"],
+        "R": [0.0, 0.0],
+        "aum_last": [10.0, 10.0],
+        "applied_management_fee_pct": [F1, F2],
+        "risk": [3, 3],
+        "fon_adi": ["A", "B"],
+    })
+    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
+    s1 = out.loc[0, "score"]
+    s2 = out.loc[1, "score"]
+    if F1 > F2:
+        assert s1 <= s2
+    elif F1 < F2:
+        assert s1 >= s2

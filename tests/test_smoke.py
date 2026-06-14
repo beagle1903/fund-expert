@@ -3,7 +3,11 @@ from datetime import datetime
 import pytest
 
 from fundexpert.pipeline import run_pipeline
-from fundexpert.cli import _load_one
+from fundexpert.cli import DATA_ROOT
+from fundexpert.data.loader import load_candidates_for_universe
+
+def _load_one(universe):
+    return load_candidates_for_universe(universe, DATA_ROOT)
 
 
 @pytest.mark.parametrize("universe", ["tefas", "befas"])
@@ -19,6 +23,7 @@ def test_pipeline_runs_against_real_csvs(universe):
         n=5,
         max_per_type=2,
         now=datetime(2026, 5, 2, 11, 42),
+        validate_schemas=True,
     )
     res = run_pipeline(
         candidates=candidates,
@@ -45,6 +50,7 @@ def test_pipeline_long_horizon_drops_funds_with_no_long_history():
         n=5,
         max_per_type=2,
         now=datetime(2026, 5, 2, 11, 42),
+        validate_schemas=True,
     )
     res = run_pipeline(
         candidates=candidates,

@@ -4,6 +4,7 @@
     ["PARA PİYASASI", "money_market"],
     ["ALTIN", "precious_metals"],
     ["KIYMETLİ MADEN", "precious_metals"],
+    ["GÜMÜŞ", "precious_metals"],
     ["BORÇLANMA ARAÇLARI", "debt"],
     ["EUROBOND", "debt"],
     ["KİRA SERTİFİKALARI", "debt"],

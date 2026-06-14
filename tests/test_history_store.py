@@ -101,9 +101,16 @@ def test_load_last_run_returns_none_on_corrupt_json(tmp_path):
     result = load_last_run("tefas", history_dir=tmp_path)
     assert result is None
 
-def test_save_run_ignores_oserror_on_copy2(tmp_path):
+def test_save_run_ignores_oserror_on_replace_latest(tmp_path):
     from unittest.mock import patch
-    with patch("shutil.copy2", side_effect=OSError("Disk full")):
+    import os
+    original_replace = os.replace
+    def mock_replace(src, dst):
+        if "latest" in str(dst):
+            raise OSError("Disk full")
+        original_replace(src, dst)
+        
+    with patch("os.replace", side_effect=mock_replace):
         path = save_run(_make_selected(), _make_header(), history_dir=tmp_path)
     # the function should complete and return the path, catching the OSError
     assert path.exists()

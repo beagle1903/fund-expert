@@ -10,6 +10,7 @@ def _selected():
         "fon_kodu": ["AAA", "BBB"],
         "fon_adi":  ["ATA PORTFÖY ÇOKLU VARLIK FON", "BETA PORTFÖY HİSSE FON"],
         "umbrella_type": ["Değişken", "Hisse Senedi"],
+        "sector": ["Teknoloji", "diversified"],
         "risk":          [4, 6],
         "display_weight_pct": [60.0, 40.0],
         "score":         [0.71, 0.55],

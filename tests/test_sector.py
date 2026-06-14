@@ -14,6 +14,12 @@ from fundexpert.select.sector import sector_from_name
     ("Q PORTFÖY GAYRİMENKUL HİSSE SENEDİ FON", "real_estate"),
     ("PUSULA PORTFÖY BİRİNCİ DEĞİŞKEN FON", "diversified"),
     ("AK PORTFÖY EUROBOND BORÇLANMA ARAÇLARI FONU", "diversified"),
+    ("QNB SAĞLIK HAYAT SİGORTA VE EMEKLİLİK A.Ş. HİSSE SENEDİ FON", "diversified"),
+    ("QNB SAĞLIK HAYAT SİGORTA VE  EMEKLİLİK A.Ş. DEĞİŞKEN FON", "diversified"),
+    ("QNB FİNANS PORTFÖY BİRİNCİ DEĞİŞKEN FON", "diversified"),
+    ("TARIM KREDİ PORTFÖY İKİNCİ DEĞİŞKEN FON", "diversified"),
+    ("TARIM KREDİ PORTFÖY TARIM SEKTÖRÜ FONU", "agriculture"),
+    ("QNB SAĞLIK HAYAT SİGORTA VE EMEKLİLİK A.Ş. SAĞLIK SEKTÖRÜ FONU", "health"),
     ("", "diversified"),
 ])
 def test_sector_from_name(name, expected):

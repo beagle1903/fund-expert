@@ -48,10 +48,13 @@ def save_run(
     os.chmod(tmp_name, 0o600)
     os.replace(tmp_name, path)
     
-    import shutil
     latest_path = history_dir / f"latest_{header['universe']}.json"
     try:
-        shutil.copy2(path, latest_path)
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=history_dir, delete=False) as tmp:
+            tmp.write(json.dumps(record, ensure_ascii=False, indent=2))
+            tmp_name = tmp.name
+        os.chmod(tmp_name, 0o600)
+        os.replace(tmp_name, latest_path)
     except OSError:
         pass
 

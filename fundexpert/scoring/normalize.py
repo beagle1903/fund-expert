@@ -1,6 +1,7 @@
 """Per-column min-max scaling with constant-range and NaN guards."""
 
 import pandas as pd
+import numpy as np
 
 
 def minmax_normalize(series: pd.Series) -> pd.Series:
@@ -9,7 +10,7 @@ def minmax_normalize(series: pd.Series) -> pd.Series:
     - Constant columns (max == min) return 0.5 everywhere (neutral).
     - NaN values become 0.5 (neutral contribution).
     """
-    s = series.astype(float)
+    s = series.astype(float).replace([np.inf, -np.inf], np.nan)
     finite = s.dropna()
     if len(finite) == 0:
         return pd.Series([0.5] * len(s), index=s.index)

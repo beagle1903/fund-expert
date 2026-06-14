@@ -1,36 +1,83 @@
-# Parallel Code Review Summary
+# Synthesis Report: fundexpert Parallel Code Review
 
-This document synthesizes the findings from 5 parallel AI code reviewers: Architecture, Security, Test Coverage, Performance, and Business Logic. 
+## Executive Summary
+A parallel code review was conducted by 5 specialized subagents across the `fundexpert` codebase. The architecture and test suites are fundamentally robust (96.57% test coverage, strong functional-core patterns, sub-200ms data processing times, and good terminal security). However, several significant issues in business logic, pipeline orchestration, string memory allocation, and data flow were identified.
 
-## P0: Critical Findings & Bugs
+Below is a synthesized list of findings prioritized by severity (P0, P1, P2), along with suggested fixes formatted as actionable agent prompts.
 
-- **[Performance] Concurrent DataFrame Mutation**: Modifying a Pandas DataFrame from multiple threads concurrently (`news/penalty.py` using `ThreadPoolExecutor`) is thread-unsafe and can cause memory corruption.
-  - **Agent Prompt**: `Fix the concurrent pandas dataframe mutation in news/penalty.py. Collect results inside the thread pool first, then apply updates sequentially or vectorized in the main thread.`
-- **[Test/Performance] Missing `utils/text.py`**: The file was missing and broke imports (`tavily.py`), causing tests to fail. (Note: The test coverage agent recreated it during its review).
+---
 
-## P1: Major Issues & Bottlenecks
+## P0: Critical Findings
 
-- **[Security] Missing URL Scheme Validation**: `news/tavily.py` uses `urllib.request.urlopen` without explicitly validating the URL scheme (allowing potentially unsafe `file://` scheme).
-  - **Agent Prompt**: `Update news/tavily.py to enforce that URLs passed to urllib.request.urlopen strictly start with 'https://'.`
-- **[Architecture] Leaky Text Normalization**: Turkish string capitalization happens inline in `pipeline.py`, while other modules assume it's already done.
-  - **Agent Prompt**: `Extract the Turkish string normalization logic from pipeline.py into a reusable helper function in utils/text.py, and use that function consistently.`
-- **[Performance] Pandas Anti-Patterns**: Sequential masking in `clean_candidates`, chained `.str` operations in `pipeline.py`, iterative `.loc` assignments inside loops in `select/weights.py`, and double quantile sorting in `scoring/normalize.py`.
-  - **Agent Prompt**: `Optimize pandas performance across the codebase: combine boolean masks in data/merge.py, use list comprehensions for strings in pipeline.py, vectorize loc assignments in select/weights.py, and compute quantiles in a single pass in scoring/normalize.py.`
+### 1. Seasonality Bias in Horizon Bucket (Business Logic)
+* **Issue:** The `medium` horizon bucket averages `ret_ytd` along with 6m and 1y returns. Because `ret_ytd` spans a changing timeframe based on the current calendar month, the "medium" score exhibits heavy seasonality and weights returns inconsistently across the year.
+* **Actionable Agent Prompt:** 
+  > "Update `fundexpert/config.py` to remove `ret_ytd` from the `medium` horizon bucket in `DEFAULT_SCORING_CONFIG`, ensuring it relies exclusively on fixed-window metrics like `('ret_6m', 'ret_1y')`."
 
-## P2: Minor Issues & Improvements
+### 2. Inefficient Chained String Allocations in Core Pipeline (Performance)
+* **Issue:** The assignment `scored_fon_adi_upper` chaining `.fillna()`, `.str.translate()`, and `.str.upper()` allocates three separate temporary `pd.Series` of strings behind the scenes. This causes excessive memory overhead and consumes ~20% of the entire pipeline computation time.
+* **Actionable Agent Prompt:** 
+  > "Refactor the `scored_fon_adi_upper` assignment in `fundexpert/pipeline.py` to use a single pass list comprehension instead of chained Pandas string operations, thereby eliminating redundant cross-boundary series allocations."
 
-- **[Security] Swallowed Exception**: Generic `except Exception: pass` in `cli.py` history saving.
-  - **Agent Prompt**: `Replace the bare except Exception: pass in cli.py with catching a specific IOError and logging it.`
-- **[Test Coverage] Weak Assertions & Misleading Names**: The `test_lower_fee_scores_higher` test varies too many fields in its fixture. `test_long_horizon_takes_mean_when_one_nan` name is contradictory.
-  - **Agent Prompt**: `Refactor tests/test_score.py test_lower_fee_scores_higher to strictly isolate fee variance. Rename test_long_horizon_takes_mean_when_one_nan in tests/test_horizon.py to reflect that it drops incomplete data.`
-- **[Architecture] Pipeline Return Signature & CLI Decoupling**: Returning a bulky 4-tuple from `run_pipeline` makes the API fragile. `cli.py` has too many UI/state responsibilities.
-  - **Agent Prompt**: `Refactor run_pipeline in pipeline.py to return a strongly typed PipelineResult dataclass instead of a tuple.`
-- **[Performance] Minor Optimizations**: Double dataframe sorting in `pick_top` and inefficient globs for history.
-  - **Agent Prompt**: `Pass an is_sorted=True flag to pick_top to avoid double sorting in pipeline.py, and optimize the glob loading in history/store.py.`
-- **[Test Coverage] Strategic**: Expand Hypothesis property tests to numerical bounds validation.
-  - **Agent Prompt**: `Add Hypothesis property-based testing to scoring/normalize.py to verify bounds and float precision.`
+---
 
-## Business Logic Health
+## P1: Important Findings
 
-- **Status**: Excellent.
-- **Findings**: The core domain correctly implements the dual-axis capping (strategy & sector) constraints, min-max normalization, and largest-remainder weight allocation. No logical defects were found.
+### 1. Strict Survivorship Bias in Horizon Means (Business Logic)
+* **Issue:** `apply_horizon` strictly drops a fund if even one return metric in the bucket is missing (e.g., dropping an otherwise excellent 4.5-year-old fund from the `long` horizon bucket because the 5-year return is missing).
+* **Actionable Agent Prompt:** 
+  > "Update `apply_horizon` in `fundexpert/scoring/horizon.py` to use `df[cols].mean(axis=1, skipna=True)`. Implement a check to ensure a minimum track record by verifying that at least the shortest period in the bucket is not NaN."
+
+### 2. Missing "Serbest" (Hedge Fund) Exclusion (Business Logic)
+* **Issue:** "Serbest" funds require a "Nitelikli Yatırımcı" (Qualified Investor) status, making them un-investable for standard retail users. Currently, they are not excluded and may be recommended.
+* **Actionable Agent Prompt:** 
+  > "Modify `clean_candidates` in `fundexpert/data/merge.py` to filter out 'Serbest' funds by adding a regex exclusion for `\bSERBEST\b` in the fund name or umbrella type, mirroring the existing OKS exclusion."
+
+### 3. Leaky Configuration and Orchestrator Monolithism (Architecture)
+* **Issue:** `pipeline.py` imports numerous constants directly from `config.py` bypassing `PipelineConfig`, manages concurrency internally, and directly checks `os.environ.get("DEBUG")` inside domain logic.
+* **Actionable Agent Prompt:** 
+  > "Refactor `config.py` to group news-related constants into a `NewsConfig` dataclass and integrate it into `PipelineConfig`. Remove direct environment checks from domain code (`pipeline.py`, `merge.py`), and encapsulate `ThreadPoolExecutor` within the news penalty module rather than orchestrating it directly in the pipeline."
+
+### 4. Sequential String Mapping for Categorization (Performance)
+* **Issue:** Python-based `map` loops iterate over string conditions sequentially for strategy/sector categorization, resulting in roughly ~74,000 string `in` operations per execution.
+* **Actionable Agent Prompt:** 
+  > "Refactor the categorization logic in `select/strategy.py` and `select/sector.py` to replace sequential Python `map` operations with compiled PyArrow regex operations using `pd.Series.str.extract()`, leveraging grouped RegEx strings based on `rules.json`."
+
+### 5. Lack of Dependency Lockfile (Security)
+* **Issue:** `requirements.txt` relies on lower-bound version pinning, creating a significant software supply-chain risk if compromised library versions are pushed to PyPI.
+* **Actionable Agent Prompt:** 
+  > "Implement a strict dependency lockfile for `fundexpert` by introducing a frozen `requirements.txt` generated by `pip-tools`, or standardizing on a modern package manager lockfile like `uv.lock`."
+
+### 6. Redundant DataFrame Copies in Data Scoring (Performance)
+* **Issue:** Modules like `horizon.py` allocate a full replica of the DataFrame before appending columns, and `score.py` coerces series inefficiently, creating intermediate garbage allocations.
+* **Actionable Agent Prompt:** 
+  > "Optimize `scoring/horizon.py` and `scoring/score.py` by removing deep `.copy()` operations, relying instead on safe in-place `.loc` assignments. Utilize direct NumPy conversion `.to_numpy(dtype=np.float32, na_value=7.0)` for sequential mathematics."
+
+---
+
+## P2: Minor Findings & Enhancements
+
+### 1. Incomplete Taxonomy for Silver Funds (Business Logic)
+* **Issue:** Silver funds are not explicitly mapped to `precious_metals` and bypass diversity caps.
+* **Actionable Agent Prompt:** 
+  > "Update `fundexpert/rules.json` to correctly classify 'GÜMÜŞ' keyword funds into the `precious_metals` bucket."
+
+### 2. Concurrent Network Fetches Scaling Limits (Performance)
+* **Issue:** I/O concurrency for Tavily searches is capped at 10 workers, prolonging network wait times unnecessarily.
+* **Actionable Agent Prompt:** 
+  > "Increase `NEWS_MAX_WORKERS` in `config.py` to 25 to improve parallel HTTP fetching."
+
+### 3. Explicit TLS Context and JSON Boundary Risks (Security)
+* **Issue:** `urllib.request.urlopen` lacks an explicitly generated `ssl_context`, and oversized 5MB responses fail silently as `JSONDecodeError`.
+* **Actionable Agent Prompt:** 
+  > "Update `fundexpert/news/tavily.py` to pass an explicitly instantiated `ssl.create_default_context()` to `urlopen` and log a specific warning when responses exactly reach the 5MB cutoff."
+
+### 4. Edge Cases Missing Test Coverage (Testing)
+* **Issue:** Handlers for file bounds (`MAX_CSV_SIZE_BYTES`), network `HTTPS` protocol blocking, and caching `OSError` fallback are currently untested.
+* **Actionable Agent Prompt:** 
+  > "Add mock tests using `pytest.monkeypatch` in `tests/` to deliberately simulate oversized CSV files, HTTP protocol deviations, and OS filesystem failures to exercise uncovered edge cases."
+
+### 5. Procedural Pandera Validation (Architecture)
+* **Issue:** Calling `Schema.validate()` directly inside transform functions clutters domain logic.
+* **Actionable Agent Prompt:** 
+  > "Refactor `pandera` validations to use idiomatic `@pa.check_output` decorators that can be toggled globally via configuration."

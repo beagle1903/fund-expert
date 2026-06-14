@@ -1,36 +1,43 @@
-# Business Logic Review: fundexpert
+# Business Logic Review Report: `fundexpert`
 
-## Overview
-I have conducted a deep review of the `fundexpert` codebase focusing on the correctness of its core domain logic: Turkish investment-fund portfolio selection, scoring, capping, and the negative-news penalty module.
+## Executive Summary
+The core business logic of `fundexpert` is robust and well-designed. It utilizes a sound quantitative scoring model with min-max normalization, an elegant largest-remainder weight distribution algorithm, and strict diversity caps for both strategy and sector. 
 
-The system is highly robust. The pipeline is thoughtfully constructed with defense-in-depth measures protecting against data anomalies, edge cases in the Turkish locale, and search API hallucinations.
+However, the review has identified several flaws that affect portfolio construction and accuracy. The most critical issue is a statistical seasonality bias in the horizon scoring mechanism (P0), followed by survivorship bias in historical return evaluations (P1) and a missing regulatory filter for retail investors (P1).
 
-## Findings
+## Detailed Findings
 
-### 1. Scoring & Normalization (P0 - Flawless)
-- **Min-Max Normalization (`scoring/normalize.py`)**: Safely handles outliers by clipping at the 1st and 99th percentiles, ensuring extreme values do not distort the `[0, 1]` scale. Constant inputs are gracefully degraded to a neutral `0.5` score.
-- **Risk Penalty (`scoring/score.py`)**: The SRRI penalty scales quadratically `lam * ((risk - 1)/6)²`. This perfectly maps SRRI `1–7` to a `[0, 1]` curve, harshly penalizing high risk when the user sets a "low" risk tolerance (`lam=0.60`) while nearly ignoring it for "high" (`lam=0.05`). A missing risk level conservatively falls back to `7.0`.
-- **Weighting Coefficients**: Setting the base return weight to `1.0` and scaling volume and fee weights between `[0.10, 0.60]` ensures that historical returns act as the primary driver, while volume and fees serve as meaningful secondary tie-breakers.
+### [P0] `ret_ytd` Introduces Seasonality Bias into the "Medium" Horizon Score
+- **Location:** `fundexpert/config.py` (`DEFAULT_SCORING_CONFIG.horizon_buckets`)
+- **Issue:** The `medium` bucket averages `ret_6m`, `ret_ytd`, and `ret_1y`. Because `ret_ytd` (Year-to-Date) spans a variable timeframe depending on the current date (1 month in February vs. 11 months in December), the "medium" score will exhibit heavy seasonality. This shifts the quantitative weight of recent versus historical performance based solely on the calendar month.
+- **Risk:** Inconsistent scoring results across the year.
 
-### 2. Diversification Caps (P0 - Flawless)
-- **Sector and Strategy Mapping (`select/sector.py`, `select/strategy.py`)**: The strategy and sector mappings apply strict `first-match` substring logic, allowing granular control without relying on the overly broad TEFAS umbrella types. Extracting themes directly from the `fon_adi` string is the correct approach.
-- **Turkish Case Normalization**: The pipeline correctly mirrors the `turkish_upper` rules (`i -> İ`, `ı -> I`) inline via Pandas string replacements before mapping names to buckets, averting locale-blind matching failures.
-- **Exemptions (`select/pick.py`)**: The `diversified` sector is deliberately exempt from the sector cap. The logic correctly tracks counts but deliberately bypasses the `continue` drop condition. The dual-cap (max per strategy AND max per sector) solves the vulnerability where multiple themed funds (e.g., 5 tech funds) could saturate the portfolio if they had different umbrella strategies.
+### [P1] Unintended Survivorship Bias via `skipna=False` in Horizon Means
+- **Location:** `fundexpert/scoring/horizon.py` (`apply_horizon`)
+- **Issue:** Averaging return columns with `skipna=False` strictly drops any fund missing *even one* metric in the bucket. For the `long` horizon (`ret_3y`, `ret_5y`), this enforces a strict 5-year track record, automatically dropping strong thematic funds that are, for example, 4.5 years old. Given the rapid expansion of the Turkish fund market, this aggressively excludes high-performing modern funds.
+- **Risk:** Exclusion of competitive funds; artificial limitation of the candidate pool.
 
-### 3. Horizon Buckets (P1 - Contextual Observation)
-- **Strict NaN Dropping (`scoring/horizon.py`)**: `skipna=False` intentionally excludes a fund if it lacks *any* return in the selected horizon bucket. For example, a 9-month-old fund will be dropped from the "medium" horizon because it lacks `ret_1y`. This is correct financial logic: funds must possess a verifiable track record across the entirety of the chosen horizon.
-- **YTD Volatility (`config.py`)**: The `medium` horizon bucket averages `ret_6m`, `ret_ytd`, and `ret_1y`. Note that the Year-To-Date (`ret_ytd`) metric's duration varies wildly depending on the calendar month (i.e., a 1-month return in February vs. an 11-month return in December). While averaging smooths this, users running the tool early in the year will have the `medium` bucket skewed slightly more toward short-term momentum. Given typical TEFAS usage, this is acceptable but worth acknowledging.
+### [P1] Missing "Serbest" (Hedge Fund) Exclusion
+- **Location:** `fundexpert/data/merge.py` (`clean_candidates`)
+- **Issue:** The pipeline correctly filters out "OKS" (auto-enrollment pension) funds but leaves "Serbest" (Free/Hedge) funds. In Turkey, Serbest funds legally require a "Nitelikli Yatırımcı" (Qualified Investor) status (>1M TRY in assets). Retail users running this tool will receive recommendations they cannot legally purchase through their broker.
+- **Risk:** Poor user experience and recommending un-investable assets to standard retail users.
 
-### 4. News Penalty Module (P0 - Flawless)
-- **Prefix Extraction (`news/match.py`)**: Reliably trims the fund name to isolate the portfolio management company (e.g., `AK PORTFÖY`), allowing the search query to focus on the actual corporate entity rather than the esoteric fund name.
-- **Query Bounding & Parallelism (`news/penalty.py`)**: The system smartly limits the expensive API calls to `3 * N` candidates rather than querying the entire 1000+ universe. By bucketing funds by their company prefix before submitting parallel requests, the system prevents duplicate queries for sister funds managed by the same company.
-- **Defense-In-Depth Validation (`news/tavily.py`)**:
-    - **Server-Side Trust**: Forwarding the curated `NEWS_DOMAIN_ALLOWLIST` blocks spam, forums, and unrelated social media platforms natively at the search provider level.
-    - **Client-Side Exclusion**: Filtering out URLs containing `"portfoy"` or `"portföy"` cleanly neutralizes publisher bias by issuer-owned domains.
-    - **Anti-Hallucination**: Extracting and re-validating the presence of negative keywords against `turkish_lower(title + " " + content)` acts as an excellent safeguard against the search API returning irrelevant results.
+### [P2] Incomplete Taxonomy for Silver ("GÜMÜŞ") Funds
+- **Location:** `fundexpert/rules.json`
+- **Issue:** Silver funds (containing "GÜMÜŞ" in the name) are not mapped to `precious_metals` and will bypass the cap, falling into the generic `other` bucket (or `fund_of_funds` if they contain "FON SEPETİ"). 
+- **Risk:** The portfolio could inadvertently become concentrated in precious metals if multiple gold and silver funds are picked independently.
 
-### 5. Final Weighting Mathematics (P0 - Flawless)
-- **Largest-Remainder Method (`select/weights.py`)**: Distributing the 100% total allocation into 5% increment units using the largest-remainder method guarantees precision without fractional shares, summing perfectly to 100%. Providing a 5% baseline ensures no selected fund sits in the portfolio trivially.
+### [P2] IDNA (Punycode) Bypass in News Domain Exclusions
+- **Location:** `fundexpert/news/tavily.py` (`_is_excluded`)
+- **Issue:** The client-side filter checks for `"portföy"` in the hostname. If an issuer domain actually uses the Turkish character (e.g., `akportföy.com.tr`), `urllib.parse` resolves its hostname to its punycode equivalent (`xn--akportfy-t4a.com.tr`). The substring check will fail to match `"portföy"`.
+- **Risk:** Minor edge case where issuer-owned domains using non-ASCII characters might bypass the exclusion filter.
 
-## Summary
-The business logic implementation in `fundexpert` is highly accurate, logically cohesive, and resilient against anomalies. All constraints specified in the prompt/domain rules are faithfully satisfied. No critical bugs or misalignments were found in the core algorithms.
+---
+
+## Recommended Fixes
+
+1. **Fix Seasonality Bias:** Update `config.py` to remove `ret_ytd` from the `medium` horizon bucket, sticking to fixed-window metrics like `("ret_6m", "ret_1y")`.
+2. **Loosen Survivorship Restrictions:** Update `horizon.py` to use `df[cols].mean(axis=1, skipna=True)` while ensuring a minimum track record by verifying that at least the shortest period in the bucket exists (e.g., `if not df[cols[0]].isna()`).
+3. **Filter Qualified-Investor Funds:** Add a regex filter to `clean_candidates` in `merge.py` to exclude funds with `\bSERBEST\b` in their name or umbrella type, mirroring the `OKS` exclusion. Alternatively, make this a configurable CLI flag.
+4. **Update Strategy Caps:** Add `["GÜMÜŞ", "precious_metals"]` to `bucket_rules` in `rules.json`.
+5. **Robust Exclusions:** Rely primarily on the ASCII `"portfoy"` substring in `NEWS_EXCLUDED_DOMAIN_SUBSTRINGS` (which is already implemented and covers 99% of instances) or decode punycode in `_is_excluded` before doing the substring check.

@@ -141,6 +141,7 @@ def _write_cache(cache_dir: Path, key: str, hits: list[NewsHit]) -> None:
                 ],
             }, tmp, ensure_ascii=False)
             tmp_name = tmp.name
+        os.chmod(tmp_name, 0o600)
         os.replace(tmp_name, path)
     except OSError as e:
         logger.info("News cache write failed: %s", e)
@@ -171,10 +172,26 @@ def _post_tavily(query: str, api_key: str, max_age_days: int,
     )
     if not req.full_url.startswith("https://"):
         raise ValueError(f"Sadece HTTPS desteklenir, verilen URL: {req.full_url}")
-    with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
+    
+    import ssl
+    context = ssl.create_default_context()
+    max_retries = 2
+    for attempt in range(max_retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_seconds, context=context) as resp:
+                raw_data = resp.read(5 * 1024 * 1024)
+                if len(raw_data) == 5 * 1024 * 1024:
+                    logger.warning("Tavily response exactly 5MB, likely truncated.")
+                data = json.loads(raw_data.decode("utf-8"))
+            break
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 500, 502, 503, 504) and attempt < max_retries:
+                time.sleep(2 ** attempt)
+                continue
+            raise
         
     valid_results = []
+    lower_keywords = [turkish_lower(k) for k in keywords]
     for r in data.get("results", []):
         title = r.get("title", "").strip()
         url = r.get("url", "")
@@ -184,7 +201,7 @@ def _post_tavily(query: str, api_key: str, max_age_days: int,
             
         # Client-side validation: ensure at least one keyword is actually present
         text_to_check = turkish_lower(title + " " + content)
-        if keywords and not any(turkish_lower(k) in text_to_check for k in keywords):
+        if lower_keywords and not any(k in text_to_check for k in lower_keywords):
             continue
             
         valid_results.append(

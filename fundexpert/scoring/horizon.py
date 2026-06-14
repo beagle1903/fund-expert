@@ -5,15 +5,11 @@ import pandas as pd
 from fundexpert.config import ScoringConfig
 
 
-def apply_horizon(df: pd.DataFrame, horizon: str, scoring_config: ScoringConfig) -> pd.DataFrame:
-    """Add column `R` = mean of horizon-bucket return columns; drop all-NaN rows.
-
-    `df.attrs["excluded_count"]` is set to the number of rows dropped.
-    """
+def apply_horizon(df: pd.DataFrame, horizon: str, scoring_config: ScoringConfig) -> tuple[pd.DataFrame, int]:
+    """Add column `R` = mean of horizon-bucket return columns; drop rows that are missing minimum track record."""
     cols = list(scoring_config.horizon_buckets[horizon])
-    R = df[cols].mean(axis=1, skipna=False)
-    keep_mask = R.notna()
-    out = df.loc[keep_mask].copy()
-    out["R"] = R[keep_mask]
-    out.attrs["excluded_count"] = int((~keep_mask).sum())
-    return out
+    R = df[cols].mean(axis=1, skipna=True)
+    # Require at least the shortest period (cols[0]) to exist to ensure a minimum track record
+    keep_mask = df[cols[0]].notna()
+    out = df.loc[keep_mask].assign(R=R[keep_mask])
+    return out, int((~keep_mask).sum())

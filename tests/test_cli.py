@@ -4,7 +4,11 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from fundexpert.cli import main, _load_one
+from fundexpert.cli import main, DATA_ROOT
+from fundexpert.data.loader import load_candidates_for_universe
+
+def _load_one(universe):
+    return load_candidates_for_universe(universe, DATA_ROOT)
 from fundexpert.pipeline import run_pipeline, PipelineConfig, PipelineResult
 from fundexpert.ui import prompt_user, ensure_utf8_stdio
 
@@ -44,7 +48,7 @@ def fake_universe_loader():
         "max_total_expense_pct": [3.0, 4.0, 1.5],
     })
     frames = UniverseData(getiri=getiri, buyukluk=buyukluk, yonetim_ucreti=yonetim)
-    with patch("fundexpert.cli.load_universe", return_value=frames):
+    with patch("fundexpert.data.loader.load_universe", return_value=frames):
         yield
 
 

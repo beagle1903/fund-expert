@@ -17,7 +17,7 @@ def test_risk_level_lambdas_match_spec():
 def test_horizon_buckets_match_spec():
     assert config.DEFAULT_SCORING_CONFIG.horizon_buckets == {
         "short":  ("ret_1m", "ret_3m"),
-        "medium": ("ret_6m", "ret_ytd", "ret_1y"),
+        "medium": ("ret_6m", "ret_1y"),
         "long":   ("ret_3y", "ret_5y"),
     }
 

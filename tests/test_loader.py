@@ -68,3 +68,14 @@ def test_loader_renames_columns_to_internal_names(fixtures_dir):
     expected_yonetim = {"fon_kodu", "applied_management_fee_pct",
                         "bylaw_management_fee_pct"}
     assert expected_yonetim.issubset(set(frames.yonetim_ucreti.columns))
+
+
+def test_loader_rejects_large_csv(fixtures_dir, monkeypatch):
+    import fundexpert.data.loader
+    monkeypatch.setattr(fundexpert.data.loader, "MAX_CSV_SIZE_BYTES", 0)
+    with pytest.raises(ValueError, match="exceeds size limit"):
+        load_universe(
+            getiri_path=fixtures_dir / "getiri_small.csv",
+            buyukluk_path=fixtures_dir / "buyukluk_small.csv",
+            yonetim_path=fixtures_dir / "yonetim_small.csv",
+        )

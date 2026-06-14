@@ -34,6 +34,11 @@ def test_pick_top_returns_partial_with_warning_when_cap_blocks(scored):
     assert "3 of requested 5" in warning
 
 
+def test_pick_top_raises_value_error_if_n_gt_20(scored):
+    with pytest.raises(ValueError, match="Cannot pick more than 20 funds due to weight granularity constraints."):
+        pick_top(scored, n=21, max_per_type=2)
+
+
 def test_pick_top_returns_empty_when_pool_empty():
     empty = pd.DataFrame(columns=["fon_kodu", "strategy", "score"])
     out, warning = pick_top(empty, n=3, max_per_type=2)
@@ -134,3 +139,21 @@ def test_pick_property_invariants(df, n, max_per_type, max_per_sector):
     scores = out["score"].tolist()
     for i in range(len(scores) - 1):
         assert scores[i] >= scores[i + 1]
+
+@settings(suppress_health_check=[HealthCheck.too_slow], deadline=None)
+@given(
+    df=data_frames(
+        columns=[
+            column("fon_kodu", elements=st.text(min_size=1)),
+            column("strategy", elements=st.sampled_from(["equity", "debt", "mixed", "money_market"])),
+            column("sector", elements=st.sampled_from(["tech", "health", "diversified", "finance"])),
+            column("score", elements=st.floats(min_value=-1, max_value=1, allow_nan=False, allow_infinity=False))
+        ]
+    ),
+    n=st.integers(min_value=1, max_value=20),
+)
+def test_pick_cap_bypass_invariant(df, n):
+    if len(df) == 0:
+        return
+    out, _ = pick_top(df, n=n, max_per_type=n, max_per_sector=n)
+    assert len(out) == min(n, len(df))

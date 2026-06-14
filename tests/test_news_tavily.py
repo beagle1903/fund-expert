@@ -33,17 +33,12 @@ def cache_dir(tmp_path):
     return tmp_path / "news_cache"
 
 
-def _fake_response(payload: dict):
-    """Return an object usable as the context-manager result of urlopen()."""
-    body = json.dumps(payload).encode("utf-8")
-
+def _fake_response(data: dict | list):
     class _Resp:
-        def __enter__(self_inner):
-            return self_inner
-        def __exit__(self_inner, *_a):
-            return False
-        def read(self_inner):
-            return body
+        def read(self, size=-1):
+            return json.dumps(data).encode("utf-8")
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
     return _Resp()
 
 
@@ -117,13 +112,32 @@ def test_query_returns_empty_on_malformed_json(cache_dir, caplog):
     class _BadResp:
         def __enter__(self_inner): return self_inner
         def __exit__(self_inner, *_a): return False
-        def read(self_inner): return b"not json {{"
+        def read(self_inner, size=-1): return b"not json {{"
     with patch("urllib.request.urlopen", return_value=_BadResp()):
         hits = query_negative_news(
             "X PORTFÖY", ("dava",), api_key="k", cache_dir=cache_dir,
         )
     assert hits == []
     assert "başarısız" in caplog.text
+
+
+def test_query_warns_on_exactly_5mb_response(cache_dir, caplog):
+    class _BigResp:
+        def read(self, size=-1):
+            return b" " * (5 * 1024 * 1024)
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+    with patch("urllib.request.urlopen", return_value=_BigResp()):
+        with patch("json.loads", return_value={"results": []}):
+            query_negative_news("AK PORTFÖY", ("ceza",), api_key="k", cache_dir=cache_dir)
+    assert "exactly 5MB" in caplog.text
+
+
+def test_query_raises_valueerror_on_non_https(cache_dir):
+    with patch("urllib.request.Request") as mock_req:
+        mock_req.return_value.full_url = "http://api.tavily.com/search"
+        with pytest.raises(ValueError, match="Sadece HTTPS desteklenir"):
+            query_negative_news("FOO", ("ceza",), api_key="k", cache_dir=cache_dir)
 
 
 def test_query_skips_when_prefix_or_keywords_empty(cache_dir):

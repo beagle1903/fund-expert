@@ -1,29 +1,34 @@
-# Architecture Review: Fund Expert
+# Architecture Review: fundexpert
 
-## Overview
-`fundexpert` follows a robust procedural pipeline architecture. The application revolves around a well-defined sequence of stateless transformations on Pandas DataFrames. Data flow proceeds predictably:
-Data Loading/Merging -> Scoring -> Domain Selection (Sector/Strategy Caps) -> Weight Allocation -> Rendering.
+## Executive Summary
+The `fundexpert` codebase exhibits a strong, modular architecture built around the "Functional Core, Imperative Shell" pattern. Data flows linearly through a series of pure and deterministic dataframe transformations (`clean` -> `horizon` -> `score` -> `penalize` -> `pick` -> `weight`). Type-safety and data contracts are clearly defined using `pandera` schemas, and external side-effects (like the Tavily API integration and CLI orchestration) are cleanly bounded. Overall architectural integrity is high, but there are opportunities to improve dependency injection, eliminate inline environment variable checks, and decouple the main pipeline orchestrator from concrete constants.
 
-## Findings: Separation of Concerns
+## Detailed Findings
 
-### Strengths
-- **Pipeline Stage Isolation**: Distinct modules (`loader`, `scoring`, `select`, `render`) handle focused domain steps. The system acts on DataFrames sequentially without hidden state mutations or circular dependencies.
-- **Schema Validation**: The data ingestion layer leverages `pandera` schemas (`data/merge.py`), ensuring clean, strongly-typed data structures before hitting core business logic.
-- **News Module Encapsulation**: The negative-news system (`news/penalty.py`) perfectly abstracts its complexity. External API orchestration, caching, and concurrent ThreadPool execution are fully hidden from the mainline pipeline. The module implements a robust fail-soft design.
-- **Orthogonal Selection Logic**: The domain concepts of `Strategy` and `Sector` are treated as independent limits. This prevents portfolio concentration gracefully, acknowledging domain realities (e.g. "Tech" funds mapping to multiple strategy umbrellas).
+### P1 Findings (Important)
+*   **Leaky Configuration and Missing Dependency Injection (DI) in `pipeline.py`**:
+    *   `pipeline.py` imports a large number of constants directly from `config.py` (e.g., `NEGATIVE_NEWS_KEYWORDS`, `NEWS_DOMAIN_ALLOWLIST`, `NEWS_CACHE_DIR`). This circumvents the `PipelineConfig` object, making it harder to test the news module with different parameters without monkeypatching globals.
+    *   *Impact*: Reduces testability and violates the Open/Closed Principle.
+*   **Environment Variable Coupling in Domain Logic**:
+    *   Both `pipeline.py` and `data/merge.py` contain inline checks like `if os.environ.get("DEBUG") == "1":`. The domain code should not be aware of system environment variables. Validation toggles should be injected through configuration or managed via decorators.
+    *   *Impact*: Blurs the line between system environment and domain rules, complicating testing and execution environments.
+*   **Orchestrator Monolithism in `pipeline.py`**:
+    *   `run_pipeline` does too much orchestration logic that could be encapsulated. For example, it directly manages the `concurrent.futures.ThreadPoolExecutor` for the news penalty pass instead of delegating the execution strategy to `apply_negative_news_penalty`.
+    *   *Impact*: `pipeline.py` is bloated and overly aware of the news processing internals.
 
-### Areas for Improvement
-- **`cli.py` Responsibility Overload**: The `cli.py` module orchestrates user prompting, argument parsing, file I/O (last-run history saving), character encoding (`_ensure_utf8_stdio`), *and* pipeline invocation. Extracting the prompting logic and history management into a `session` or `config_builder` module would drastically improve separation of concerns.
-- **Leaky Text Normalization**: Turkish string capitalization `(df["fon_adi"].str.replace("i", "İ").str.replace("ı", "I").str.upper())` happens inline within `pipeline.py`. `select/strategy.py` explicitly states it assumes strings are "already fully normalized and uppercased by pipeline.py". This logic should be centralized into a reusable `utils/string.py` function, or pushed upstream into the `clean_candidates` preprocessing step.
-- **Pipeline Return Signature**: `run_pipeline` returns a bulky 4-element tuple (`weighted, header, hits_for_render, news_meta`). Refactoring this to yield a `PipelineResult` dataclass would create a cleaner, less fragile API interface for the rendering stage.
-- **Counter-factual Analysis Bleed**: `pipeline.py` recalculates a counter-factual portfolio (`scored_pre`) to determine which funds were displaced by news penalties. While functionally correct, this clutters the primary orchestrator with analytical "what-if" logic.
+### P2 Findings (Minor)
+*   **Pandera Schema Validation Pattern**:
+    *   Schemas are validated procedurally via `Schema.validate(df)` inside `if` blocks. This clutters the core pipeline logic. The idiomatic approach in `pandera` is to use `@pa.check_output` or `@pa.check_types` decorators, which can be globally disabled/enabled based on configuration without bleeding into the functions themselves.
+*   **Hardcoded I/O Expectations in `data/loader.py`**:
+    *   `load_candidates_for_universe` expects specifically named files (`getiri.csv`, `buyukluk.csv`, `yonetim ucreti.csv`). While this matches TEFAS/BEFAS standard exports, it makes the data ingestion layer rigid to format changes.
 
-## Maintainability & Quality
-- **Extensive Test Coverage**: The `tests/` directory boasts comprehensive module-level coverage (20 distinct test files). This aligns excellently with maintainability goals.
-- **Centralized Configuration**: `config.py` acts as a highly effective single source of truth for tunable business logic (priority weights, risk lambdas, API constraints, and cache policies).
-- **Clear Code Conventions**: Type hinting is heavily utilized, leading to an auditable and highly readable codebase.
+## Recommended Fixes (Actionable Agent Prompts)
 
-## Actionable Recommendations
-1. **P1: Centralize Normalization**: Create a `utils/string.py` helper for Turkish character uppercase normalization and apply it during the data merge or clean steps.
-2. **P2: Refactor Pipeline Outputs**: Introduce a `PipelineResult` dataclass in `pipeline.py` to encapsulate the multiple artifacts returned by the pipeline.
-3. **P3: Decouple CLI**: Extract the interactive questionary routines and `_save_last_run`/`_load_last_run` mechanisms into a dedicated UI/state controller separate from CLI entry and arg parsing.
+1.  **Extract News Configuration (P1)**:
+    *   *Prompt*: "Refactor `config.py` to group all news-related constants into a `NewsConfig` dataclass. Update `PipelineConfig` to accept `news_config: NewsConfig | None`, and remove all direct imports of news constants from `pipeline.py`. Pass the config down to `apply_negative_news_penalty`."
+2.  **Remove `os.environ` from Domain Code (P1)**:
+    *   *Prompt*: "Remove `os.environ.get("DEBUG")` checks from `pipeline.py` and `data/merge.py`. Instead, use `validate_schemas` from `PipelineConfig` (for `pipeline.py`), and update `merge_universe` to accept a boolean flag or rely entirely on pandera decorators configured centrally."
+3.  **Encapsulate Concurrency in News Module (P1)**:
+    *   *Prompt*: "Move the `ThreadPoolExecutor` instantiation out of `pipeline.py` and into `apply_negative_news_penalty` in `fundexpert/news/penalty.py` or a dedicated wrapper. `pipeline.py` should just call the penalty function without worrying about thread management."
+4.  **Adopt Pandera Decorators (P2)**:
+    *   *Prompt*: "Refactor schema validation to use `pandera` decorators (`@pa.check_output`) on the pipeline transformation functions. Configure a central mechanism to enable/disable validation based on the `DEBUG` environment variable at startup, keeping the domain functions clean."

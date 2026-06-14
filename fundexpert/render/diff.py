@@ -5,6 +5,7 @@ from typing import Any
 
 import pandas as pd
 from rich.console import Console
+from rich.markup import escape
 
 
 def render_diff(
@@ -60,7 +61,7 @@ def render_diff(
         console.print("  [green]+ Portföye girenler:[/green]")
         for p in entered:
             console.print(
-                f"    {p['fon_kodu']}  {p['fon_adi']}  "
+                f"    {escape(p['fon_kodu'])}  {escape(p['fon_adi'])}  "
                 f"ağırlık={p['weight_pct']}%  skor={p['score']:.2f}"
             )
 
@@ -68,7 +69,7 @@ def render_diff(
         console.print("  [red]− Portföyden çıkanlar:[/red]")
         for p in dropped:
             console.print(
-                f"    {p['fon_kodu']}  {p['fon_adi']}  "
+                f"    {escape(p['fon_kodu'])}  {escape(p['fon_adi'])}  "
                 f"ağırlık={p['weight_pct']}%  skor={p['score']:.2f}"
             )
 
@@ -83,6 +84,6 @@ def render_diff(
             score_diff = curr["score"] - prev["score"]
             sign = "+" if score_diff >= 0 else ""
             console.print(
-                f"    {curr['fon_kodu']}  {weight_str}  "
+                f"    {escape(curr['fon_kodu'])}  {weight_str}  "
                 f"skor {prev['score']:.2f}→{curr['score']:.2f} ({sign}{score_diff:.2f})"
             )
