@@ -17,6 +17,7 @@ about. It encapsulates:
 from __future__ import annotations
 
 import sys
+import concurrent.futures
 from pathlib import Path
 
 import pandas as pd
@@ -56,10 +57,8 @@ def apply_negative_news_penalty(
     if top_k <= 0 or scored.empty:
         return scored, {}
 
-    # Identify the top-K candidate indices by score.
-    top_indices = scored["score"].nlargest(top_k).index
-
-    import concurrent.futures
+    # Identify the top-K candidate indices by score (deterministic tie-breaking).
+    top_indices = scored.sort_values(["score", "fon_kodu"], ascending=[False, True]).head(top_k).index
 
     hits_by_code: dict[str, list[NewsHit]] = {}
     adjusted = scored.copy()

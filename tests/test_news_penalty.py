@@ -163,3 +163,15 @@ def test_network_exception_is_caught_gracefully(scored, cache_dir, capsys):
     assert hits == {}
     err = capsys.readouterr().err
     assert "Network down" in err
+
+def test_news_penalty_monotonicity(scored, cache_dir):
+    """If $Score(F_1) - Penalty < Score(F_2)$, hitting F_1 inverts rank ordering."""
+    def fake_query(company_prefix, **_kw):
+        return _make_hit() if company_prefix == "AK PORTFÖY" else []
+    with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
+        out, _ = apply_negative_news_penalty(
+            scored, top_k=5, api_key="k", 
+            news_config=NewsConfig(negative_news_keywords=("ceza",), negative_news_penalty=0.20, cache_dir=cache_dir)
+        )
+    assert out.loc[out["fon_kodu"] == "A", "score"].iloc[0] == pytest.approx(0.70)
+    assert out.loc[out["fon_kodu"] == "B", "score"].iloc[0] == pytest.approx(0.80)

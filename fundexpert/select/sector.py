@@ -11,47 +11,36 @@ sector cap (most non-themed funds live there).
 
 from __future__ import annotations
 
-import json
-import importlib.resources
-from functools import lru_cache
-
-@lru_cache(maxsize=1)
-def _get_sector_rules() -> tuple[tuple[str, str], ...]:
-    text = importlib.resources.files("fundexpert").joinpath("rules.json").read_text(encoding="utf-8")
-    _RULES = json.loads(text)
-    return tuple(tuple(r) for r in _RULES["sector_rules"])
-
+from fundexpert.utils.rules import get_sector_rules, get_cleanup_rules
 
 import re
 import pandas as pd
 
-@lru_cache(maxsize=1)
-def _get_sector_regex_map() -> tuple[str, dict[str, str]]:
-    rules = _get_sector_rules()
-    mapping = {k: v for k, v in rules}
-    keys = sorted(mapping.keys(), key=len, reverse=True)
-    pattern = f"({'|'.join(map(re.escape, keys))})"
-    return pattern, mapping
+import numpy as np
+import pandas as pd
 
 def _clean_names(names: pd.Series) -> pd.Series:
     """Vectorized cleanup of false positive issuer substrings before sector matching."""
-    res = names.str.replace(r"QNB SAĞLIK HAYAT(?: SİGORTA VE\s+EMEKLİLİK A\.Ş\.?)?", "QNB", regex=True)
-    res = res.str.replace(r"QNB FİNANS PORTFÖY", "QNB PORTFÖY", regex=True)
-    res = res.str.replace(r"TARIM KREDİ PORTFÖY", "TK PORTFÖY", regex=True)
-    return res
+    cleanup_rules = get_cleanup_rules()
+    if not cleanup_rules:
+        return names
+    return names.replace(cleanup_rules, regex=True)
 
 def sector_from_names(fon_adi_series: pd.Series) -> pd.Series:
     """Vectorized sector bucket assignment for a Pandas Series of names."""
-    pattern, mapping = _get_sector_regex_map()
     cleaned = _clean_names(fon_adi_series)
-    extracted = cleaned.str.extract(pattern, expand=False)
-    return extracted.map(mapping).fillna("diversified")
+    rules = get_sector_rules()
+    if not rules:
+        return pd.Series("diversified", index=fon_adi_series.index)
+    conditions = [cleaned.str.contains(k, case=False, na=False) for k, _ in rules]
+    choices = [v for _, v in rules]
+    return pd.Series(np.select(conditions, choices, default="diversified"), index=fon_adi_series.index)
 
 def _clean_name(name: str) -> str:
     """Cleanup false positive issuer substrings before sector matching."""
-    name = re.sub(r"QNB SAĞLIK HAYAT(?: SİGORTA VE\s+EMEKLİLİK A\.Ş\.?)?", "QNB", name)
-    name = re.sub(r"QNB FİNANS PORTFÖY", "QNB PORTFÖY", name)
-    name = re.sub(r"TARIM KREDİ PORTFÖY", "TK PORTFÖY", name)
+    cleanup_rules = get_cleanup_rules()
+    for pattern, repl in cleanup_rules.items():
+        name = re.sub(pattern, repl, name)
     return name
 
 def sector_from_name(fon_adi: str | None) -> str:
@@ -66,7 +55,7 @@ def sector_from_name(fon_adi: str | None) -> str:
         return "diversified"
     # Assume input is already fully normalized and uppercased by pipeline.py
     cleaned = _clean_name(stripped)
-    for keyword, bucket in _get_sector_rules():
+    for keyword, bucket in get_sector_rules():
         if keyword in cleaned:
             return bucket
     return "diversified"

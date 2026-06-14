@@ -1,83 +1,59 @@
-# Synthesis Report: fundexpert Parallel Code Review
+# Codebase Review Summary: `fundexpert`
 
-## Executive Summary
-A parallel code review was conducted by 5 specialized subagents across the `fundexpert` codebase. The architecture and test suites are fundamentally robust (96.57% test coverage, strong functional-core patterns, sub-200ms data processing times, and good terminal security). However, several significant issues in business logic, pipeline orchestration, string memory allocation, and data flow were identified.
+This document synthesizes the findings from 5 parallel subagents (Security, Architecture, Test Coverage, Performance, and Business Logic) that reviewed the `fundexpert` codebase.
 
-Below is a synthesized list of findings prioritized by severity (P0, P1, P2), along with suggested fixes formatted as actionable agent prompts.
+The overall health of the codebase is excellent. The architecture is stateless and testable, security practices are strict, and test coverage is at 97.25% with robust property-based testing. However, a few P1 separation-of-concerns and logical inconsistencies were found. 
 
----
-
-## P0: Critical Findings
-
-### 1. Seasonality Bias in Horizon Bucket (Business Logic)
-* **Issue:** The `medium` horizon bucket averages `ret_ytd` along with 6m and 1y returns. Because `ret_ytd` spans a changing timeframe based on the current calendar month, the "medium" score exhibits heavy seasonality and weights returns inconsistently across the year.
-* **Actionable Agent Prompt:** 
-  > "Update `fundexpert/config.py` to remove `ret_ytd` from the `medium` horizon bucket in `DEFAULT_SCORING_CONFIG`, ensuring it relies exclusively on fixed-window metrics like `('ret_6m', 'ret_1y')`."
-
-### 2. Inefficient Chained String Allocations in Core Pipeline (Performance)
-* **Issue:** The assignment `scored_fon_adi_upper` chaining `.fillna()`, `.str.translate()`, and `.str.upper()` allocates three separate temporary `pd.Series` of strings behind the scenes. This causes excessive memory overhead and consumes ~20% of the entire pipeline computation time.
-* **Actionable Agent Prompt:** 
-  > "Refactor the `scored_fon_adi_upper` assignment in `fundexpert/pipeline.py` to use a single pass list comprehension instead of chained Pandas string operations, thereby eliminating redundant cross-boundary series allocations."
+Below are the prioritized findings and their actionable agent prompts.
 
 ---
 
-## P1: Important Findings
-
-### 1. Strict Survivorship Bias in Horizon Means (Business Logic)
-* **Issue:** `apply_horizon` strictly drops a fund if even one return metric in the bucket is missing (e.g., dropping an otherwise excellent 4.5-year-old fund from the `long` horizon bucket because the 5-year return is missing).
-* **Actionable Agent Prompt:** 
-  > "Update `apply_horizon` in `fundexpert/scoring/horizon.py` to use `df[cols].mean(axis=1, skipna=True)`. Implement a check to ensure a minimum track record by verifying that at least the shortest period in the bucket is not NaN."
-
-### 2. Missing "Serbest" (Hedge Fund) Exclusion (Business Logic)
-* **Issue:** "Serbest" funds require a "Nitelikli Yatırımcı" (Qualified Investor) status, making them un-investable for standard retail users. Currently, they are not excluded and may be recommended.
-* **Actionable Agent Prompt:** 
-  > "Modify `clean_candidates` in `fundexpert/data/merge.py` to filter out 'Serbest' funds by adding a regex exclusion for `\bSERBEST\b` in the fund name or umbrella type, mirroring the existing OKS exclusion."
-
-### 3. Leaky Configuration and Orchestrator Monolithism (Architecture)
-* **Issue:** `pipeline.py` imports numerous constants directly from `config.py` bypassing `PipelineConfig`, manages concurrency internally, and directly checks `os.environ.get("DEBUG")` inside domain logic.
-* **Actionable Agent Prompt:** 
-  > "Refactor `config.py` to group news-related constants into a `NewsConfig` dataclass and integrate it into `PipelineConfig`. Remove direct environment checks from domain code (`pipeline.py`, `merge.py`), and encapsulate `ThreadPoolExecutor` within the news penalty module rather than orchestrating it directly in the pipeline."
-
-### 4. Sequential String Mapping for Categorization (Performance)
-* **Issue:** Python-based `map` loops iterate over string conditions sequentially for strategy/sector categorization, resulting in roughly ~74,000 string `in` operations per execution.
-* **Actionable Agent Prompt:** 
-  > "Refactor the categorization logic in `select/strategy.py` and `select/sector.py` to replace sequential Python `map` operations with compiled PyArrow regex operations using `pd.Series.str.extract()`, leveraging grouped RegEx strings based on `rules.json`."
-
-### 5. Lack of Dependency Lockfile (Security)
-* **Issue:** `requirements.txt` relies on lower-bound version pinning, creating a significant software supply-chain risk if compromised library versions are pushed to PyPI.
-* **Actionable Agent Prompt:** 
-  > "Implement a strict dependency lockfile for `fundexpert` by introducing a frozen `requirements.txt` generated by `pip-tools`, or standardizing on a modern package manager lockfile like `uv.lock`."
-
-### 6. Redundant DataFrame Copies in Data Scoring (Performance)
-* **Issue:** Modules like `horizon.py` allocate a full replica of the DataFrame before appending columns, and `score.py` coerces series inefficiently, creating intermediate garbage allocations.
-* **Actionable Agent Prompt:** 
-  > "Optimize `scoring/horizon.py` and `scoring/score.py` by removing deep `.copy()` operations, relying instead on safe in-place `.loc` assignments. Utilize direct NumPy conversion `.to_numpy(dtype=np.float32, na_value=7.0)` for sequential mathematics."
+## 🔴 P0 (Critical Issues)
+*None. No critical bottlenecks, logic failures, or security vulnerabilities were found.*
 
 ---
 
-## P2: Minor Findings & Enhancements
+## 🟠 P1 (High Priority / Significant Fixes)
 
-### 1. Incomplete Taxonomy for Silver Funds (Business Logic)
-* **Issue:** Silver funds are not explicitly mapped to `precious_metals` and bypass diversity caps.
-* **Actionable Agent Prompt:** 
-  > "Update `fundexpert/rules.json` to correctly classify 'GÜMÜŞ' keyword funds into the `precious_metals` bucket."
+### 1. Inconsistent Keyword Matching Priority (Vectorized vs Scalar) [Business Logic]
+The pipeline's vectorized classification extracts keywords based on textual appearance (left-to-right), whereas the scalar functions correctly enforce the priority defined in `rules.json`.
+* **Agent Prompt:** "Refactor the vectorized functions in `select/strategy.py` and `select/sector.py` (`bucket_from_names`, `sector_from_names`). Replace the current `str.extract(pattern)` approach with `np.select()` using an ordered list of boolean masks so that they perfectly enforce the JSON array priority matching the scalar versions."
 
-### 2. Concurrent Network Fetches Scaling Limits (Performance)
-* **Issue:** I/O concurrency for Tavily searches is capped at 10 workers, prolonging network wait times unnecessarily.
-* **Actionable Agent Prompt:** 
-  > "Increase `NEWS_MAX_WORKERS` in `config.py` to 25 to improve parallel HTTP fetching."
+### 2. Hardcoded Domain Rules & Cleanup Constants [Architecture]
+Business exclusion rules (like "OKS" and "SERBEST") and company-specific cleanups (like "QNB SAĞLIK HAYAT") are hardcoded directly inside `data/merge.py` and `select/sector.py`.
+* **Agent Prompt:** "Extract the hardcoded filter rules (OKS/SERBEST) from `data/merge.py` and the cleanup substitutions from `select/sector.py` into `rules.json`. Then, refactor the pipeline to read these exclusions from the configuration rather than hardcoding them in the pipeline data logic."
 
-### 3. Explicit TLS Context and JSON Boundary Risks (Security)
-* **Issue:** `urllib.request.urlopen` lacks an explicitly generated `ssl_context`, and oversized 5MB responses fail silently as `JSONDecodeError`.
-* **Actionable Agent Prompt:** 
-  > "Update `fundexpert/news/tavily.py` to pass an explicitly instantiated `ssl.create_default_context()` to `urlopen` and log a specific warning when responses exactly reach the 5MB cutoff."
+### 3. Duplicate Rule Loading Logic [Architecture]
+Both `select/strategy.py` and `select/sector.py` contain identical routines to load and parse `rules.json` into regex mappings.
+* **Agent Prompt:** "Create a new centralized module `fundexpert/utils/rules.py` to parse `rules.json`. Refactor `select/strategy.py` and `select/sector.py` to import and utilize this centralized parser to eliminate the DRY violation."
 
-### 4. Edge Cases Missing Test Coverage (Testing)
-* **Issue:** Handlers for file bounds (`MAX_CSV_SIZE_BYTES`), network `HTTPS` protocol blocking, and caching `OSError` fallback are currently untested.
-* **Actionable Agent Prompt:** 
-  > "Add mock tests using `pytest.monkeypatch` in `tests/` to deliberately simulate oversized CSV files, HTTP protocol deviations, and OS filesystem failures to exercise uncovered edge cases."
+### 4. Incomplete Test Coverage Invariants (Sector Exhaustiveness & News Monotonicity) [Test Coverage]
+Critical invariants are missing for the sector cap limits and the negative news penalties.
+* **Agent Prompt:** "Update `test_pick.py` and `test_news_penalty.py` to add two new Hypothesis invariants: 1) Sector Count Exhaustiveness: Ensure that if the portfolio is exactly N and the sector cap is C, there are at least `ceil(N/C)` distinct sectors. 2) News Penalty Monotonicity: Ensure that a negative penalty applied to $F_1$ correctly inverts rank ordering with $F_2$ given their score differential."
 
-### 5. Procedural Pandera Validation (Architecture)
-* **Issue:** Calling `Schema.validate()` directly inside transform functions clutters domain logic.
-* **Actionable Agent Prompt:** 
-  > "Refactor `pandera` validations to use idiomatic `@pa.check_output` decorators that can be toggled globally via configuration."
+### 5. Redundant Regex Evaluations & Missing Value Iterations [Performance]
+The pipeline does unnecessary multi-pass string and boolean scans during candidate cleaning and scoring.
+* **Agent Prompt:** "Optimize `data/merge.py` and `scoring/score.py`: In `clean_candidates`, combine the 'OKS' and 'SERBEST' checks into a single compiled regex `r'\b(?:OKS|SERBEST)\b'` to halve dataframe passes. In `score_candidates`, remove `risk_missing.any()` and just compute and check `risk_missing.sum() > 0`."
+
+---
+
+## 🟡 P2 (Medium / Low Priority / Tech Debt)
+
+### Architecture & Style
+* **Agent Prompt:** "Move the `DATA_ROOT` definition from `cli.py` to `config.py` to maintain a single source of truth for paths."
+* **Agent Prompt:** "Abstract the manual Turkish string uppercase normalization (`str.maketrans("iı", "İI")`) from `pipeline.py` into `utils/text.py`."
+* **Agent Prompt:** "Add a `HorizonCandidatesSchema` in `schemas.py` and enforce it before scoring in `scoring/score.py` to explicitly declare the required 'R' column dependency."
+* **Agent Prompt:** "Remove the duplicate `clean_candidates` import in `pipeline.py` and move the dynamic `concurrent.futures` import in `news/penalty.py` to the top of the file."
+
+### Performance
+* **Agent Prompt:** "In `data/loader.py`, switch string loading to PyArrow representations (`dtype='string[pyarrow]'`) and cast `Şemsiye Fon Türü` to `'category'` to reduce memory overhead."
+* **Agent Prompt:** "Optimize series copies in `scoring/score.py` by applying `np.maximum(df['aum_last'].fillna(0), 0)` directly instead of chaining `.fillna(0).clip(lower=0)`."
+
+### Test Coverage & Edge Cases
+* **Agent Prompt:** "Add a smoke test covering `__main__.py` to catch entry point regressions, and add tests for network exception branches in `tavily.py`."
+* **Agent Prompt:** "Add tests for all-NaN columns (e.g., missing `aum_last` for an entire dataset) and zero valid candidates to harden edge case handling."
+
+### Business Logic
+* **Agent Prompt:** "Ensure deterministic tie-breaking in `fundexpert/news/penalty.py` by sorting `scored` by `['score', 'fon_kodu']` descending before extracting `.head(top_k)`."
+* **Agent Prompt:** "Update the pandas NA casting semantics in `score_candidates`: Replace `df['risk'].to_numpy(dtype=np.float32, na_value=7.0)` with `df['risk'].fillna(7.0).to_numpy(dtype=np.float32)` for clarity and robustness."
+* **Agent Prompt:** "Review the 'other' strategy bucket to see if it should receive the same diversity cap exemption as the 'diversified' sector."

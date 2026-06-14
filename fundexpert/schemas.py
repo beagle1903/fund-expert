@@ -23,8 +23,11 @@ MergedUniverseSchema = pa.DataFrameSchema({
     "universe": pa.Column(str, coerce=True),
 })
 
-ScoredCandidatesSchema = MergedUniverseSchema.add_columns({
+HorizonCandidatesSchema = MergedUniverseSchema.add_columns({
     "R": pa.Column(float, coerce=True),
+})
+
+ScoredCandidatesSchema = HorizonCandidatesSchema.add_columns({
     "score": pa.Column(float, coerce=True),
     "strategy": pa.Column(str, coerce=True),
     "sector": pa.Column(str, coerce=True),

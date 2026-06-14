@@ -1,44 +1,61 @@
-# Test Coverage Review: fundexpert
+# Test Coverage & Quality Review: FundExpert
 
-## Executive Summary
-The test suite for `fundexpert` is exceptionally strong, achieving an overall **96.57% test coverage**. This comfortably exceeds the standard 90% benchmark. Most impressively, the core business logic—including data pipelines, scoring logic, constraint solvers (caps and weighting algorithms), and rendering layers—all boast **100% test coverage**. The test suite also robustly utilizes property-based testing (`hypothesis`) to enforce system invariants.
+## 1. Executive Summary
+The `fundexpert` codebase exhibits **excellent test coverage (97.25% overall)** and a high-quality test suite encompassing 207 tests. Testing methodologies are varied, combining classic unit tests (Pytest fixtures, parametrization) with property-based testing (Hypothesis) for critical mathematical components like scoring and weighting. The suite robustly handles numerous edge cases natively.
 
-The missing 3.43% consists entirely of OS-level error catching, edge-case network safeguards, and top-level CLI boilerplate that is notoriously difficult to hit without explicit monkey-patching. There are no severe coverage gaps or untested core flows.
+## 2. Coverage Findings
+**Total Coverage:** 97% (836 statements, 23 missed)
 
----
+**Areas Missing Coverage (P2 - Minor):**
+- `fundexpert/__main__.py` (0%): Typical entry point file, mostly boilerplate.
+- `fundexpert/cli.py` (91%): Some CLI interactions/branching paths are not fully covered.
+- `fundexpert/news/tavily.py` (93%): Missing a few edge case scenarios (likely related to network error handling branches or caching).
+- `fundexpert/ui.py` (95%), `fundexpert/data/merge.py` (96%), `fundexpert/render/diff.py` (97%), `fundexpert/news/report.py` (94%): Minor uncovered branches.
 
-## Detailed Findings
+**Actionable Steps:**
+- **[P2]** Add a quick integration/smoke test invoking `__main__.py` to catch any top-level module load errors.
+- **[P2]** Ensure network-related exception branches in `tavily.py` are fully mocked and asserted.
 
-### P0 (Critical Logic Gaps)
-**None.** 
-The data parsing, transformations, scoring engines, picking routines, and tabular UI modules are completely covered. The application guarantees correctness on all major use cases across its internal logic.
+## 3. Quality of Tests
+The test quality is **High**.
+- **Pytest Ecosystem:** Good use of `conftest.py` for fixtures. Heavy and effective use of `@pytest.mark.parametrize` makes the tests very readable and exhaustive without boilerplate code (e.g., parsing news names, picking buckets).
+- **Pandera Schemas:** Intermediate data boundaries are validated automatically in tests when `PYTEST_CURRENT_TEST` is set, acting as an implicit invariant assertion system.
+- **Mocking:** News API handles failures without relying on live endpoints during unit tests. Network exception handling is asserted.
+- **Smoke Tests:** `test_smoke.py` acts as an integration sanity check using real CSVs, preventing regressions from structural data shifts.
 
-### P1 (Important Edge Cases Missing Coverage)
-These misses revolve around infrastructure and outer bounds that should ideally be hardened using mocked environments.
+## 4. Property-Based Testing Invariants
+The team has integrated `Hypothesis` to effectively test the pure functional layers of the project (Scoring, Selection, and Weights).
 
-- **`fundexpert/news/tavily.py` (92% Coverage):** 
-  - Several exception handlers are uncovered. For example, malformed URL parsing (`ValueError` inside `urllib.parse.urlparse`), or `OSError` blocks where caching fails to write to disk.
-  - The security invariant that blocks non-HTTPS API traffic (lines 173-174: `if not req.full_url.startswith("https://")`) currently goes untested.
-- **`fundexpert/history/store.py` (95% Coverage):** 
-  - A fallback `except OSError` block (lines 59-60) designed to suppress failures when attempting to replace `last.json` is unexercised.
-- **`fundexpert/data/loader.py` (96% Coverage):** 
-  - The file size safeguard that throws a `ValueError` if the candidate dataset exceeds `MAX_CSV_SIZE_BYTES` (line 55) has no test case verifying its trigger.
+**Current Covered Invariants:**
+- **Score (`test_score.py`)**: 
+  - Bounds limits (-2.0 <= score <= 2.0).
+  - Returns monotonicity (higher R = higher score, given other parameters equal).
+  - Fees monotonicity (higher F = lower score, given other parameters equal).
+- **Pick (`test_pick.py`)**: 
+  - Result size bounds.
+  - Sector/Strategy cap bounding count checks.
+  - Bypass cap check (when N = caps).
+- **Weights (`test_weights.py`)**: 
+  - Sum exactly equals 100%.
+  - Every output weight is modulo 5 == 0.
 
-### P2 (Minor & Boilerplate Uncovered)
-These are acceptable misses typically excluded via `.coveragerc` or `pragma: no cover`.
+**Suggested New Invariants (P1 - Recommended):**
+- **[P1] Sector Count Exhaustiveness (`test_pick.py`)**: If the resulting portfolio is exactly N, and the sector cap is C, then there must be at least `ceil(N/C)` distinct sectors in the non-diversified picked funds.
+- **[P1] News Penalty Monotonicity (`test_news_penalty.py`)**: For a given pair of funds $F_1, F_2$ where $Score(F_1) > Score(F_2)$, applying a negative news penalty only to $F_1$ should correctly invert their rank ordering if $Score(F_1) - Penalty < Score(F_2)$.
+- **[P2] Horizon Averages (`test_horizon.py`)**: Generating arbitrary histories with identical returns across 1m, 3m, 6m, 1y should yield exactly the same return bucket value for `short`, `medium`, and `long` horizons.
 
-- **`fundexpert/__main__.py` & `fundexpert/cli.py`:**
-  - Standard top-level module execution boilerplate (`if __name__ == '__main__':`) and raw `KeyboardInterrupt` exit nodes.
-- **`fundexpert/ui.py`:**
-  - The fallback `except (OSError, ValueError): pass` inside `ensure_utf8_stdio()` which suppresses errors if stream reconfiguration fails on certain terminal emulators.
+## 5. Edge Cases Handled
+The codebase gracefully accommodates various real-world anomalies.
 
----
+**Currently Handled Edge Cases:**
+- Empty DataFrames safely pass through all pipeline stages without `IndexError`.
+- NaN or empty cells in the TEFAS/BEFAS CSV exports.
+- Equal scoring funds.
+- Negative scores (due to high risk penalties and/or bad news penalty) being mapped to valid display weights (minimum floor 5%).
+- High $N$ configuration (e.g. $N > 20$) automatically truncating or safely allocating base percentage units.
+- Tavily rate limits, JSON decoding errors, or timeouts.
 
-## Recommended Fixes
-
-To achieve an even tighter state and near-100% genuine coverage, implement the following quick fixes:
-
-1. **Test CSV Bounds:** In `test_loader.py`, use Pytest's `monkeypatch` to mock `path.stat().st_size` returning a value greater than `MAX_CSV_SIZE_BYTES` and `pytest.raises(ValueError)` to verify the system rejects bloated source files.
-2. **Network Protocol Validation:** In `test_news_tavily.py`, write a brief test passing an explicit HTTP (or ftp) endpoint string or monkey-patching `req.full_url` to assert the "HTTPS only" exception evaluates correctly.
-3. **Mock File System Fails:** In `test_history_store.py`, mock `os.replace` to deliberately throw an `OSError` to prove the application successfully silently handles and absorbs cache/storage misses without crashing the main user session.
-4. **Update Coverage Config:** Add `# pragma: no cover` to standard boilerplate lines such as `if __name__ == "__main__":` in `__main__.py` to ignore meaningless coverage dips.
+**Suggested Additional Edge Cases (P1 - Edge Case Hardening):**
+- **[P1] All-NaN Returns:** Test when an entire column (like `aum_last` or `applied_management_fee_pct`) is missing or filled with NaN for the entire dataset. Normalization mechanisms should handle global zero-variance.
+- **[P2] Zero valid candidates:** Behavior when the filtering (e.g. long horizon restrictions on young funds) drops the candidate pool entirely. The weights algorithm must return a clean, empty result.
+- **[P2] Extreme Outliers:** Fund returns going negative by > 100% or exploding to +10,000%. Verify that MinMax scaling limits bounds properly and doesn't squash the rest of the funds to identically 0 score.

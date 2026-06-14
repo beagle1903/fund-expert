@@ -8,33 +8,23 @@ diversity on the strategy implied by the fund's *name* instead.
 
 from __future__ import annotations
 
-import json
-import importlib.resources
-from functools import lru_cache
-
-@lru_cache(maxsize=1)
-def _get_bucket_rules() -> tuple[tuple[str, str], ...]:
-    text = importlib.resources.files("fundexpert").joinpath("rules.json").read_text(encoding="utf-8")
-    _RULES = json.loads(text)
-    return tuple(tuple(r) for r in _RULES["bucket_rules"])
+from fundexpert.utils.rules import get_bucket_rules
 
 
 import re
 import pandas as pd
 
-@lru_cache(maxsize=1)
-def _get_bucket_regex_map() -> tuple[str, dict[str, str]]:
-    rules = _get_bucket_rules()
-    mapping = {k: v for k, v in rules}
-    keys = sorted(mapping.keys(), key=len, reverse=True)
-    pattern = f"({'|'.join(map(re.escape, keys))})"
-    return pattern, mapping
+import numpy as np
+import pandas as pd
 
 def bucket_from_names(fon_adi_series: pd.Series) -> pd.Series:
     """Vectorized strategy bucket assignment for a Pandas Series of names."""
-    pattern, mapping = _get_bucket_regex_map()
-    extracted = fon_adi_series.str.extract(pattern, expand=False)
-    return extracted.map(mapping).fillna("other")
+    rules = get_bucket_rules()
+    if not rules:
+        return pd.Series("other", index=fon_adi_series.index)
+    conditions = [fon_adi_series.str.contains(k, case=False, na=False) for k, _ in rules]
+    choices = [v for _, v in rules]
+    return pd.Series(np.select(conditions, choices, default="other"), index=fon_adi_series.index)
 
 def bucket_from_name(fon_adi: str | None) -> str:
     """Return a coarse strategy bucket for a Turkish fund name.
@@ -47,7 +37,7 @@ def bucket_from_name(fon_adi: str | None) -> str:
     if not stripped:
         return "other"
     # Assume input is already fully normalized and uppercased by pipeline.py
-    for keyword, bucket in _get_bucket_rules():
+    for keyword, bucket in get_bucket_rules():
         if keyword in stripped:
             return bucket
     return "other"

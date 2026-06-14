@@ -59,7 +59,7 @@ def _read_one(path: Path, rename: dict[str, str]) -> pd.DataFrame:
         encoding="utf-8",
         decimal=",",
         usecols=list(rename.keys()),
-        dtype={"Fon Kodu": str, "Fon Adı": str, "Şemsiye Fon Türü": str},
+        dtype={"Fon Kodu": "string[pyarrow]", "Fon Adı": "string[pyarrow]", "Şemsiye Fon Türü": "category"},
     )
     return df.rename(columns=rename)
 

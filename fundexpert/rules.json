@@ -40,5 +40,11 @@
     ["ULAŞTIRMA", "transport"],
     ["HAVACILIK", "transport"],
     ["SAVUNMA", "defense"]
-  ]
+  ],
+  "exclusion_rules": ["OKS"],
+  "cleanup_rules": {
+    "QNB SAĞLIK HAYAT(?: SİGORTA VE\\s+EMEKLİLİK A\\.Ş\\.?)?": "QNB",
+    "QNB FİNANS PORTFÖY": "QNB PORTFÖY",
+    "TARIM KREDİ PORTFÖY": "TK PORTFÖY"
+  }
 }

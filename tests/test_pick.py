@@ -157,3 +157,28 @@ def test_pick_cap_bypass_invariant(df, n):
         return
     out, _ = pick_top(df, n=n, max_per_type=n, max_per_sector=n)
     assert len(out) == min(n, len(df))
+
+import math
+
+@settings(suppress_health_check=[HealthCheck.too_slow], deadline=None)
+@given(
+    df=data_frames(
+        columns=[
+            column("fon_kodu", elements=st.text(min_size=1)),
+            column("strategy", elements=st.sampled_from(["equity", "debt", "mixed", "money_market"])),
+            column("sector", elements=st.sampled_from(["tech", "health", "energy", "finance"])),
+            column("score", elements=st.floats(min_value=-1, max_value=1, allow_nan=False, allow_infinity=False))
+        ]
+    ),
+    n=st.integers(min_value=1, max_value=20),
+    max_per_sector=st.integers(min_value=1, max_value=5)
+)
+def test_pick_sector_count_exhaustiveness(df, n, max_per_sector):
+    if len(df) == 0:
+        return
+    out, _ = pick_top(df, n=n, max_per_type=20, max_per_sector=max_per_sector)
+    if len(out) == n:
+        non_div = out[out["sector"] != "diversified"]
+        if len(non_div) == n:
+            distinct_sectors = non_div["sector"].nunique()
+            assert distinct_sectors >= math.ceil(n / max_per_sector)

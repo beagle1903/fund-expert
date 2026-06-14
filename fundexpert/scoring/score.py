@@ -19,7 +19,7 @@ def score_candidates(
 ) -> pd.DataFrame:
     """Add `score` and `_breakdown` columns. Input must already have `R` (from horizon)."""
     R_hat = minmax_normalize(df["R"])
-    V_hat = minmax_normalize(np.log1p(df["aum_last"].fillna(0).clip(lower=0)))
+    V_hat = minmax_normalize(np.log1p(np.maximum(df["aum_last"].fillna(0), 0)))
     F_hat = minmax_normalize(df["applied_management_fee_pct"])
 
     # Priority → renormalized weights summing to 1.0
@@ -38,11 +38,11 @@ def score_candidates(
 
     lam = scoring_config.risk_level_lambdas[risk_level]
     risk_missing = df["risk"].isna()
-    if risk_missing.any():
-        missing_count = risk_missing.sum()
+    missing_count = risk_missing.sum()
+    if missing_count > 0:
         logger.warning("Filled missing risk ratings with 7.0 for %d funds.", missing_count)
         
-    risk_arr = df["risk"].to_numpy(dtype=np.float32, na_value=7.0)
+    risk_arr = df["risk"].fillna(7.0).to_numpy(dtype=np.float32)
     risk_norm = (risk_arr - 1.0) / 6.0
     risk_penalty = lam * (risk_norm ** 2)
 

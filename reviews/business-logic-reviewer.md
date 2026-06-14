@@ -1,43 +1,32 @@
-# Business Logic Review Report: `fundexpert`
+# Business Logic Review
 
-## Executive Summary
-The core business logic of `fundexpert` is robust and well-designed. It utilizes a sound quantitative scoring model with min-max normalization, an elegant largest-remainder weight distribution algorithm, and strict diversity caps for both strategy and sector. 
+## Overview
+A comprehensive review of the `fundexpert` codebase was conducted, focusing strictly on the correctness of business logic including mathematical scoring models, weight distribution algorithms, diversity capping semantics, and Turkish string handling. 
 
-However, the review has identified several flaws that affect portfolio construction and accuracy. The most critical issue is a statistical seasonality bias in the horizon scoring mechanism (P0), followed by survivorship bias in historical return evaluations (P1) and a missing regulatory filter for retail investors (P1).
+The core financial math—score weighting, risk penalties, top-N picking, diversity capping, and largest-remainder weight distribution—is mathematically sound, deterministic, and highly robust against edge cases (such as zero-division, track-record lengths, NAs, or ties).
 
-## Detailed Findings
+The findings below highlight isolated inconsistencies and improvements.
 
-### [P0] `ret_ytd` Introduces Seasonality Bias into the "Medium" Horizon Score
-- **Location:** `fundexpert/config.py` (`DEFAULT_SCORING_CONFIG.horizon_buckets`)
-- **Issue:** The `medium` bucket averages `ret_6m`, `ret_ytd`, and `ret_1y`. Because `ret_ytd` (Year-to-Date) spans a variable timeframe depending on the current date (1 month in February vs. 11 months in December), the "medium" score will exhibit heavy seasonality. This shifts the quantitative weight of recent versus historical performance based solely on the calendar month.
-- **Risk:** Inconsistent scoring results across the year.
+## P1 (High)
 
-### [P1] Unintended Survivorship Bias via `skipna=False` in Horizon Means
-- **Location:** `fundexpert/scoring/horizon.py` (`apply_horizon`)
-- **Issue:** Averaging return columns with `skipna=False` strictly drops any fund missing *even one* metric in the bucket. For the `long` horizon (`ret_3y`, `ret_5y`), this enforces a strict 5-year track record, automatically dropping strong thematic funds that are, for example, 4.5 years old. Given the rapid expansion of the Turkish fund market, this aggressively excludes high-performing modern funds.
-- **Risk:** Exclusion of competitive funds; artificial limitation of the candidate pool.
+**1. Inconsistent Keyword Matching Priority (Vectorized vs Scalar)**
+The pipeline utilizes vectorized extraction (`bucket_from_names`, `sector_from_names`) which assigns categories based on the **first keyword found reading left-to-right** in the fund name. However, the scalar functions (`bucket_from_name`, `sector_from_name`) iterate over `rules.json`, enforcing a **strict JSON array priority**.
+- **Impact:** For a fund named `"SAĞLIK VE TEKNOLOJİ FONU"`, the vectorized path extracts `"SAĞLIK"` (health) because it appears first in the text, whereas the scalar path correctly enforces priority and matches `"TEKNOLOJİ"` (tech) first because it appears earlier in `rules.json`. The scalar path is explicitly tested in `tests/`, but the pipeline relies entirely on the mismatched vectorized path.
+- **Suggested Fix:** Replace `str.extract(pattern)` in the vectorized functions with `np.select()` using an ordered list comprehension of boolean masks. This will enforce exact rule priority from `rules.json` while maintaining vectorization speed.
 
-### [P1] Missing "Serbest" (Hedge Fund) Exclusion
-- **Location:** `fundexpert/data/merge.py` (`clean_candidates`)
-- **Issue:** The pipeline correctly filters out "OKS" (auto-enrollment pension) funds but leaves "Serbest" (Free/Hedge) funds. In Turkey, Serbest funds legally require a "Nitelikli Yatırımcı" (Qualified Investor) status (>1M TRY in assets). Retail users running this tool will receive recommendations they cannot legally purchase through their broker.
-- **Risk:** Poor user experience and recommending un-investable assets to standard retail users.
+## P2 (Medium / Low)
 
-### [P2] Incomplete Taxonomy for Silver ("GÜMÜŞ") Funds
-- **Location:** `fundexpert/rules.json`
-- **Issue:** Silver funds (containing "GÜMÜŞ" in the name) are not mapped to `precious_metals` and will bypass the cap, falling into the generic `other` bucket (or `fund_of_funds` if they contain "FON SEPETİ"). 
-- **Risk:** The portfolio could inadvertently become concentrated in precious metals if multiple gold and silver funds are picked independently.
+**1. Non-Deterministic Tie-Breaking in News Query Selection**
+In `fundexpert/news/penalty.py`, the top-K funds to query are selected via `scored["score"].nlargest(top_k).index`. Pandas `.nlargest()` breaks ties based on insertion order. If two funds share the exact same float score at the Kth boundary, the inclusion is mathematically non-deterministic (though practically stable since insertion order is preserved from the data source).
+- **Suggested Fix:** Sort by `["score", "fon_kodu"]` descending before taking the `.head(top_k)` indices, exactly as `pick_top` does, ensuring rigorous deterministic tie-breaking.
 
-### [P2] IDNA (Punycode) Bypass in News Domain Exclusions
-- **Location:** `fundexpert/news/tavily.py` (`_is_excluded`)
-- **Issue:** The client-side filter checks for `"portföy"` in the hostname. If an issuer domain actually uses the Turkish character (e.g., `akportföy.com.tr`), `urllib.parse` resolves its hostname to its punycode equivalent (`xn--akportfy-t4a.com.tr`). The substring check will fail to match `"portföy"`.
-- **Risk:** Minor edge case where issuer-owned domains using non-ASCII characters might bypass the exclusion filter.
+**2. Potential Uncapped "Other" Strategy Bucket**
+While the `"diversified"` sector is explicitly exempt from the `max_per_sector` cap, the fallback strategy bucket `"other"` is still subject to the `max_per_type` cap. If a large number of valid funds fail to match any strategy keyword in `rules.json` due to naming anomalies, the pipeline will forcefully cap them at 2, potentially excluding viable candidates and triggering a "could not fill portfolio" warning prematurely.
+- **Suggested Fix:** Evaluate whether `"other"` should be granted a cap exemption analogous to the `"diversified"` sector, or explicitly document that strategy classification is mandatory for portfolio inclusion beyond the cap.
+
+**3. Ambiguous `np.float32` Casting on Pandas NA Values**
+In `score_candidates`, `df["risk"].to_numpy(dtype=np.float32, na_value=7.0)` correctly replaces NAs with `7.0` for safe computation. While this perfectly exploits Pandas' nullable Series API, it heavily relies on specific `na_value` casting semantics under the hood. 
+- **Suggested Fix:** For clarity and robustness across future Pandas versions, consider the more explicit `df["risk"].fillna(7.0).to_numpy(dtype=np.float32)`.
 
 ---
-
-## Recommended Fixes
-
-1. **Fix Seasonality Bias:** Update `config.py` to remove `ret_ytd` from the `medium` horizon bucket, sticking to fixed-window metrics like `("ret_6m", "ret_1y")`.
-2. **Loosen Survivorship Restrictions:** Update `horizon.py` to use `df[cols].mean(axis=1, skipna=True)` while ensuring a minimum track record by verifying that at least the shortest period in the bucket exists (e.g., `if not df[cols[0]].isna()`).
-3. **Filter Qualified-Investor Funds:** Add a regex filter to `clean_candidates` in `merge.py` to exclude funds with `\bSERBEST\b` in their name or umbrella type, mirroring the `OKS` exclusion. Alternatively, make this a configurable CLI flag.
-4. **Update Strategy Caps:** Add `["GÜMÜŞ", "precious_metals"]` to `bucket_rules` in `rules.json`.
-5. **Robust Exclusions:** Rely primarily on the ASCII `"portfoy"` substring in `NEWS_EXCLUDED_DOMAIN_SUBSTRINGS` (which is already implemented and covers 99% of instances) or decode punycode in `_is_excluded` before doing the substring check.
+*Note: Turkish string operations (`str.maketrans("iı", "İI")` combined with `.upper()`) have been rigorously tested and confirmed to be 100% accurate without causing regressions on standard Latin uppercase operations.*

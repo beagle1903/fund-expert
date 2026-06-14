@@ -14,6 +14,7 @@ from fundexpert.config import (
     HISTORY_DIR,
     LAST_RUN_FILE,
     NEWS_API_KEY_ENV,
+    DATA_ROOT,
 )
 from fundexpert.ui import ensure_utf8_stdio, load_last_run_state, prompt_user, save_last_run_state
 from fundexpert.pipeline import run_pipeline, PipelineConfig
@@ -24,7 +25,7 @@ import pandas as pd
 from fundexpert.data.loader import load_universe
 from fundexpert.data.merge import merge_universe
 
-DATA_ROOT = Path(os.environ.get("FUNDEXPERT_DATA_DIR", Path(__file__).resolve().parent.parent / "data"))
+
 
 
 from fundexpert.data.loader import load_candidates_for_universe

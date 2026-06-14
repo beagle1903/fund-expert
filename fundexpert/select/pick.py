@@ -37,7 +37,7 @@ def pick_top(
     for idx, bucket, sector in zip(sorted_df.index, sorted_df["strategy"], sectors):
         if len(selected_indices) >= n:
             break
-        if strat_counts.get(bucket, 0) >= max_per_type:
+        if bucket != "other" and strat_counts.get(bucket, 0) >= max_per_type:
             continue
         if apply_sector_cap:
             if sector != "diversified" and sector_counts.get(sector, 0) >= max_per_sector:

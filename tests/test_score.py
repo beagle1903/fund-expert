@@ -16,6 +16,8 @@ def horizon_ready():
         "aum_last":             [5.0, -2.0, 8.0],
         "applied_management_fee_pct": [1.0, 2.0, 0.5],
         "risk":                       [3, 6, 2],
+        "universe":                   ["tefas", "tefas", "tefas"],
+        "fon_adi":                    ["A", "B", "C"],
     })
 
 
@@ -37,6 +39,8 @@ def test_higher_R_with_equal_other_features_scores_higher():
         "aum_last":             [0.0, 0.0],
         "applied_management_fee_pct": [1.0, 1.0],
         "risk":                       [3, 3],
+        "universe":                   ["tefas", "tefas"],
+        "fon_adi":                    ["A", "B"],
     })
     out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     hi = out.loc[out["fon_kodu"] == "HI", "score"].iloc[0]
@@ -54,6 +58,8 @@ def test_higher_risk_loses_score_under_low_risk_level():
         "aum_last":             [0.0, 0.0],
         "applied_management_fee_pct": [1.0, 1.0],
         "risk":                       [1, 7],
+        "universe":                   ["tefas", "tefas"],
+        "fon_adi":                    ["A", "B"],
     })
     out = score_candidates(df, "medium", "medium", risk_level="low", scoring_config=DEFAULT_SCORING_CONFIG)
     low_risk = out.loc[out["fon_kodu"] == "L", "score"].iloc[0]
@@ -72,6 +78,8 @@ def test_high_risk_level_barely_penalises_risky_funds():
         "aum_last":             [0.0, 0.0],
         "applied_management_fee_pct": [1.0, 1.0],
         "risk":                       [1, 7],
+        "universe":                   ["tefas", "tefas"],
+        "fon_adi":                    ["A", "B"],
     })
     out = score_candidates(df, "medium", "medium", risk_level="high", scoring_config=DEFAULT_SCORING_CONFIG)
     low_risk = out.loc[out["fon_kodu"] == "L", "score"].iloc[0]
@@ -87,6 +95,8 @@ def test_lower_fee_scores_higher():
         "aum_last":             [5.0, 5.0, 5.0],
         "applied_management_fee_pct": [3.0, 2.0, 1.0],
         "risk":                       [3, 3, 3],
+        "universe":                   ["tefas", "tefas", "tefas"],
+        "fon_adi":                    ["A", "B", "C"],
     })
     out = score_candidates(df, "medium", "high", "low", scoring_config=DEFAULT_SCORING_CONFIG)
     out_sorted = out.sort_values("score", ascending=False)
@@ -94,7 +104,7 @@ def test_lower_fee_scores_higher():
 
 
 def test_score_handles_empty_dataframe():
-    df = pd.DataFrame(columns=["fon_kodu", "R", "aum_last", "applied_management_fee_pct", "risk", "fon_adi"])
+    df = pd.DataFrame(columns=["fon_kodu", "R", "aum_last", "applied_management_fee_pct", "risk", "fon_adi", "umbrella_type", "universe"])
     out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     assert out.empty
     assert "score" in out.columns
@@ -114,6 +124,8 @@ def test_score_bounds_invariant(R, V, F, risk):
         "applied_management_fee_pct": [F, 1.0],
         "risk": [risk, 3],
         "fon_adi": ["A", "B"],
+        "umbrella_type": ["X", "X"],
+        "universe": ["tefas", "tefas"],
     })
     out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     score = out.loc[0, "score"]
@@ -134,6 +146,8 @@ def test_score_monotonicity_invariant(R1, R2):
         "applied_management_fee_pct": [1.0, 1.0, 1.0],
         "risk": [3, 3, 3],
         "fon_adi": ["A", "B", "C"],
+        "umbrella_type": ["X", "X", "X"],
+        "universe": ["tefas", "tefas", "tefas"],
     })
     out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     s1 = out.loc[0, "score"]
@@ -157,6 +171,8 @@ def test_score_fee_monotonicity_invariant(F1, F2):
         "applied_management_fee_pct": [F1, F2],
         "risk": [3, 3],
         "fon_adi": ["A", "B"],
+        "umbrella_type": ["X", "X"],
+        "universe": ["tefas", "tefas"],
     })
     out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     s1 = out.loc[0, "score"]
@@ -165,3 +181,20 @@ def test_score_fee_monotonicity_invariant(F1, F2):
         assert s1 <= s2
     elif F1 < F2:
         assert s1 >= s2
+
+import numpy as np
+
+def test_score_handles_all_nan_columns():
+    df = pd.DataFrame({
+        "fon_kodu": ["A", "B", "C"],
+        "umbrella_type": ["X", "X", "X"],
+        "R": [10.0, 20.0, 30.0],
+        "aum_last": [np.nan, np.nan, np.nan],
+        "applied_management_fee_pct": [np.nan, np.nan, np.nan],
+        "risk": [3, 4, 5],
+        "fon_adi": ["A", "B", "C"],
+        "universe": ["tefas", "tefas", "tefas"],
+    })
+    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
+    assert not out.empty
+    assert "score" in out.columns

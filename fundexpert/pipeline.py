@@ -22,7 +22,6 @@ from fundexpert.select.sector import sector_from_names
 from fundexpert.select.strategy import bucket_from_names
 from fundexpert.select.weights import compute_weights
 from fundexpert.data.merge import clean_candidates
-from fundexpert.data.merge import clean_candidates
 
 
 @dataclass
@@ -85,12 +84,8 @@ def run_pipeline(
         risk_level=config.risk_level,
         scoring_config=config.scoring_config,
     )
-    # Using list comprehension per Performance Reviewer for reduced intermediate string allocations
-    tr_map = str.maketrans("iı", "İI")
-    scored_fon_adi_upper = pd.Series([
-        str(name).translate(tr_map).upper() if pd.notna(name) else ""
-        for name in scored["fon_adi"]
-    ], index=scored.index)
+    from fundexpert.utils.text import turkish_upper_series
+    scored_fon_adi_upper = turkish_upper_series(scored["fon_adi"])
     scored = scored.assign(
         strategy=bucket_from_names(scored_fon_adi_upper),
         sector=sector_from_names(scored_fon_adi_upper),

@@ -1,34 +1,54 @@
 # Architecture Review: fundexpert
 
-## Executive Summary
-The `fundexpert` codebase exhibits a strong, modular architecture built around the "Functional Core, Imperative Shell" pattern. Data flows linearly through a series of pure and deterministic dataframe transformations (`clean` -> `horizon` -> `score` -> `penalize` -> `pick` -> `weight`). Type-safety and data contracts are clearly defined using `pandera` schemas, and external side-effects (like the Tavily API integration and CLI orchestration) are cleanly bounded. Overall architectural integrity is high, but there are opportunities to improve dependency injection, eliminate inline environment variable checks, and decouple the main pipeline orchestrator from concrete constants.
+**Date:** 2026-06-14
+**Reviewer:** Architecture-Reviewer Subagent
 
-## Detailed Findings
+## Overview
+Overall, the `fundexpert` codebase exhibits a solid, data-driven architecture. The core processing flow (`load -> merge -> clean -> score -> bucket -> pick -> weight`) is well-encapsulated inside `pipeline.py` using functional transformations and dataclasses. The explicit isolation of the external Tavily API (`news/tavily.py`) from domain application logic (`news/penalty.py`) and the use of `pandera` for intermediate state validation are excellent architectural decisions.
 
-### P1 Findings (Important)
-*   **Leaky Configuration and Missing Dependency Injection (DI) in `pipeline.py`**:
-    *   `pipeline.py` imports a large number of constants directly from `config.py` (e.g., `NEGATIVE_NEWS_KEYWORDS`, `NEWS_DOMAIN_ALLOWLIST`, `NEWS_CACHE_DIR`). This circumvents the `PipelineConfig` object, making it harder to test the news module with different parameters without monkeypatching globals.
-    *   *Impact*: Reduces testability and violates the Open/Closed Principle.
-*   **Environment Variable Coupling in Domain Logic**:
-    *   Both `pipeline.py` and `data/merge.py` contain inline checks like `if os.environ.get("DEBUG") == "1":`. The domain code should not be aware of system environment variables. Validation toggles should be injected through configuration or managed via decorators.
-    *   *Impact*: Blurs the line between system environment and domain rules, complicating testing and execution environments.
-*   **Orchestrator Monolithism in `pipeline.py`**:
-    *   `run_pipeline` does too much orchestration logic that could be encapsulated. For example, it directly manages the `concurrent.futures.ThreadPoolExecutor` for the news penalty pass instead of delegating the execution strategy to `apply_negative_news_penalty`.
-    *   *Impact*: `pipeline.py` is bloated and overly aware of the news processing internals.
+However, there are several Separation of Concerns (SoC) and DRY violations regarding where business rules, string manipulations, and file IO are managed. 
 
-### P2 Findings (Minor)
-*   **Pandera Schema Validation Pattern**:
-    *   Schemas are validated procedurally via `Schema.validate(df)` inside `if` blocks. This clutters the core pipeline logic. The idiomatic approach in `pandera` is to use `@pa.check_output` or `@pa.check_types` decorators, which can be globally disabled/enabled based on configuration without bleeding into the functions themselves.
-*   **Hardcoded I/O Expectations in `data/loader.py`**:
-    *   `load_candidates_for_universe` expects specifically named files (`getiri.csv`, `buyukluk.csv`, `yonetim ucreti.csv`). While this matches TEFAS/BEFAS standard exports, it makes the data ingestion layer rigid to format changes.
+Below are the findings categorized by priority:
 
-## Recommended Fixes (Actionable Agent Prompts)
+## P0 Findings (Critical Structural Issues)
+*None. The foundational dataflow and pipeline architecture are sound, stateless, and highly testable.*
 
-1.  **Extract News Configuration (P1)**:
-    *   *Prompt*: "Refactor `config.py` to group all news-related constants into a `NewsConfig` dataclass. Update `PipelineConfig` to accept `news_config: NewsConfig | None`, and remove all direct imports of news constants from `pipeline.py`. Pass the config down to `apply_negative_news_penalty`."
-2.  **Remove `os.environ` from Domain Code (P1)**:
-    *   *Prompt*: "Remove `os.environ.get("DEBUG")` checks from `pipeline.py` and `data/merge.py`. Instead, use `validate_schemas` from `PipelineConfig` (for `pipeline.py`), and update `merge_universe` to accept a boolean flag or rely entirely on pandera decorators configured centrally."
-3.  **Encapsulate Concurrency in News Module (P1)**:
-    *   *Prompt*: "Move the `ThreadPoolExecutor` instantiation out of `pipeline.py` and into `apply_negative_news_penalty` in `fundexpert/news/penalty.py` or a dedicated wrapper. `pipeline.py` should just call the penalty function without worrying about thread management."
-4.  **Adopt Pandera Decorators (P2)**:
-    *   *Prompt*: "Refactor schema validation to use `pandera` decorators (`@pa.check_output`) on the pipeline transformation functions. Configure a central mechanism to enable/disable validation based on the `DEBUG` environment variable at startup, keeping the domain functions clean."
+## P1 Findings (Significant DRY / Separation of Concerns Violations)
+
+### 1. Hardcoded Domain Rules in Data Layer (`data/merge.py`)
+The `clean_candidates` function in `data/merge.py` contains hardcoded string/regex exclusions for "OKS" and "SERBEST" funds. This mixes data-joining logic with business exclusion rules.
+* **Recommendation:** Extract these exclusion patterns into `rules.json` or `config.py` and apply the filter inside the pipeline layer or a dedicated validation step.
+
+### 2. Duplicate Rule Loading Logic (`select/strategy.py` & `select/sector.py`)
+Both files implement completely identical `@lru_cache` routines to open `rules.json`, parse the JSON payload, and construct regex mapping dictionaries (`_get_bucket_rules` vs `_get_sector_rules`). This is a classic DRY violation.
+* **Recommendation:** Create a centralized `fundexpert/utils/rules.py` module that parses `rules.json` and vends the rules/regex maps to the respective domain modules.
+
+### 3. Hardcoded Cleanup Constants (`select/sector.py`)
+`_clean_names` and `_clean_name` in `select/sector.py` hardcode company-specific false positive regexes (e.g., `QNB SAĞLIK HAYAT`, `TARIM KREDİ PORTFÖY`). 
+* **Recommendation:** Just like strategy definitions, these string substitution rules should be decoupled from the code and housed in `rules.json`.
+
+### 4. Mixed Abstraction Levels in Pipeline (`pipeline.py`)
+The orchestration function `run_pipeline` dips into low-level string manipulation by manually constructing a `str.maketrans("iı", "İI")` map and running a list comprehension to uppercase fund names (Lines 88-93). The codebase already defines `turkish_upper` in `utils/text.py`.
+* **Recommendation:** Abstract this normalization by implementing a vectorized pandas text utility in `utils/text.py`, or push the normalization logic down into `bucket_from_names`/`sector_from_names` where it is actually needed.
+
+## P2 Findings (Minor Stylistic and Organizational Improvements)
+
+### 1. `DATA_ROOT` Path Resolution (`cli.py`)
+While constants like `HISTORY_DIR` and `LAST_RUN_FILE` are correctly managed in `config.py`, `DATA_ROOT` path resolution logic is housed in `cli.py`.
+* **Recommendation:** Move `DATA_ROOT` definition to `config.py` to maintain a single source of truth for filesystem path layouts.
+
+### 2. Implicit Column Coupling (`scoring/score.py`)
+`score_candidates` strictly expects the `R` column injected by the prior `apply_horizon` step. 
+* **Recommendation:** While acceptable in pandas pipelines, it would improve contract visibility if you added a `HorizonCandidatesSchema` in `schemas.py` and validated the dataframe shape prior to scoring.
+
+### 3. Duplicate Imports (`pipeline.py`)
+There is a minor organizational artifact in `pipeline.py` (lines 24-25) where `clean_candidates` is imported twice consecutively:
+```python
+from fundexpert.data.merge import clean_candidates
+from fundexpert.data.merge import clean_candidates
+```
+* **Recommendation:** Remove the duplicate import.
+
+### 4. Inline/Late Imports
+`apply_negative_news_penalty` (`news/penalty.py`) imports `concurrent.futures` dynamically midway through the function block.
+* **Recommendation:** Move this to the top of the file alongside standard library imports to comply with PEP-8.

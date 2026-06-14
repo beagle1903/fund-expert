@@ -1,5 +1,6 @@
 """Tunable constants for fundexpert. One file changes calibrate everything."""
 
+import os
 from pathlib import Path
 
 from dataclasses import dataclass
@@ -91,3 +92,5 @@ NEGATIVE_NEWS_PENALTY = DEFAULT_NEWS_CONFIG.negative_news_penalty
 LAST_RUN_FILE: Path = Path.home() / ".fundexpert" / "last.json"
 
 HISTORY_DIR: Path = Path.home() / ".fundexpert" / "runs"
+
+DATA_ROOT: Path = Path(os.environ.get("FUNDEXPERT_DATA_DIR", Path(__file__).resolve().parent.parent / "data"))

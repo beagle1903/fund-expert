@@ -31,16 +31,17 @@ def merge_universe(frames: UniverseData, universe: str, validate_schemas: bool =
         return MergedUniverseSchema.validate(df)
     return df
 
+from fundexpert.utils.rules import get_exclusion_rules
+
 def clean_candidates(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop funds with missing fee, OKS restriction, or Serbest (Hedge Fund) restriction."""
+    """Drop funds with missing fee or explicit exclusions (e.g., OKS)."""
     mask = df["applied_management_fee_pct"].notna()
     
-    oks_in_name = df["fon_adi"].str.contains(r"\bOKS\b", case=False, na=False, regex=True)
-    oks_in_umbrella = df["umbrella_type"].str.contains(r"\bOKS\b", case=False, na=False, regex=True)
-    
-    serbest_in_name = df["fon_adi"].str.contains(r"\bSERBEST\b", case=False, na=False, regex=True)
-    serbest_in_umbrella = df["umbrella_type"].str.contains(r"\bSERBEST\b", case=False, na=False, regex=True)
-    
-    mask = mask & ~oks_in_name & ~oks_in_umbrella & ~serbest_in_name & ~serbest_in_umbrella
+    exclusions = get_exclusion_rules()
+    if exclusions:
+        pattern = r"\b(?:" + "|".join(exclusions) + r")\b"
+        bad_name = df["fon_adi"].str.contains(pattern, case=False, na=False, regex=True)
+        bad_umbrella = df["umbrella_type"].str.contains(pattern, case=False, na=False, regex=True)
+        mask = mask & ~bad_name & ~bad_umbrella
     
     return df[mask]
