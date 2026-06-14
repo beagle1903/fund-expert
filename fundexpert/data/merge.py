@@ -1,13 +1,12 @@
 """Join the three loaded frames per universe into one fund-per-row DataFrame."""
 
 import pandas as pd
-import os
-import re
 
 
 from fundexpert.schemas import MergedUniverseSchema
 
 from fundexpert.data.loader import UniverseData
+from fundexpert.utils.rules import get_exclusion_rules
 
 
 def merge_universe(frames: UniverseData, universe: str, validate_schemas: bool = False) -> pd.DataFrame:
@@ -31,7 +30,6 @@ def merge_universe(frames: UniverseData, universe: str, validate_schemas: bool =
         return MergedUniverseSchema.validate(df)
     return df
 
-from fundexpert.utils.rules import get_exclusion_rules
 
 def clean_candidates(df: pd.DataFrame) -> pd.DataFrame:
     """Drop funds with missing fee or explicit exclusions (e.g., OKS)."""

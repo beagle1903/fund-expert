@@ -1,18 +1,14 @@
 """Top-level CLI: prompts → run_pipeline → render."""
 
 import argparse
-import json
 import os
 import sys
 from datetime import datetime
-from pathlib import Path
-from typing import Any
 
 from fundexpert.config import (
     DEFAULT_MAX_PER_SECTOR,
     DEFAULT_MAX_PER_TYPE,
     HISTORY_DIR,
-    LAST_RUN_FILE,
     NEWS_API_KEY_ENV,
     DATA_ROOT,
 )
@@ -21,9 +17,6 @@ from fundexpert.pipeline import run_pipeline, PipelineConfig
 from fundexpert.history.store import load_last_run, save_run
 from fundexpert.render.diff import render_diff
 from fundexpert.render.table import render_portfolio
-import pandas as pd
-from fundexpert.data.loader import load_universe
-from fundexpert.data.merge import merge_universe
 
 
 

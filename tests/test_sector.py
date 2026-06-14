@@ -1,6 +1,7 @@
 import pytest
 
-from fundexpert.select.sector import sector_from_name
+import pandas as pd
+from fundexpert.select.sector import sector_from_names
 
 
 @pytest.mark.parametrize("name,expected", [
@@ -23,18 +24,18 @@ from fundexpert.select.sector import sector_from_name
     ("", "diversified"),
 ])
 def test_sector_from_name(name, expected):
-    assert sector_from_name(name) == expected
+    assert sector_from_names(pd.Series([name])).iloc[0] == expected
 
 
 def test_sector_handles_lowercase_turkish_i():
     # Function now expects fully uppercased input from pipeline
-    assert sector_from_name("TEKNOLOJİ SEKTÖRÜ HİSSE FON") == "tech"
-    assert sector_from_name("SAĞLIK SEKTÖRÜ") == "health"
+    assert sector_from_names(pd.Series(["TEKNOLOJİ SEKTÖRÜ HİSSE FON"])).iloc[0] == "tech"
+    assert sector_from_names(pd.Series(["SAĞLIK SEKTÖRÜ"])).iloc[0] == "health"
 
 
 def test_sector_from_name_handles_none():
-    assert sector_from_name(None) == "diversified"
+    assert sector_from_names(pd.Series([None])).iloc[0] == "diversified"
 
 def test_sector_from_name_handles_whitespace():
-    assert sector_from_name("   ") == "diversified"
-    assert sector_from_name("\t\n") == "diversified"
+    assert sector_from_names(pd.Series(["   "])).iloc[0] == "diversified"
+    assert sector_from_names(pd.Series(["\t\n"])).iloc[0] == "diversified"

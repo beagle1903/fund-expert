@@ -2,7 +2,8 @@
 
 import pytest
 
-from fundexpert.select.strategy import bucket_from_name
+import pandas as pd
+from fundexpert.select.strategy import bucket_from_names
 
 
 @pytest.mark.parametrize(
@@ -44,16 +45,16 @@ from fundexpert.select.strategy import bucket_from_name
     ],
 )
 def test_bucket_from_name_matches_expected(name: str, expected: str) -> None:
-    assert bucket_from_name(name) == expected
+    assert bucket_from_names(pd.Series([name])).iloc[0] == expected
 
 
 def test_bucket_from_name_handles_lowercase_and_whitespace() -> None:
     # Whitespace is stripped, but pipeline handles uppercasing now
-    assert bucket_from_name("  ATA PORTFÖY HİSSE SENEDİ FONU  ") == "equity"
+    assert bucket_from_names(pd.Series(["  ATA PORTFÖY HİSSE SENEDİ FONU  "])).iloc[0] == "equity"
 
 
 def test_bucket_from_name_empty_or_none() -> None:
-    assert bucket_from_name("") == "other"
-    assert bucket_from_name("   ") == "other"
-    assert bucket_from_name("\n\t ") == "other"
-    assert bucket_from_name(None) == "other"  # type: ignore[arg-type]
+    assert bucket_from_names(pd.Series([""])).iloc[0] == "other"
+    assert bucket_from_names(pd.Series(["   "])).iloc[0] == "other"
+    assert bucket_from_names(pd.Series(["\n\t "])).iloc[0] == "other"
+    assert bucket_from_names(pd.Series([None])).iloc[0] == "other"  # type: ignore[arg-type]

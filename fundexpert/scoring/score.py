@@ -4,10 +4,11 @@ import numpy as np
 import pandas as pd
 import logging
 
-logger = logging.getLogger(__name__)
-
 from fundexpert.config import ScoringConfig
 from fundexpert.scoring.normalize import minmax_normalize
+
+logger = logging.getLogger(__name__)
+
 
 
 def score_candidates(

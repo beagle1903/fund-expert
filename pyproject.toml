@@ -8,14 +8,14 @@ version = "0.1.0"
 description = "CLI that recommends a Turkish investment-fund portfolio from TEFAS/BEFAS CSVs."
 requires-python = ">=3.11"
 dependencies = [
-    "pandas>=2.2",
+    "pandas>=3.0.3",
     "rich>=13.7",
     "questionary>=2.0",
     "pandera>=0.18.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "vulture>=2.11", "pytest-cov>=4.1.0"]
+dev = ["pytest>=8.0,<9.1.0", "vulture>=2.11", "pytest-cov>=4.1.0"]
 
 [project.scripts]
 fundexpert = "fundexpert.cli:main"

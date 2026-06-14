@@ -15,7 +15,6 @@ import hashlib
 import json
 import logging
 import os
-import sys
 import tempfile
 import time
 import urllib.error
@@ -25,12 +24,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from fundexpert.utils.text import turkish_lower
+
 _TAVILY_ENDPOINT = "https://api.tavily.com/search"
 _USER_AGENT = "fundexpert/0.1 (+local)"
 
 logger = logging.getLogger(__name__)
 
-from fundexpert.utils.text import turkish_lower
 
 
 @dataclass(frozen=True)
