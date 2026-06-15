@@ -72,6 +72,7 @@ def main() -> int:
             horizon=answers["horizon"],
             volume_priority=answers["volume_priority"],
             fee_priority=answers["fee_priority"],
+            momentum_priority=answers["momentum_priority"],
             n=answers["n"],
             max_per_type=args.max_per_type,
             max_per_sector=args.max_per_sector,

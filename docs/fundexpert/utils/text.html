@@ -36,6 +36,9 @@
             <li>
                     <a class="function" href="#turkish_lower">turkish_lower</a>
             </li>
+            <li>
+                    <a class="function" href="#turkish_upper_series">turkish_upper_series</a>
+            </li>
     </ul>
 
 
@@ -57,15 +60,27 @@
 
                         <label class="view-source-button" for="mod-text-view-source"><span>View Source</span></label>
 
-                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos">1</span></a><span class="k">def</span><span class="w"> </span><span class="nf">turkish_upper</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="L-2"><a href="#L-2"><span class="linenos">2</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">s</span><span class="p">:</span>
-</span><span id="L-3"><a href="#L-3"><span class="linenos">3</span></a>        <span class="k">return</span> <span class="n">s</span>
-</span><span id="L-4"><a href="#L-4"><span class="linenos">4</span></a>    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">,</span> <span class="s2">&quot;İ&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;ı&quot;</span><span class="p">,</span> <span class="s2">&quot;I&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
-</span><span id="L-5"><a href="#L-5"><span class="linenos">5</span></a>
-</span><span id="L-6"><a href="#L-6"><span class="linenos">6</span></a><span class="k">def</span><span class="w"> </span><span class="nf">turkish_lower</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="L-7"><a href="#L-7"><span class="linenos">7</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">s</span><span class="p">:</span>
-</span><span id="L-8"><a href="#L-8"><span class="linenos">8</span></a>        <span class="k">return</span> <span class="n">s</span>
-</span><span id="L-9"><a href="#L-9"><span class="linenos">9</span></a>    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;İ&quot;</span><span class="p">,</span> <span class="s2">&quot;i&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="s2">&quot;ı&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos"> 1</span></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+</span><span id="L-2"><a href="#L-2"><span class="linenos"> 2</span></a>
+</span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a><span class="k">def</span><span class="w"> </span><span class="nf">turkish_upper</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Uppercase a string using Turkish rules (i -&gt; İ, ı -&gt; I).&quot;&quot;&quot;</span>
+</span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a>        <span class="k">return</span> <span class="n">text</span> <span class="k">if</span> <span class="n">text</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a>    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">text</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s2">&quot;iı&quot;</span><span class="p">,</span> <span class="s2">&quot;İI&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="k">def</span><span class="w"> </span><span class="nf">turkish_lower</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>        <span class="k">return</span> <span class="n">text</span> <span class="k">if</span> <span class="n">text</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">text</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s2">&quot;İI&quot;</span><span class="p">,</span> <span class="s2">&quot;iı&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a>
+</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a><span class="k">def</span><span class="w"> </span><span class="nf">turkish_upper_series</span><span class="p">(</span><span class="n">series</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Vectorized Turkish uppercase normalization for a Pandas Series.&quot;&quot;&quot;</span>
+</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>    <span class="c1"># Using list comprehension per Performance Reviewer for reduced intermediate string allocations</span>
+</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>    <span class="n">tr_map</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s2">&quot;iı&quot;</span><span class="p">,</span> <span class="s2">&quot;İI&quot;</span><span class="p">)</span>
+</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span>
+</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>        <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">tr_map</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">notna</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">series</span>
+</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>    <span class="p">],</span> <span class="n">index</span><span class="o">=</span><span class="n">series</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -75,20 +90,23 @@
 <div class="attr function">
             
         <span class="def">def</span>
-        <span class="name">turkish_upper</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">s</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="nb">str</span>:</span></span>
+        <span class="name">turkish_upper</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">text</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="nb">str</span>:</span></span>
 
                 <label class="view-source-button" for="turkish_upper-view-source"><span>View Source</span></label>
 
     </div>
     <a class="headerlink" href="#turkish_upper"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="turkish_upper-2"><a href="#turkish_upper-2"><span class="linenos">2</span></a><span class="k">def</span><span class="w"> </span><span class="nf">turkish_upper</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="turkish_upper-3"><a href="#turkish_upper-3"><span class="linenos">3</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">s</span><span class="p">:</span>
-</span><span id="turkish_upper-4"><a href="#turkish_upper-4"><span class="linenos">4</span></a>        <span class="k">return</span> <span class="n">s</span>
-</span><span id="turkish_upper-5"><a href="#turkish_upper-5"><span class="linenos">5</span></a>    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">,</span> <span class="s2">&quot;İ&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;ı&quot;</span><span class="p">,</span> <span class="s2">&quot;I&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="turkish_upper-4"><a href="#turkish_upper-4"><span class="linenos">4</span></a><span class="k">def</span><span class="w"> </span><span class="nf">turkish_upper</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="turkish_upper-5"><a href="#turkish_upper-5"><span class="linenos">5</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Uppercase a string using Turkish rules (i -&gt; İ, ı -&gt; I).&quot;&quot;&quot;</span>
+</span><span id="turkish_upper-6"><a href="#turkish_upper-6"><span class="linenos">6</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+</span><span id="turkish_upper-7"><a href="#turkish_upper-7"><span class="linenos">7</span></a>        <span class="k">return</span> <span class="n">text</span> <span class="k">if</span> <span class="n">text</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+</span><span id="turkish_upper-8"><a href="#turkish_upper-8"><span class="linenos">8</span></a>    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">text</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s2">&quot;iı&quot;</span><span class="p">,</span> <span class="s2">&quot;İI&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
 </span></pre></div>
 
 
-    
+            <div class="docstring"><p>Uppercase a string using Turkish rules (i -> İ, ı -> I).</p>
+</div>
+
 
                 </section>
                 <section id="turkish_lower">
@@ -96,20 +114,47 @@
 <div class="attr function">
             
         <span class="def">def</span>
-        <span class="name">turkish_lower</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">s</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="nb">str</span>:</span></span>
+        <span class="name">turkish_lower</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">text</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="nb">str</span>:</span></span>
 
                 <label class="view-source-button" for="turkish_lower-view-source"><span>View Source</span></label>
 
     </div>
     <a class="headerlink" href="#turkish_lower"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="turkish_lower-7"><a href="#turkish_lower-7"><span class="linenos"> 7</span></a><span class="k">def</span><span class="w"> </span><span class="nf">turkish_lower</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="turkish_lower-8"><a href="#turkish_lower-8"><span class="linenos"> 8</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">s</span><span class="p">:</span>
-</span><span id="turkish_lower-9"><a href="#turkish_lower-9"><span class="linenos"> 9</span></a>        <span class="k">return</span> <span class="n">s</span>
-</span><span id="turkish_lower-10"><a href="#turkish_lower-10"><span class="linenos">10</span></a>    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;İ&quot;</span><span class="p">,</span> <span class="s2">&quot;i&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="s2">&quot;ı&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="turkish_lower-10"><a href="#turkish_lower-10"><span class="linenos">10</span></a><span class="k">def</span><span class="w"> </span><span class="nf">turkish_lower</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="turkish_lower-11"><a href="#turkish_lower-11"><span class="linenos">11</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+</span><span id="turkish_lower-12"><a href="#turkish_lower-12"><span class="linenos">12</span></a>        <span class="k">return</span> <span class="n">text</span> <span class="k">if</span> <span class="n">text</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+</span><span id="turkish_lower-13"><a href="#turkish_lower-13"><span class="linenos">13</span></a>    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">text</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s2">&quot;İI&quot;</span><span class="p">,</span> <span class="s2">&quot;iı&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
 </span></pre></div>
 
 
     
+
+                </section>
+                <section id="turkish_upper_series">
+                            <input id="turkish_upper_series-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">turkish_upper_series</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">series</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Series</span></span><span class="return-annotation">) -> <span class="n">pandas</span><span class="o">.</span><span class="n">Series</span>:</span></span>
+
+                <label class="view-source-button" for="turkish_upper_series-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#turkish_upper_series"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="turkish_upper_series-15"><a href="#turkish_upper_series-15"><span class="linenos">15</span></a><span class="k">def</span><span class="w"> </span><span class="nf">turkish_upper_series</span><span class="p">(</span><span class="n">series</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+</span><span id="turkish_upper_series-16"><a href="#turkish_upper_series-16"><span class="linenos">16</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Vectorized Turkish uppercase normalization for a Pandas Series.&quot;&quot;&quot;</span>
+</span><span id="turkish_upper_series-17"><a href="#turkish_upper_series-17"><span class="linenos">17</span></a>    <span class="c1"># Using list comprehension per Performance Reviewer for reduced intermediate string allocations</span>
+</span><span id="turkish_upper_series-18"><a href="#turkish_upper_series-18"><span class="linenos">18</span></a>    <span class="n">tr_map</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s2">&quot;iı&quot;</span><span class="p">,</span> <span class="s2">&quot;İI&quot;</span><span class="p">)</span>
+</span><span id="turkish_upper_series-19"><a href="#turkish_upper_series-19"><span class="linenos">19</span></a>    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span>
+</span><span id="turkish_upper_series-20"><a href="#turkish_upper_series-20"><span class="linenos">20</span></a>        <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">tr_map</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">notna</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+</span><span id="turkish_upper_series-21"><a href="#turkish_upper_series-21"><span class="linenos">21</span></a>        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">series</span>
+</span><span id="turkish_upper_series-22"><a href="#turkish_upper_series-22"><span class="linenos">22</span></a>    <span class="p">],</span> <span class="n">index</span><span class="o">=</span><span class="n">series</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Vectorized Turkish uppercase normalization for a Pandas Series.</p>
+</div>
+
 
                 </section>
     </main>

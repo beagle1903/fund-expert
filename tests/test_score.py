@@ -18,6 +18,7 @@ def horizon_ready():
         "risk":                       [3, 6, 2],
         "universe":                   ["tefas", "tefas", "tefas"],
         "fon_adi":                    ["A", "B", "C"],
+        "units_change_pct":           [0, 0, 0],
     })
 
 
@@ -25,6 +26,7 @@ def test_score_returns_score_column(horizon_ready):
     out = score_candidates(horizon_ready,
                            volume_priority="medium",
                            fee_priority="medium",
+                           momentum_priority="medium",
                            risk_level="medium",
                            scoring_config=DEFAULT_SCORING_CONFIG)
     assert "score" in out.columns
@@ -41,8 +43,9 @@ def test_higher_R_with_equal_other_features_scores_higher():
         "risk":                       [3, 3],
         "universe":                   ["tefas", "tefas"],
         "fon_adi":                    ["A", "B"],
+        "units_change_pct":           [0, 0],
     })
-    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
+    out = score_candidates(df, "medium", "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     hi = out.loc[out["fon_kodu"] == "HI", "score"].iloc[0]
     lo = out.loc[out["fon_kodu"] == "LO", "score"].iloc[0]
     assert hi > lo
@@ -60,8 +63,9 @@ def test_higher_risk_loses_score_under_low_risk_level():
         "risk":                       [1, 7],
         "universe":                   ["tefas", "tefas"],
         "fon_adi":                    ["A", "B"],
+        "units_change_pct":           [0, 0],
     })
-    out = score_candidates(df, "medium", "medium", risk_level="low", scoring_config=DEFAULT_SCORING_CONFIG)
+    out = score_candidates(df, "medium", "medium", "medium", risk_level="low", scoring_config=DEFAULT_SCORING_CONFIG)
     low_risk = out.loc[out["fon_kodu"] == "L", "score"].iloc[0]
     high_risk = out.loc[out["fon_kodu"] == "H", "score"].iloc[0]
     assert low_risk > high_risk
@@ -80,8 +84,9 @@ def test_high_risk_level_barely_penalises_risky_funds():
         "risk":                       [1, 7],
         "universe":                   ["tefas", "tefas"],
         "fon_adi":                    ["A", "B"],
+        "units_change_pct":           [0, 0],
     })
-    out = score_candidates(df, "medium", "medium", risk_level="high", scoring_config=DEFAULT_SCORING_CONFIG)
+    out = score_candidates(df, "medium", "medium", "medium", risk_level="high", scoring_config=DEFAULT_SCORING_CONFIG)
     low_risk = out.loc[out["fon_kodu"] == "L", "score"].iloc[0]
     high_risk = out.loc[out["fon_kodu"] == "H", "score"].iloc[0]
     assert pytest.approx(low_risk - high_risk, abs=1e-6) == 0.05
@@ -97,15 +102,16 @@ def test_lower_fee_scores_higher():
         "risk":                       [3, 3, 3],
         "universe":                   ["tefas", "tefas", "tefas"],
         "fon_adi":                    ["A", "B", "C"],
+        "units_change_pct":           [0, 0, 0],
     })
-    out = score_candidates(df, "medium", "high", "low", scoring_config=DEFAULT_SCORING_CONFIG)
+    out = score_candidates(df, "medium", "high", "medium", "low", scoring_config=DEFAULT_SCORING_CONFIG)
     out_sorted = out.sort_values("score", ascending=False)
     assert out_sorted.iloc[0]["fon_kodu"] == "C"
 
 
 def test_score_handles_empty_dataframe():
-    df = pd.DataFrame(columns=["fon_kodu", "R", "aum_last", "applied_management_fee_pct", "risk", "fon_adi", "umbrella_type", "universe"])
-    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
+    df = pd.DataFrame(columns=["fon_kodu", "R", "aum_last", "applied_management_fee_pct", "risk", "fon_adi", "umbrella_type", "universe", "units_change_pct"])
+    out = score_candidates(df, "medium", "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     assert out.empty
     assert "score" in out.columns
 
@@ -126,8 +132,9 @@ def test_score_bounds_invariant(R, V, F, risk):
         "fon_adi": ["A", "B"],
         "umbrella_type": ["X", "X"],
         "universe": ["tefas", "tefas"],
+        "units_change_pct": [0, 0],
     })
-    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
+    out = score_candidates(df, "medium", "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     score = out.loc[0, "score"]
     assert -2.0 <= score <= 2.0
 
@@ -148,8 +155,9 @@ def test_score_monotonicity_invariant(R1, R2):
         "fon_adi": ["A", "B", "C"],
         "umbrella_type": ["X", "X", "X"],
         "universe": ["tefas", "tefas", "tefas"],
+        "units_change_pct": [0, 0, 0],
     })
-    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
+    out = score_candidates(df, "medium", "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     s1 = out.loc[0, "score"]
     s2 = out.loc[1, "score"]
     if R1 > R2:
@@ -173,8 +181,9 @@ def test_score_fee_monotonicity_invariant(F1, F2):
         "fon_adi": ["A", "B"],
         "umbrella_type": ["X", "X"],
         "universe": ["tefas", "tefas"],
+        "units_change_pct": [0, 0],
     })
-    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
+    out = score_candidates(df, "medium", "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     s1 = out.loc[0, "score"]
     s2 = out.loc[1, "score"]
     if F1 > F2:
@@ -194,7 +203,8 @@ def test_score_handles_all_nan_columns():
         "risk": [3, 4, 5],
         "fon_adi": ["A", "B", "C"],
         "universe": ["tefas", "tefas", "tefas"],
+        "units_change_pct": [0, 0, 0],
     })
-    out = score_candidates(df, "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
+    out = score_candidates(df, "medium", "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     assert not out.empty
     assert "score" in out.columns

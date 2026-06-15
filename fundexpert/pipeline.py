@@ -31,6 +31,7 @@ class PipelineConfig:
     horizon: str
     volume_priority: str
     fee_priority: str
+    momentum_priority: str
     n: int
     max_per_type: int
     now: datetime
@@ -81,6 +82,7 @@ def run_pipeline(
         horizoned,
         volume_priority=config.volume_priority,
         fee_priority=config.fee_priority,
+        momentum_priority=config.momentum_priority,
         risk_level=config.risk_level,
         scoring_config=config.scoring_config,
     )
@@ -150,6 +152,7 @@ def run_pipeline(
         "risk_level": config.risk_level,
         "volume_priority": config.volume_priority,
         "fee_priority": config.fee_priority,
+        "momentum_priority": config.momentum_priority,
         "n": config.n,
         "warning": warning,
         "excluded_horizon": excluded_horizon,

@@ -71,6 +71,13 @@ def prompt_user(last: dict[str, Any]) -> dict[str, Any] | None:
     if fee_priority is None:
         return None
 
+    momentum_priority = questionary.select(
+        "Fon akışı (momentum) önceliği:",
+        choices=PRIORITY_CHOICES, default=last.get("momentum_priority", "medium"),
+    ).ask()
+    if momentum_priority is None:
+        return None
+
     n_raw = questionary.text(
         "Kaç fon istiyorsun (1-20)?",
         default=str(last.get("n", 5)),
@@ -85,6 +92,7 @@ def prompt_user(last: dict[str, Any]) -> dict[str, Any] | None:
         "horizon": horizon,
         "volume_priority": volume_priority,
         "fee_priority": fee_priority,
+        "momentum_priority": momentum_priority,
         "n": int(n_raw),
     }
 

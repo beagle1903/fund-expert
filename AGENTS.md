@@ -47,7 +47,7 @@ loader.load_universe(getiri, buyukluk, yonetim)
   → merge.merge_universe (one universe per run; `both` runs the pipeline twice and renders two portfolios)
   → drop NaN applied_management_fee_pct
   → scoring.horizon.apply_horizon (averages return columns per horizon bucket)
-  → scoring.score.score_candidates (weighted sum of R̂, V̂, 1−F̂; minus SRRI risk penalty)
+  → scoring.score.score_candidates (weighted sum of R̂, V̂, 1−F̂, M̂; minus SRRI risk penalty)
   → assign strategy bucket via select.strategy.bucket_from_name(fon_adi)
   → assign sector bucket via select.sector.sector_from_name(fon_adi)
   → (--news only) news.penalty.apply_negative_news_penalty (top-K Tavily query, −0.20 binary penalty per fund with hits)
