@@ -14,15 +14,23 @@ fundexpert
 # Non-interactive (skip prompts, useful from Agent shell)
 .venv/Scripts/python.exe -c "
 from datetime import datetime
-from fundexpert.cli import run_pipeline, _ensure_utf8_stdio
+from fundexpert.data.loader import load_candidates_for_universe
+from fundexpert.pipeline import run_pipeline, PipelineConfig
+from fundexpert.ui import ensure_utf8_stdio
+from fundexpert.config import DEFAULT_MAX_PER_TYPE, DEFAULT_MAX_PER_SECTOR, DATA_ROOT
 from fundexpert.render.table import render_portfolio
-from fundexpert.config import DEFAULT_MAX_PER_TYPE
-_ensure_utf8_stdio()
-selected, header, hits, _ = run_pipeline(
-    universe='tefas', risk_level='medium', horizon='medium',
-    volume_priority='medium', fee_priority='medium',
-    n=8, max_per_type=DEFAULT_MAX_PER_TYPE, now=datetime.now())
-render_portfolio(selected, header, news=hits or None)
+
+ensure_utf8_stdio()
+u = 'tefas'
+candidates = load_candidates_for_universe(u, DATA_ROOT)
+config = PipelineConfig(
+    universe=u, risk_level='medium', horizon='medium',
+    volume_priority='medium', fee_priority='medium', momentum_priority='medium',
+    n=8, max_per_type=DEFAULT_MAX_PER_TYPE, max_per_sector=DEFAULT_MAX_PER_SECTOR,
+    now=datetime.now()
+)
+result = run_pipeline(candidates, config)
+render_portfolio(result.weighted, result.header, news=result.hits_for_render or None, news_meta=result.news_meta)
 "
 ```
 
@@ -72,7 +80,7 @@ loader.load_universe(getiri, buyukluk, yonetim)
 ## Gotchas
 
 - `str.upper()` in Python is *not* Turkish-aware: `"i".upper() == "I"`, not `"İ"`. Use the i↔İ / ı↔I replace before `.upper()` (see `select/strategy.py`).
-- Stdout encoding: `_ensure_utf8_stdio()` must be called before any rendering on Windows or Turkish characters break.
+- Stdout encoding: `ensure_utf8_stdio()` must be called before any rendering on Windows or Turkish characters break.
 - Last-run answers cached at `~/.fundexpert/last.json`; safe to delete.
 - `LSP` MCP tool occasionally disconnects mid-session — not a code issue.
 
