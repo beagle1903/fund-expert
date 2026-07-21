@@ -19,7 +19,7 @@ Some directions we could go:
 2. **Score breakdown view** — `_breakdown` dict per fund is computed but never rendered. Add a `--explain` flag that shows R/V/F contributions and risk penalty per pick.
 3. **Backtest mode** — given a `--asof` date, score against historical CSVs and report what the portfolio's actual N-month return would have been.
 4. **Strategy bucket tuning** — the "other" bucket caught short-term hedge funds (KISA VADELİ SERBEST). Could add a `short_term_hedge` bucket so the cap distinguishes them.
-5. **Web UI** — Flask/FastAPI wrapping `run_pipeline`, served on localhost. The earlier session notes mentioned an "app on localhost:3000" goal.
+5. ✅ **Web UI** — Flask/FastAPI wrapping `run_pipeline`, served on localhost. (Implemented with FastAPI + React dashboard)
 6. **Fee/AUM filtering** — hard filters before scoring (e.g. exclude funds with fee > 3%, or AUM < threshold).
 
 ---

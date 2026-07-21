@@ -11,6 +11,12 @@ User-facing strings are Turkish; code/identifiers are English.
 # or after `pip install -e .`
 fundexpert
 
+# Web UI (FastAPI backend + Vite/React frontend)
+# In terminal 1 (Backend):
+.venv/Scripts/python.exe -m uvicorn fundexpert.api:app --reload
+# In terminal 2 (Frontend):
+cd frontend && npm run dev
+
 # Non-interactive (skip prompts, useful from Agent shell)
 .venv/Scripts/python.exe -c "
 from datetime import datetime

@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0,<9.1.0", "vulture>=2.11", "pytest-cov>=4.1.0"]
+dev = ["pytest>=8.0,<9.2.0", "vulture>=2.11", "pytest-cov>=4.1.0"]
 
 [project.scripts]
 fundexpert = "fundexpert.cli:main"
