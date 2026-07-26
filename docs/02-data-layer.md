@@ -1,5 +1,7 @@
 # 02 — Data Layer
 
+> **Historical design:** This predates versioned bundle manifests, atomic publication, and strict cross-file validation. See the repository README and `fundexpert/data/bundle.py` for current behavior.
+
 Responsible for loading raw TEFAS/BEFAS CSVs, parsing Turkish-localized numbers, and joining the three files per universe into one fund-per-row DataFrame.
 
 ## Source Files

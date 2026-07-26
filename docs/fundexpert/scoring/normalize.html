@@ -52,69 +52,19 @@
                         <div class="docstring"><p>Per-column min-max scaling with constant-range and NaN guards.</p>
 </div>
 
-                        <input id="mod-normalize-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 
-                        <label class="view-source-button" for="mod-normalize-view-source"><span>View Source</span></label>
-
-                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos"> 1</span></a><span class="sd">&quot;&quot;&quot;Per-column min-max scaling with constant-range and NaN guards.&quot;&quot;&quot;</span>
-</span><span id="L-2"><a href="#L-2"><span class="linenos"> 2</span></a>
-</span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-</span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a>
-</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a>
-</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="k">def</span><span class="w"> </span><span class="nf">minmax_normalize</span><span class="p">(</span><span class="n">series</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
-</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Scale a numeric series to [0, 1].</span>
-</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>
-</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a><span class="sd">    - Constant columns (max == min) return 0.5 everywhere (neutral).</span>
-</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a><span class="sd">    - NaN values become 0.5 (neutral contribution).</span>
-</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a>    <span class="n">s</span> <span class="o">=</span> <span class="n">series</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a>    <span class="n">finite</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
-</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">finite</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.5</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
-</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>
-</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>    <span class="n">quantiles</span> <span class="o">=</span> <span class="n">finite</span><span class="o">.</span><span class="n">quantile</span><span class="p">([</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">])</span>
-</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">quantiles</span><span class="p">[</span><span class="mf">0.01</span><span class="p">],</span> <span class="n">quantiles</span><span class="p">[</span><span class="mf">0.99</span><span class="p">]</span>
-</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>    <span class="k">if</span> <span class="n">hi</span> <span class="o">==</span> <span class="n">lo</span><span class="p">:</span>
-</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.5</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
-</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a>
-</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a>    <span class="n">out</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span> <span class="o">-</span> <span class="n">lo</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span><span class="p">)</span>
-</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a>    <span class="k">return</span> <span class="n">out</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
-</span></pre></div>
 
 
             </section>
                 <section id="minmax_normalize">
-                            <input id="minmax_normalize-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
-<div class="attr function">
-            
+                    <div class="attr function">
+
         <span class="def">def</span>
         <span class="name">minmax_normalize</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">series</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Series</span></span><span class="return-annotation">) -> <span class="n">pandas</span><span class="o">.</span><span class="n">Series</span>:</span></span>
 
-                <label class="view-source-button" for="minmax_normalize-view-source"><span>View Source</span></label>
 
     </div>
     <a class="headerlink" href="#minmax_normalize"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="minmax_normalize-8"><a href="#minmax_normalize-8"><span class="linenos"> 8</span></a><span class="k">def</span><span class="w"> </span><span class="nf">minmax_normalize</span><span class="p">(</span><span class="n">series</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
-</span><span id="minmax_normalize-9"><a href="#minmax_normalize-9"><span class="linenos"> 9</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Scale a numeric series to [0, 1].</span>
-</span><span id="minmax_normalize-10"><a href="#minmax_normalize-10"><span class="linenos">10</span></a>
-</span><span id="minmax_normalize-11"><a href="#minmax_normalize-11"><span class="linenos">11</span></a><span class="sd">    - Constant columns (max == min) return 0.5 everywhere (neutral).</span>
-</span><span id="minmax_normalize-12"><a href="#minmax_normalize-12"><span class="linenos">12</span></a><span class="sd">    - NaN values become 0.5 (neutral contribution).</span>
-</span><span id="minmax_normalize-13"><a href="#minmax_normalize-13"><span class="linenos">13</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="minmax_normalize-14"><a href="#minmax_normalize-14"><span class="linenos">14</span></a>    <span class="n">s</span> <span class="o">=</span> <span class="n">series</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-</span><span id="minmax_normalize-15"><a href="#minmax_normalize-15"><span class="linenos">15</span></a>    <span class="n">finite</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
-</span><span id="minmax_normalize-16"><a href="#minmax_normalize-16"><span class="linenos">16</span></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">finite</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="minmax_normalize-17"><a href="#minmax_normalize-17"><span class="linenos">17</span></a>        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.5</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
-</span><span id="minmax_normalize-18"><a href="#minmax_normalize-18"><span class="linenos">18</span></a>
-</span><span id="minmax_normalize-19"><a href="#minmax_normalize-19"><span class="linenos">19</span></a>    <span class="n">quantiles</span> <span class="o">=</span> <span class="n">finite</span><span class="o">.</span><span class="n">quantile</span><span class="p">([</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">])</span>
-</span><span id="minmax_normalize-20"><a href="#minmax_normalize-20"><span class="linenos">20</span></a>    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">quantiles</span><span class="p">[</span><span class="mf">0.01</span><span class="p">],</span> <span class="n">quantiles</span><span class="p">[</span><span class="mf">0.99</span><span class="p">]</span>
-</span><span id="minmax_normalize-21"><a href="#minmax_normalize-21"><span class="linenos">21</span></a>    <span class="k">if</span> <span class="n">hi</span> <span class="o">==</span> <span class="n">lo</span><span class="p">:</span>
-</span><span id="minmax_normalize-22"><a href="#minmax_normalize-22"><span class="linenos">22</span></a>        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.5</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
-</span><span id="minmax_normalize-23"><a href="#minmax_normalize-23"><span class="linenos">23</span></a>
-</span><span id="minmax_normalize-24"><a href="#minmax_normalize-24"><span class="linenos">24</span></a>    <span class="n">out</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span> <span class="o">-</span> <span class="n">lo</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span><span class="p">)</span>
-</span><span id="minmax_normalize-25"><a href="#minmax_normalize-25"><span class="linenos">25</span></a>    <span class="k">return</span> <span class="n">out</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
-</span></pre></div>
-
 
             <div class="docstring"><p>Scale a numeric series to [0, 1].</p>
 

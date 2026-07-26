@@ -1,5 +1,7 @@
 # 06 — News Pass (`--news`)
 
+> **Historical design:** The implemented news pass uses Tavily, strict domain filtering, and a score penalty. See `AGENTS.md`, source, and tests for current behavior.
+
 Optional, on-demand. v1 scope: **annotate** each picked fund with up to 3 recent Turkish financial-news headlines. **Zero scoring impact.**
 
 ## Goal in v1

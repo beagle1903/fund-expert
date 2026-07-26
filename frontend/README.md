@@ -1,16 +1,26 @@
-# React + Vite
+# Fundexpert Web UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React/Vite dashboard for the local Fundexpert FastAPI service.
 
-Currently, two official plugins are available:
+## Commands
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+From the repository root:
 
-## React Compiler
+```powershell
+npm --prefix frontend install
+npm --prefix frontend run dev
+npm --prefix frontend test
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The development and preview servers proxy relative `/api` requests to
+`http://127.0.0.1:8000`. Start the backend with:
 
-## Expanding the Oxlint configuration
+```powershell
+.venv\Scripts\python.exe -m uvicorn fundexpert.api:app --reload
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The UI intentionally uses the stable projected API fields rather than raw
+DataFrame columns. Data export provenance comes from `data_snapshot` in every
+generation response.

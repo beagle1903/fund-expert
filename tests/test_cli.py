@@ -48,7 +48,8 @@ def fake_universe_loader():
         "max_total_expense_pct": [3.0, 4.0, 1.5],
     })
     frames = UniverseData(getiri=getiri, buyukluk=buyukluk, yonetim_ucreti=yonetim)
-    with patch("fundexpert.data.loader.load_universe", return_value=frames):
+    with patch("fundexpert.data.bundle.resolve_active_bundle"), \
+         patch("fundexpert.data.bundle.load_bundle_frames", return_value=frames):
         yield
 
 

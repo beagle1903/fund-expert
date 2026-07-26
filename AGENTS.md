@@ -1,14 +1,15 @@
 # fundexpert
 
-CLI that recommends a Turkish investment-fund portfolio from TEFAS/BEFAS CSVs.
-User-facing strings are Turkish; code/identifiers are English.
+CLI and local web app that recommend a Turkish investment-fund portfolio from
+TEFAS/BEFAS CSVs. CLI strings are Turkish; the web UI, code, and identifiers
+are English.
 
 ## Running
 
 ```bash
 # Interactive (questionary prompts)
 .venv/Scripts/python.exe -m fundexpert.cli
-# or after `pip install -e .`
+# or after `pip install -e ".[dev,web]"`
 fundexpert
 
 # Web UI (FastAPI backend + Vite/React frontend)
@@ -45,7 +46,7 @@ render_portfolio(result.weighted, result.header, news=result.hits_for_render or 
 ## Testing
 
 ```bash
-.venv/Scripts/python.exe -m pytest tests/
+./scripts/check.ps1
 ```
 
 Smoke tests in `tests/test_smoke.py` read real CSVs from `data/`. When working in a git worktree under `.Agent/worktrees/`, junction the data dir in:
@@ -57,7 +58,8 @@ New-Item -ItemType Junction -Path "<worktree>/data" -Target "<repo>/data"
 ## Pipeline
 
 ```
-loader.load_universe(getiri, buyukluk, yonetim)
+bundle.resolve_active_bundle (versioned current.json or validated legacy files)
+  → loader.load_universe(getiri, buyukluk, yonetim)
   → merge.merge_universe (one universe per run; `both` runs the pipeline twice and renders two portfolios)
   → drop NaN applied_management_fee_pct
   → scoring.horizon.apply_horizon (averages return columns per horizon bucket)
@@ -73,15 +75,17 @@ loader.load_universe(getiri, buyukluk, yonetim)
 ## Conventions
 
 - **CSV ingestion**: TEFAS/BEFAS export files have a 3-row preamble (`skiprows=3`), UTF-8 BOM, comma decimal separator inside quoted strings. Column names are Turkish — see `loader.py` for the rename map.
+- **Data bundles**: Treat `getiri.csv`, `buyukluk.csv`, and `yonetim ucreti.csv` as one acquisition. `validate_bundle` checks metadata, schemas, numeric values, exact code-set coverage, row counts, and a 30-minute timestamp window. `publish_bundle` writes an immutable version and atomically swaps `current.json`; browser automation must publish only through this seam.
+- **Legacy compatibility**: Flat `data/<universe>/*.csv` files remain valid until the first versioned bundle is published. Never silently use cached candidates if the active bundle is missing or invalid.
 - **Risk** = SRRI scale 1–7 (column `Fonun Risk Değeri` → `risk`).
 - **Score** = base ∈ [0,1] minus risk penalty; can go slightly negative.
 - **Strategy bucket** is derived from the fund name keyword using `fundexpert/rules.json`, *not* `umbrella_type` (Şemsiye Fon Türü) — Şemsiye is too coarse (Serbest/Katılım umbrellas span multiple strategies). See `select/strategy.py`.
 - **Sector bucket** is also derived from the fund name (`select/sector.py`) using `rules.json` and capped independently from strategy. Without it, multiple sector-themed funds (e.g. 5 different TEKNOLOJİ funds across HİSSE/FON SEPETİ/DEĞİŞKEN strategies) can satisfy the strategy cap while still producing a single-sector portfolio. Funds without a sector keyword fall to `"diversified"` and are exempt from the sector cap. Add new sector keywords as new sectors show up in real picks.
-- **Validation**: Intermediate pipeline steps (Scored, Weighted) are strictly validated against `pandera` schemas defined in `fundexpert/schemas.py`. Validation executes if `PYTEST_CURRENT_TEST` or `DEBUG` environment variables are set.
+- **Validation**: Intermediate pipeline steps (Scored, Weighted) are validated against `pandera` schemas in `fundexpert/schemas.py` when `PipelineConfig.validate_schemas=True`; real-data smoke tests enable it.
 - **Weights** are integer multiples of 5%, every selected fund gets ≥5%, sum = 100. With N=20 every fund gets exactly 5%.
 - **Tunables** live in `fundexpert/config.py` — priority weights, risk λ, horizon buckets, default cap, weight epsilon, news pass (Tavily query top-K, keywords, penalty, cache TTL).
 - **News pass** (`--news`, opt-in): Tavily search per top-K candidate by quant score; any hit on a Turkish negative-news keyword (`soruşturma`, `iflas`, etc.) deducts a fixed `−0.20` from the fund's score before `pick_top`. Requires `TAVILY_API_KEY` env var; missing key → fail-soft (warning + skip). Module: `fundexpert/news/` (`match.py`, `tavily.py`, `penalty.py`). Cache: `~/.fundexpert/news_cache/` 1h TTL.
-- **News source filtering**: `NEWS_DOMAIN_ALLOWLIST` (config.py) is forwarded to Tavily as `include_domains`, restricting search server-side to a curated list of neutral Turkish financial outlets (KAP/SPK regulators + business press). Extend the list as new neutral outlets show up — **never add issuer-owned domains** (Spotify/Instagram/complaint-sites and `*portfoy*.com.tr` were the false-positive drivers). `NEWS_EXCLUDED_DOMAIN_SUBSTRINGS` is a client-side belt-and-suspenders filter dropping any hostname containing `portfoy`/`portföy` even if mistakenly allowlisted. Cache key incorporates both lists so config changes invalidate stale entries automatically.
+- **News source filtering**: `NewsConfig.domain_allowlist` is forwarded to Tavily as `include_domains`, restricting search server-side to curated neutral Turkish financial outlets. Extend it only with neutral sources—never issuer-owned domains. `excluded_domain_substrings` drops hostnames containing `portfoy`/`portföy` as defense in depth. The cache key includes both lists.
 
 ## Gotchas
 
@@ -94,7 +98,7 @@ loader.load_universe(getiri, buyukluk, yonetim)
 
 Whenever we finish implementing a new feature, the AI assistant MUST automatically run a wrap-up routine before moving on. This includes:
 1. **Dead Code Analysis**: Run a dead-code finder (e.g. `vulture fundexpert/`) and actively clean up any orphaned code or unused imports.
-2. **Documentation Update**: Run doc generators (e.g. `pdoc -o docs/ fundexpert/` or similar) to ensure the `docs/` folder is up to date, and revise `AGENTS.md` / `todos.md` if the architecture changed.
+2. **Documentation Update**: Run `./scripts/refresh-docs.ps1` to ensure the `docs/` folder is up to date, and revise `AGENTS.md` / `todos.md` if the architecture changed.
 
 ## Agent Insights
 - Create a parallel code review system for my repos. In `.Agent/agents/` define 5 specialized review subagents: security-reviewer, architecture-reviewer, test-coverage-reviewer, performance-reviewer, and business-logic-reviewer. Each should have a focused system prompt, a clear output schema, and write to `reviews/<agent-name>.md`. Then create a `/review-parallel` slash command that launches all 5 in parallel via the Task tool against the current repo, waits for completion, and runs a final synthesizer agent that reads all 5 outputs and produces `reviews/SUMMARY.md` with prioritized P0/P1/P2 findings and suggested fixes as actionable Agent prompts. Run it once on fundexpert as a demo.

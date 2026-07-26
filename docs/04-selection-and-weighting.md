@@ -1,5 +1,7 @@
 # 04 — Selection & Weighting
 
+> **Historical design:** This predates the implemented strategy and sector caps. See the repository README, source, and tests for current behavior.
+
 Two pure functions, both operating on the scored candidate DataFrame.
 
 ## Selector (`select/pick.py`)
