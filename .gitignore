@@ -29,3 +29,8 @@ Thumbs.db
 
 # Misc
 *.tmp
+.coverage
+coverage*.txt
+cov.txt
+*.prof
+profile.txt

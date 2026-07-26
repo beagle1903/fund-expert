@@ -1,5 +1,7 @@
 # 05 — CLI Interaction
 
+> **Historical design:** This predates the implemented web API and dashboard. See the repository README for current run instructions and interfaces.
+
 Single command `fundexpert`. Interactive Turkish prompts collect the criteria; flags handle non-prompted modes.
 
 ## Entry Point

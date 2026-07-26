@@ -1,5 +1,7 @@
 # 03 — Scoring Engine
 
+> **Historical design:** Retained for design context. The source and tests are the current scoring contract.
+
 Pure functions over the merged candidate DataFrame. No IO. Five steps: horizon mapping → normalization → priority weights → score formula → explainability dict.
 
 ## Step 1 — Pick the Return Signal (`scoring/horizon.py`)

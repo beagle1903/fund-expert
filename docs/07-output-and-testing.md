@@ -1,5 +1,7 @@
 # 07 — Output & Testing
 
+> **Historical design:** This predates the current API/frontend tests and repository verification script. See the repository README and `scripts/check.ps1`.
+
 ## Renderer (`render/table.py`)
 
 Uses the `rich` library. One table on stdout, with a header block above and an optional footer block below.

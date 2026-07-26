@@ -1,5 +1,7 @@
 # Fund Expert Implementation Plan
 
+> **Historical implementation plan:** The application has been implemented and evolved beyond this document. Do not use it as the current contract.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a Python CLI (`fundexpert`) that recommends a Turkish investment-fund portfolio (TEFAS regular + BEFAS retirement) from local CSVs, using interactive Turkish prompts, a weighted-sum scoring engine with a soft SRRI risk penalty, score-proportional weights with an umbrella-type diversification cap, and an optional RSS news annotation pass.
