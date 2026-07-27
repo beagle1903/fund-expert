@@ -76,6 +76,9 @@
                                 <a class="variable" href="#GenerateRequest.max_per_sector">max_per_sector</a>
                         </li>
                         <li>
+                                <a class="variable" href="#GenerateRequest.founder">founder</a>
+                        </li>
+                        <li>
                                 <a class="variable" href="#GenerateRequest.news_enabled">news_enabled</a>
                         </li>
                 </ul>
@@ -184,6 +187,30 @@
 
             </li>
             <li>
+                    <a class="class" href="#FounderOption">FounderOption</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="variable" href="#FounderOption.name">name</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#FounderOption.fund_count">fund_count</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
+                    <a class="class" href="#FoundersResponse">FoundersResponse</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="variable" href="#FoundersResponse.universe">universe</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#FoundersResponse.founders">founders</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
                     <a class="class" href="#PortfolioHeader">PortfolioHeader</a>
                             <ul class="memberlist">
                         <li>
@@ -196,7 +223,13 @@
                                 <a class="variable" href="#PortfolioHeader.candidate_total">candidate_total</a>
                         </li>
                         <li>
+                                <a class="variable" href="#PortfolioHeader.candidate_after_founder">candidate_after_founder</a>
+                        </li>
+                        <li>
                                 <a class="variable" href="#PortfolioHeader.candidate_kept">candidate_kept</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#PortfolioHeader.founder">founder</a>
                         </li>
                         <li>
                                 <a class="variable" href="#PortfolioHeader.horizon">horizon</a>
@@ -320,6 +353,9 @@
             </li>
             <li>
                     <a class="function" href="#get_data_status">get_data_status</a>
+            </li>
+            <li>
+                    <a class="function" href="#get_founders">get_founders</a>
             </li>
             <li>
                     <a class="function" href="#generate_portfolio">generate_portfolio</a>
@@ -525,6 +561,18 @@
 
     </div>
     <a class="headerlink" href="#GenerateRequest.max_per_sector"></a>
+
+
+
+                            </div>
+                            <div id="GenerateRequest.founder" class="classattr">
+                                <div class="attr variable">
+            <span class="name">founder</span><span class="annotation">: str | None</span>        =
+<span class="default_value">None</span>
+
+
+    </div>
+    <a class="headerlink" href="#GenerateRequest.founder"></a>
 
 
 
@@ -1065,6 +1113,148 @@ __pydantic_private__: Values of private attributes set on the model instance.
 
                             </div>
                 </section>
+                <section id="FounderOption">
+                    <div class="attr class">
+
+    <span class="def">class</span>
+    <span class="name">FounderOption</span><wbr>(<span class="base">pydantic.main.BaseModel</span>):
+
+
+    </div>
+    <a class="headerlink" href="#FounderOption"></a>
+
+            <div class="docstring"><p>!!! abstract "Usage Documentation"
+    <a href="../concepts/models.md">Models</a></p>
+
+<p>A base class for creating Pydantic models.</p>
+
+<p>Attributes:
+    __class_vars__: The names of the class variables defined on the model.
+    __private_attributes__: Metadata about the private attributes of the model.
+    __signature__: The synthesized <code>__init__</code> [<code>Signature</code>][inspect.Signature] of the model.</p>
+
+<pre><code>__pydantic_complete__: Whether model building is completed, or if there are still undefined fields.
+__pydantic_core_schema__: The core schema of the model.
+__pydantic_custom_init__: Whether the model has a custom `__init__` function.
+__pydantic_decorators__: Metadata containing the decorators defined on the model.
+    This replaces `Model.__validators__` and `Model.__root_validators__` from Pydantic V1.
+__pydantic_generic_metadata__: A dictionary containing metadata about generic Pydantic models.
+    The `origin` and `args` items map to the [`__origin__`][genericalias.__origin__]
+    and [`__args__`][genericalias.__args__] attributes of [generic aliases][types-genericalias],
+    and the `parameter` item maps to the `__parameter__` attribute of generic classes.
+__pydantic_parent_namespace__: Parent namespace of the model, used for automatic rebuilding of models.
+__pydantic_post_init__: The name of the post-init method for the model, if defined.
+__pydantic_root_model__: Whether the model is a [`RootModel`][pydantic.root_model.RootModel].
+__pydantic_serializer__: The `pydantic-core` `SchemaSerializer` used to dump instances of the model.
+__pydantic_validator__: The `pydantic-core` `SchemaValidator` used to validate instances of the model.
+
+__pydantic_fields__: A dictionary of field names and their corresponding [`FieldInfo`][pydantic.fields.FieldInfo] objects.
+__pydantic_computed_fields__: A dictionary of computed field names and their corresponding [`ComputedFieldInfo`][pydantic.fields.ComputedFieldInfo] objects.
+
+__pydantic_extra__: A dictionary containing extra values, if [`extra`][pydantic.config.ConfigDict.extra]
+    is set to `'allow'`.
+__pydantic_fields_set__: The names of fields explicitly set during instantiation.
+__pydantic_private__: Values of private attributes set on the model instance.
+</code></pre>
+</div>
+
+
+                            <div id="FounderOption.name" class="classattr">
+                                <div class="attr variable">
+            <span class="name">name</span><span class="annotation">: str</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#FounderOption.name"></a>
+
+
+
+                            </div>
+                            <div id="FounderOption.fund_count" class="classattr">
+                                <div class="attr variable">
+            <span class="name">fund_count</span><span class="annotation">: int</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#FounderOption.fund_count"></a>
+
+
+
+                            </div>
+                </section>
+                <section id="FoundersResponse">
+                    <div class="attr class">
+
+    <span class="def">class</span>
+    <span class="name">FoundersResponse</span><wbr>(<span class="base">pydantic.main.BaseModel</span>):
+
+
+    </div>
+    <a class="headerlink" href="#FoundersResponse"></a>
+
+            <div class="docstring"><p>!!! abstract "Usage Documentation"
+    <a href="../concepts/models.md">Models</a></p>
+
+<p>A base class for creating Pydantic models.</p>
+
+<p>Attributes:
+    __class_vars__: The names of the class variables defined on the model.
+    __private_attributes__: Metadata about the private attributes of the model.
+    __signature__: The synthesized <code>__init__</code> [<code>Signature</code>][inspect.Signature] of the model.</p>
+
+<pre><code>__pydantic_complete__: Whether model building is completed, or if there are still undefined fields.
+__pydantic_core_schema__: The core schema of the model.
+__pydantic_custom_init__: Whether the model has a custom `__init__` function.
+__pydantic_decorators__: Metadata containing the decorators defined on the model.
+    This replaces `Model.__validators__` and `Model.__root_validators__` from Pydantic V1.
+__pydantic_generic_metadata__: A dictionary containing metadata about generic Pydantic models.
+    The `origin` and `args` items map to the [`__origin__`][genericalias.__origin__]
+    and [`__args__`][genericalias.__args__] attributes of [generic aliases][types-genericalias],
+    and the `parameter` item maps to the `__parameter__` attribute of generic classes.
+__pydantic_parent_namespace__: Parent namespace of the model, used for automatic rebuilding of models.
+__pydantic_post_init__: The name of the post-init method for the model, if defined.
+__pydantic_root_model__: Whether the model is a [`RootModel`][pydantic.root_model.RootModel].
+__pydantic_serializer__: The `pydantic-core` `SchemaSerializer` used to dump instances of the model.
+__pydantic_validator__: The `pydantic-core` `SchemaValidator` used to validate instances of the model.
+
+__pydantic_fields__: A dictionary of field names and their corresponding [`FieldInfo`][pydantic.fields.FieldInfo] objects.
+__pydantic_computed_fields__: A dictionary of computed field names and their corresponding [`ComputedFieldInfo`][pydantic.fields.ComputedFieldInfo] objects.
+
+__pydantic_extra__: A dictionary containing extra values, if [`extra`][pydantic.config.ConfigDict.extra]
+    is set to `'allow'`.
+__pydantic_fields_set__: The names of fields explicitly set during instantiation.
+__pydantic_private__: Values of private attributes set on the model instance.
+</code></pre>
+</div>
+
+
+                            <div id="FoundersResponse.universe" class="classattr">
+                                <div class="attr variable">
+            <span class="name">universe</span><span class="annotation">: Literal[&#39;tefas&#39;, &#39;befas&#39;]</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#FoundersResponse.universe"></a>
+
+
+
+                            </div>
+                            <div id="FoundersResponse.founders" class="classattr">
+                                <div class="attr variable">
+            <span class="name">founders</span><span class="annotation">: list[<a href="#FounderOption">FounderOption</a>]</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#FoundersResponse.founders"></a>
+
+
+
+                            </div>
+                </section>
                 <section id="PortfolioHeader">
                     <div class="attr class">
 
@@ -1147,6 +1337,18 @@ __pydantic_private__: Values of private attributes set on the model instance.
 
 
                             </div>
+                            <div id="PortfolioHeader.candidate_after_founder" class="classattr">
+                                <div class="attr variable">
+            <span class="name">candidate_after_founder</span><span class="annotation">: int</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#PortfolioHeader.candidate_after_founder"></a>
+
+
+
+                            </div>
                             <div id="PortfolioHeader.candidate_kept" class="classattr">
                                 <div class="attr variable">
             <span class="name">candidate_kept</span><span class="annotation">: int</span>        =
@@ -1155,6 +1357,18 @@ __pydantic_private__: Values of private attributes set on the model instance.
 
     </div>
     <a class="headerlink" href="#PortfolioHeader.candidate_kept"></a>
+
+
+
+                            </div>
+                            <div id="PortfolioHeader.founder" class="classattr">
+                                <div class="attr variable">
+            <span class="name">founder</span><span class="annotation">: str | None</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#PortfolioHeader.founder"></a>
 
 
 
@@ -1727,6 +1941,20 @@ __pydantic_private__: Values of private attributes set on the model instance.
 
     </div>
     <a class="headerlink" href="#get_data_status"></a>
+
+
+
+                </section>
+                <section id="get_founders">
+                    <div class="attr function">
+                    <div class="decorator decorator-app.get">@app.get(&#39;/api/founders&#39;, response_model=FoundersResponse)</div>
+
+        <span class="def">def</span>
+        <span class="name">get_founders</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">universe</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;tefas&#39;</span><span class="p">,</span> <span class="s1">&#39;befas&#39;</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="n"><a href="#FoundersResponse">FoundersResponse</a></span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#get_founders"></a>
 
 
 

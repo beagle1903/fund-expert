@@ -7,7 +7,10 @@ export default function SummaryCards({ header, newsMeta, snapshot }) {
       <div className="glass-panel stat-card">
         <Activity size={24} color="var(--accent-primary)" />
         <div className="stat-value">
-          {header.candidate_kept} / {header.candidate_total}
+          {header.candidate_kept} /{' '}
+          {header.founder
+            ? header.candidate_after_founder
+            : header.candidate_total}
         </div>
         <div className="stat-label">Funds Evaluated</div>
       </div>

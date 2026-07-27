@@ -21,6 +21,7 @@ MergedUniverseSchema = pa.DataFrameSchema({
     "applied_management_fee_pct": pa.Column(float, nullable=True, coerce=True),
     "bylaw_management_fee_pct": pa.Column(float, nullable=True, coerce=True),
     "universe": pa.Column(str, coerce=True),
+    "kurucu": pa.Column(str, nullable=True, coerce=True),
 })
 
 HorizonCandidatesSchema = MergedUniverseSchema.add_columns({

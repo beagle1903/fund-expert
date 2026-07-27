@@ -47,3 +47,22 @@ export async function generatePortfolio(config, { signal } = {}) {
   }
   return payload;
 }
+
+export async function getFounders(universe, { signal } = {}) {
+  const response = await fetch(
+    `/api/founders?universe=${encodeURIComponent(universe)}`,
+    { signal },
+  );
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    throw new ApiError(extractApiError(payload, response), response.status);
+  }
+  return payload.founders;
+}

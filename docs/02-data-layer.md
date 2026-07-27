@@ -82,6 +82,11 @@ After loading, columns are renamed via the mapping above. Returns `dict[str, pd.
 - Inner-joins all three frames on `fon_kodu` → one row per fund with the union of columns.
 - Drops the redundant `Getiri Oranı (%)` from `buyukluk` and `Yıllık Getiri Oranı (%)` from `yonetim_ucreti`. The authoritative return source is `getiri.csv`.
 - Adds a `universe` column (`"tefas"` or `"befas"`) so downstream code can filter or group.
+- Adds canonical `kurucu` attribution from the official fund-title prefix. The
+  source exports omit this field, so `fundexpert/founders.py` keeps the TEFAS
+  and BEFAS founder labels separate and normalizes spacing, punctuation, and
+  Turkish-letter variants before matching. A selected founder filters the
+  candidate pool before cleaning and scoring.
 - For the `"both"` universe, each frame is loaded and merged independently, then `pd.concat`-ed. Fund codes are disjoint between TEFAS and BEFAS (verified empirically: 1006 ∩ 302 = 0), so no collision risk.
 - Logs (not errors) any `fon_kodu` present in only some files: the join is inner, so partial rows are dropped — but the log surfaces data-quality issues for the user when they refresh CSVs.
 

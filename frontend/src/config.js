@@ -1,5 +1,6 @@
 export const DEFAULT_CONFIG = {
   universe: 'tefas',
+  founder: null,
   risk_level: 'medium',
   horizon: 'medium',
   volume_priority: 'medium',

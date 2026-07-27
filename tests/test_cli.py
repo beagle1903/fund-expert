@@ -72,6 +72,33 @@ def test_run_pipeline_returns_news_meta_with_enabled_false_when_news_off(fake_un
     assert res.news_meta == {"enabled": False}
 
 
+def test_run_pipeline_filters_by_founder_before_scoring(fake_universe_loader):
+    candidates = _load_one("tefas").copy()
+    founder = "AK PORTFÖY YÖNETİMİ A.Ş."
+    candidates["kurucu"] = [founder, "ATA PORTFÖY YÖNETİMİ A.Ş.", founder]
+
+    res = run_pipeline(
+        candidates=candidates,
+        config=PipelineConfig(
+            universe="tefas",
+            risk_level="medium",
+            horizon="medium",
+            volume_priority="medium",
+            fee_priority="medium",
+            momentum_priority="medium",
+            n=2,
+            max_per_type=2,
+            now=datetime(2026, 5, 2, 11, 42),
+            founder=founder,
+        ),
+    )
+
+    assert set(res.weighted["fon_kodu"]) == {"A", "C"}
+    assert res.header["candidate_total"] == 3
+    assert res.header["candidate_after_founder"] == 2
+    assert res.header["founder"] == founder
+
+
 def _make_questionary_mock(answers: list):
     """Build a questionary stub whose .select/.text(...).ask() returns answers in order."""
     iterator = iter(answers)
@@ -87,10 +114,19 @@ def _make_questionary_mock(answers: list):
     return qmock
 
 
-@pytest.mark.parametrize("cancel_at", range(7))
+@pytest.mark.parametrize("cancel_at", range(8))
 def test_prompt_returns_none_when_user_cancels(cancel_at):
     """Cancelling at any prompt step yields None instead of crashing on int(None)."""
-    answers = ["tefas", "medium", "medium", "medium", "medium", "medium", "5"]
+    answers = [
+        "tefas",
+        "__all__",
+        "medium",
+        "medium",
+        "medium",
+        "medium",
+        "medium",
+        "5",
+    ]
     answers[cancel_at] = None
     qmock = _make_questionary_mock(answers)
     with patch.dict("sys.modules", {"questionary": qmock}):
@@ -170,6 +206,57 @@ def test_main_passes_news_api_key_when_news_flag_set(monkeypatch):
     assert rc == 0
     assert run_mock.call_args.kwargs["config"].news_enabled is True
     assert run_mock.call_args.kwargs["config"].news_api_key == "tvly-test-key"
+
+
+def test_main_passes_selected_founder_to_pipeline():
+    founder = "AK PORTFÖY YÖNETİMİ A.Ş."
+    answers = {
+        "universe": "tefas",
+        "founders": {"tefas": founder},
+        "risk_level": "medium",
+        "horizon": "medium",
+        "volume_priority": "medium",
+        "fee_priority": "medium",
+        "momentum_priority": "medium",
+        "n": 3,
+    }
+    fake_selected = pd.DataFrame(
+        {
+            "fon_kodu": ["AAK"],
+            "fon_adi": ["AK FON"],
+            "umbrella_type": ["Değişken"],
+            "risk": [3],
+            "display_weight_pct": [100.0],
+            "score": [0.7],
+        }
+    )
+    mock_res = PipelineResult(
+        weighted=fake_selected,
+        header={
+            "warning": None,
+            "timestamp": datetime(2026, 1, 1),
+            "universe": "tefas",
+            "risk_level": "medium",
+            "horizon": "medium",
+            "volume_priority": "medium",
+            "fee_priority": "medium",
+            "n": 3,
+            "candidate_total": 1,
+        },
+        hits_for_render={},
+        news_meta={"enabled": False},
+    )
+
+    with (
+        patch("sys.argv", ["fundexpert"]),
+        patch("fundexpert.cli.prompt_user", return_value=answers),
+        patch("fundexpert.cli.save_last_run_state"),
+        patch("fundexpert.cli.run_pipeline", return_value=mock_res) as run_mock,
+        patch("fundexpert.cli.render_portfolio"),
+    ):
+        assert main() == 0
+
+    assert run_mock.call_args.kwargs["config"].founder == founder
 
 
 def test_main_default_run_does_not_pass_news_key(monkeypatch):

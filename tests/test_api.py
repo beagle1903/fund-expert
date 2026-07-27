@@ -59,6 +59,51 @@ def test_generate_returns_projected_contract_and_snapshot(client):
     assert body["data_snapshot"]["row_count"] == 3
     assert body["data_snapshot"]["exported_at"] == "2026-05-02T11:02:13"
     assert body["header"]["candidate_total"] == 3
+    assert body["header"]["candidate_after_founder"] == 3
+    assert body["header"]["founder"] is None
+
+
+def test_founders_and_generate_use_active_universe_specific_options(
+    client, monkeypatch
+):
+    candidates, manifest = api.get_cached_candidates("tefas")
+    candidates = candidates.copy()
+    ak = "AK PORTFÖY YÖNETİMİ A.Ş."
+    ata = "ATA PORTFÖY YÖNETİMİ A.Ş."
+    candidates["kurucu"] = [ak, ata, ak]
+    monkeypatch.setattr(
+        api, "get_cached_candidates", lambda universe: (candidates, manifest)
+    )
+
+    options_response = client.get("/api/founders?universe=tefas")
+    generate_response = client.post(
+        "/api/generate",
+        json={"universe": "tefas", "founder": ak, "n": 2},
+    )
+
+    assert options_response.status_code == 200
+    assert options_response.json()["founders"] == [
+        {"name": ak, "fund_count": 2},
+        {"name": ata, "fund_count": 1},
+    ]
+    assert generate_response.status_code == 200
+    body = generate_response.json()
+    assert body["header"]["candidate_total"] == 3
+    assert body["header"]["candidate_after_founder"] == 2
+    assert body["header"]["founder"] == ak
+
+
+def test_generate_rejects_founder_outside_active_universe(client):
+    response = client.post(
+        "/api/generate",
+        json={
+            "universe": "befas",
+            "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "INVALID_FOUNDER"
 
 
 @pytest.mark.parametrize(

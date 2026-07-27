@@ -22,6 +22,7 @@ from fundexpert.select.sector import sector_from_names
 from fundexpert.select.strategy import bucket_from_names
 from fundexpert.select.weights import compute_weights
 from fundexpert.data.merge import clean_candidates
+from fundexpert.founders import filter_by_founder, validate_founder
 from fundexpert.utils.text import turkish_upper_series
 
 
@@ -37,6 +38,7 @@ class PipelineConfig:
     max_per_type: int
     now: datetime
     max_per_sector: int = DEFAULT_MAX_PER_SECTOR
+    founder: str | None = None
     news_enabled: bool = False
     news_api_key: str | None = None
     validate_schemas: bool = False
@@ -73,6 +75,15 @@ def run_pipeline(
             "Use main()'s 'both' option for dual-portfolio output."
         )
     total = len(candidates)
+
+    if config.founder is not None:
+        validate_founder(config.founder, config.universe)
+    candidates = filter_by_founder(candidates, config.founder)
+    candidate_after_founder = len(candidates)
+    if config.founder is not None and candidate_after_founder == 0:
+        raise ValueError(
+            f"No candidates remain for founder {config.founder!r} in {config.universe}."
+        )
 
     # Drop funds with NaN primary fee and short history
     candidates = clean_candidates(candidates)
@@ -148,7 +159,9 @@ def run_pipeline(
         "timestamp": config.now,
         "universe":  config.universe,
         "candidate_total": total,
+        "candidate_after_founder": candidate_after_founder,
         "candidate_kept":  len(horizoned),
+        "founder": config.founder,
         "horizon":  config.horizon,
         "risk_level": config.risk_level,
         "volume_priority": config.volume_priority,

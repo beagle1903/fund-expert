@@ -76,6 +76,7 @@ def main() -> int:
             n=answers["n"],
             max_per_type=args.max_per_type,
             max_per_sector=args.max_per_sector,
+            founder=answers.get("founders", {}).get(u),
             now=now,
             news_enabled=args.news,
             news_api_key=news_api_key,

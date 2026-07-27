@@ -23,6 +23,7 @@ Single command `fundexpert`. Interactive Turkish prompts collect the criteria; f
 
 ```
 ? Fon evreni                               (tefas / befas / both)
+? Kurucu                                   (universe-specific list / Tümü)
 ? Risk önceliği (yüksek = riskten kaçınma) (Low / Medium / High)
 ? Yatırım vadesi                           (Short ≤3 ay / Medium 3 ay – 1 yıl / Long 1 yıl+)
 ? Hacim değişimi önceliği                  (Low / Medium / High)
@@ -43,6 +44,7 @@ If the file is missing or corrupt, defaults silently fall back to the hard-coded
 | Prompt | Default |
 |---|---|
 | Universe | tefas |
+| Kurucu | Tümü |
 | Risk priority | Medium |
 | Horizon | Medium |
 | Volume priority | Medium |

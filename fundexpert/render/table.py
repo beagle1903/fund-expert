@@ -38,10 +38,20 @@ def render_portfolio(
         f"Hacim önc.: {header['volume_priority']}  •  "
         f"Ücret önc.: {header['fee_priority']}  •  N={header['n']}"
     )
-    console.print(
-        f"Aday havuzu: {header['candidate_total']} → {header['candidate_kept']} "
-        f"(NaN filtreleri sonrası)"
-    )
+    founder = header.get("founder")
+    if founder:
+        console.print(f"Kurucu: {escape(str(founder))}")
+        console.print(
+            f"Aday havuzu: {header['candidate_total']} → "
+            f"{header.get('candidate_after_founder', header['candidate_total'])} "
+            f"(kurucu filtresi) → {header['candidate_kept']} "
+            f"(NaN/vade filtreleri sonrası)"
+        )
+    else:
+        console.print(
+            f"Aday havuzu: {header['candidate_total']} → {header['candidate_kept']} "
+            f"(NaN/vade filtreleri sonrası)"
+        )
 
     if news_meta and news_meta.get("enabled"):
         if not news_meta.get("key_present"):

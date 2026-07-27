@@ -4,6 +4,9 @@ export default function PortfolioTable({ header, hitsForRender, weighted }) {
   return (
     <div className="glass-panel">
       <h3 className="section-heading">Selected Portfolio</h3>
+      {header.founder && (
+        <p className="portfolio-filter">Founder: {header.founder}</p>
+      )}
       {header.warning && (
         <div className="portfolio-warning">
           <AlertTriangle size={16} />

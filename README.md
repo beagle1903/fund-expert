@@ -44,6 +44,12 @@ The loader validates all three files as one acquisition. It checks metadata,
 required columns, numeric fields, reported row counts, fund-code coverage, and
 that export timestamps fall within a 30-minute window.
 
+The exports do not include a `Kurucu` column. Fundexpert attributes each row to
+the canonical founder shown by the official TEFAS/BEFAS `Kurucu` selector,
+using normalized official-title prefixes. TEFAS and BEFAS founder lists are
+kept separate. Portfolio generation defaults to all founders; the CLI and web
+dashboard can narrow the candidate pool to one founder before scoring.
+
 Existing flat files remain supported. Future import automation can call
 `fundexpert.data.bundle.validate_bundle` and `publish_bundle`; publication
 stores an immutable version and atomically changes `current.json` only after
@@ -78,7 +84,10 @@ and uses the quantitative portfolio unchanged.
 ## API
 
 - `POST /api/generate` validates configuration and returns a projected
-  portfolio, news metadata, and the exact data snapshot used.
+  portfolio, news metadata, and the exact data snapshot used. Optional
+  `founder` limits the candidate pool before cleaning, scoring, and selection.
+- `GET /api/founders?universe=tefas|befas` returns only canonical founders
+  present in the active universe bundle, with fund counts.
 - `GET /api/data-status` reports TEFAS/BEFAS availability, export metadata,
   record counts, and file hashes.
 

@@ -6,6 +6,7 @@ import pandas as pd
 
 from fundexpert.schemas import MergedUniverseSchema
 from fundexpert.data.loader import UniverseData
+from fundexpert.founders import attribute_founders
 from fundexpert.utils.rules import get_exclusion_rules
 
 
@@ -25,6 +26,7 @@ def merge_universe(frames: UniverseData, universe: str, validate_schemas: bool =
     df = getiri.merge(buyukluk_keep, on="fon_kodu", how="inner")
     df = df.merge(yonetim_keep, on="fon_kodu", how="inner")
     df["universe"] = universe
+    df["kurucu"] = attribute_founders(df["fon_adi"], universe)
 
     if validate_schemas:
         return MergedUniverseSchema.validate(df)

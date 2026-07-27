@@ -23,6 +23,7 @@ from fundexpert.data.bundle import (
     resolve_active_bundle,
 )
 from fundexpert.data.merge import merge_universe
+from fundexpert.founders import available_founders
 from fundexpert.pipeline import PipelineConfig, run_pipeline
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ class GenerateRequest(BaseModel):
     n: int = Field(default=8, ge=1, le=20)
     max_per_type: int = Field(default=DEFAULT_MAX_PER_TYPE, ge=1, le=20)
     max_per_sector: int = Field(default=DEFAULT_MAX_PER_SECTOR, ge=1, le=20)
+    founder: str | None = Field(default=None, min_length=1, max_length=200)
     news_enabled: bool = False
 
 
@@ -90,11 +92,23 @@ class DataStatusResponse(BaseModel):
     universes: list[UniverseDataStatus]
 
 
+class FounderOption(BaseModel):
+    name: str
+    fund_count: int
+
+
+class FoundersResponse(BaseModel):
+    universe: Universe
+    founders: list[FounderOption]
+
+
 class PortfolioHeader(BaseModel):
     timestamp: datetime
     universe: Universe
     candidate_total: int
+    candidate_after_founder: int
     candidate_kept: int
+    founder: str | None
     horizon: Horizon
     risk_level: Priority
     volume_priority: Priority
@@ -241,6 +255,27 @@ def get_data_status() -> DataStatusResponse:
     return DataStatusResponse(universes=[_status_for("tefas"), _status_for("befas")])
 
 
+@app.get("/api/founders", response_model=FoundersResponse)
+def get_founders(universe: Universe) -> FoundersResponse:
+    try:
+        candidates, _ = get_cached_candidates(universe)
+    except DataUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "DATA_UNAVAILABLE",
+                "message": f"Data for {universe.upper()} is unavailable or invalid.",
+            },
+        ) from exc
+    return FoundersResponse(
+        universe=universe,
+        founders=[
+            FounderOption.model_validate(founder)
+            for founder in available_founders(candidates)
+        ],
+    )
+
+
 @app.post("/api/generate", response_model=GenerateResponse)
 def generate_portfolio(req: GenerateRequest) -> GenerateResponse:
     try:
@@ -255,6 +290,22 @@ def generate_portfolio(req: GenerateRequest) -> GenerateResponse:
             },
         ) from exc
 
+    if req.founder is not None:
+        valid_founders = {
+            str(founder["name"]) for founder in available_founders(candidates)
+        }
+        if req.founder not in valid_founders:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "INVALID_FOUNDER",
+                    "message": (
+                        f"Founder is not available in the active "
+                        f"{req.universe.upper()} data."
+                    ),
+                },
+            )
+
     config = PipelineConfig(
         universe=req.universe,
         risk_level=req.risk_level,
@@ -265,6 +316,7 @@ def generate_portfolio(req: GenerateRequest) -> GenerateResponse:
         n=req.n,
         max_per_type=req.max_per_type,
         max_per_sector=req.max_per_sector,
+        founder=req.founder,
         now=datetime.now(),
         news_enabled=req.news_enabled,
         news_api_key=os.environ.get("TAVILY_API_KEY") if req.news_enabled else None,

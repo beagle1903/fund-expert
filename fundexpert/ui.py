@@ -4,10 +4,12 @@ import sys
 from typing import Any
 
 from fundexpert.config import LAST_RUN_FILE
+from fundexpert.founders import founder_choices
 
 UNIVERSE_CHOICES = ["tefas", "befas", "both"]
 PRIORITY_CHOICES = ["low", "medium", "high"]
 HORIZON_CHOICES = ["short", "medium", "long"]
+ALL_FOUNDERS = "__all__"
 
 
 def load_last_run_state() -> dict[str, Any]:
@@ -42,6 +44,33 @@ def prompt_user(last: dict[str, Any]) -> dict[str, Any] | None:
     ).ask()
     if universe is None:
         return None
+
+    selected_universes = ["tefas", "befas"] if universe == "both" else [universe]
+    last_founders = last.get("founders", {})
+    if not isinstance(last_founders, dict):
+        last_founders = {}
+    founders: dict[str, str | None] = {}
+    for selected_universe in selected_universes:
+        universe_founders = tuple(founder_choices(selected_universe))
+        last_founder = last_founders.get(selected_universe)
+        founder = questionary.select(
+            f"Kurucu ({selected_universe.upper()}):",
+            choices=[
+                questionary.Choice("Tümü", value=ALL_FOUNDERS),
+                *[
+                    questionary.Choice(name, value=name)
+                    for name in universe_founders
+                ],
+            ],
+            default=(
+                last_founder
+                if last_founder in universe_founders
+                else ALL_FOUNDERS
+            ),
+        ).ask()
+        if founder is None:
+            return None
+        founders[selected_universe] = None if founder == ALL_FOUNDERS else founder
 
     risk_level = questionary.select(
         "Risk seviyesi (yüksek = yüksek risk tolere edilir):",
@@ -88,6 +117,7 @@ def prompt_user(last: dict[str, Any]) -> dict[str, Any] | None:
 
     return {
         "universe": universe,
+        "founders": founders,
         "risk_level": risk_level,
         "horizon": horizon,
         "volume_priority": volume_priority,

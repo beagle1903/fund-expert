@@ -24,7 +24,9 @@ const responseBody = {
     timestamp: '2026-07-26T12:00:00',
     universe: 'tefas',
     candidate_total: 3,
+    candidate_after_founder: 3,
     candidate_kept: 3,
+    founder: null,
     horizon: 'medium',
     risk_level: 'medium',
     volume_priority: 'medium',
@@ -62,7 +64,16 @@ function jsonResponse(body, { ok = true, status = 200 } = {}) {
 
 describe('App', () => {
   beforeEach(() => {
-    globalThis.fetch = vi.fn(() => jsonResponse(responseBody));
+    globalThis.fetch = vi.fn((url) =>
+      url.startsWith('/api/founders')
+        ? jsonResponse({
+            universe: 'tefas',
+            founders: [
+              { name: 'AK PORTFÖY YÖNETİMİ A.Ş.', fund_count: 2 },
+            ],
+          })
+        : jsonResponse(responseBody),
+    );
   });
 
   afterEach(() => {
@@ -91,10 +102,56 @@ describe('App', () => {
     });
     await user.click(screen.getByRole('button', { name: 'Generate Portfolio' }));
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
-    const payload = JSON.parse(fetch.mock.calls[1][1].body);
+    const generateCalls = () =>
+      fetch.mock.calls.filter(([url]) => url === '/api/generate');
+    await waitFor(() => expect(generateCalls()).toHaveLength(2));
+    const payload = JSON.parse(generateCalls()[1][1].body);
     expect(payload.n).toBe(12);
     expect(typeof payload.n).toBe('number');
+  });
+
+  it('loads universe-specific founders and resets the selection on universe change', async () => {
+    globalThis.fetch = vi.fn((url) => {
+      if (url === '/api/founders?universe=tefas') {
+        return jsonResponse({
+          universe: 'tefas',
+          founders: [
+            { name: 'AK PORTFÖY YÖNETİMİ A.Ş.', fund_count: 2 },
+          ],
+        });
+      }
+      if (url === '/api/founders?universe=befas') {
+        return jsonResponse({
+          universe: 'befas',
+          founders: [
+            { name: 'AGESA HAYAT VE EMEKLİLİK A.Ş.', fund_count: 8 },
+          ],
+        });
+      }
+      return jsonResponse(responseBody);
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText('AAA');
+
+    await user.selectOptions(
+      screen.getByLabelText('Founder (Kurucu)'),
+      'AK PORTFÖY YÖNETİMİ A.Ş.',
+    );
+    expect(screen.getByLabelText('Founder (Kurucu)')).toHaveValue(
+      'AK PORTFÖY YÖNETİMİ A.Ş.',
+    );
+
+    await user.selectOptions(screen.getByLabelText('Universe'), 'befas');
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('option', {
+          name: 'AGESA HAYAT VE EMEKLİLİK A.Ş. (8)',
+        }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText('Founder (Kurucu)')).toHaveValue('');
   });
 
   it('shows safe API error details', async () => {

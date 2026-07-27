@@ -60,7 +60,8 @@ New-Item -ItemType Junction -Path "<worktree>/data" -Target "<repo>/data"
 ```
 bundle.resolve_active_bundle (versioned current.json or validated legacy files)
   → loader.load_universe(getiri, buyukluk, yonetim)
-  → merge.merge_universe (one universe per run; `both` runs the pipeline twice and renders two portfolios)
+  → merge.merge_universe (one universe per run; attributes canonical `kurucu` from the official fund-title prefix; `both` runs the pipeline twice and renders two portfolios)
+  → optional founder filter (TEFAS and BEFAS have separate canonical lists)
   → drop NaN applied_management_fee_pct
   → scoring.horizon.apply_horizon (averages return columns per horizon bucket)
   → scoring.score.score_candidates (weighted sum of R̂, V̂, 1−F̂, M̂; minus SRRI risk penalty)
@@ -76,6 +77,7 @@ bundle.resolve_active_bundle (versioned current.json or validated legacy files)
 
 - **CSV ingestion**: TEFAS/BEFAS export files have a 3-row preamble (`skiprows=3`), UTF-8 BOM, comma decimal separator inside quoted strings. Column names are Turkish — see `loader.py` for the rename map.
 - **Data bundles**: Treat `getiri.csv`, `buyukluk.csv`, and `yonetim ucreti.csv` as one acquisition. `validate_bundle` checks metadata, schemas, numeric values, exact code-set coverage, row counts, and a 30-minute timestamp window. `publish_bundle` writes an immutable version and atomically swaps `current.json`; browser automation must publish only through this seam.
+- **Founder (`kurucu`) filter**: The exported CSVs omit `Kurucu`. `fundexpert/founders.py` holds the separate official TEFAS and BEFAS labels and deterministically attributes rows from normalized official fund-title prefixes (including known `PYŞ` aliases). API options must come from the active bundle through `GET /api/founders`, so clients cannot select a founder with zero current candidates. Apply the filter before cleaning/scoring and reset it when the universe changes.
 - **Legacy compatibility**: Flat `data/<universe>/*.csv` files remain valid until the first versioned bundle is published. Never silently use cached candidates if the active bundle is missing or invalid.
 - **Risk** = SRRI scale 1–7 (column `Fonun Risk Değeri` → `risk`).
 - **Score** = base ∈ [0,1] minus risk penalty; can go slightly negative.

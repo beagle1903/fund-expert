@@ -6,7 +6,7 @@ function SelectControl({ label, name, onChange, options, value }) {
   return (
     <div className="control-group">
       <label htmlFor={name}>{label}</label>
-      <select id={name} name={name} value={value} onChange={onChange}>
+      <select id={name} name={name} value={value ?? ''} onChange={onChange}>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -17,7 +17,13 @@ function SelectControl({ label, name, onChange, options, value }) {
   );
 }
 
-export default function ControlPanel({ config, loading, onChange, onSubmit }) {
+export default function ControlPanel({
+  config,
+  founders,
+  loading,
+  onChange,
+  onSubmit,
+}) {
   const priorityOptions = PRIORITIES.map((value) => ({
     value,
     label: value[0].toUpperCase() + value.slice(1),
@@ -38,6 +44,19 @@ export default function ControlPanel({ config, loading, onChange, onSubmit }) {
           options={[
             { value: 'tefas', label: 'TEFAS' },
             { value: 'befas', label: 'BEFAS' },
+          ]}
+        />
+        <SelectControl
+          label="Founder (Kurucu)"
+          name="founder"
+          value={config.founder}
+          onChange={onChange}
+          options={[
+            { value: '', label: 'All founders' },
+            ...founders.map((founder) => ({
+              value: founder.name,
+              label: `${founder.name} (${founder.fund_count})`,
+            })),
           ]}
         />
         <SelectControl

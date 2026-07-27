@@ -319,6 +319,12 @@ tbody tr:hover {
   margin-bottom: 16px;
 }
 
+.portfolio-filter {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: -12px 0 20px;
+}
+
 .news-marker {
   margin-left: 8px;
   cursor: help;

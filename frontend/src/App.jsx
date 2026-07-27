@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { generatePortfolio } from './api/fundexpert.js';
+import { generatePortfolio, getFounders } from './api/fundexpert.js';
 import ControlPanel from './components/ControlPanel.jsx';
 import ErrorPanel from './components/ErrorPanel.jsx';
 import NewsResults from './components/NewsResults.jsx';
@@ -12,6 +12,7 @@ const AllocationChart = lazy(() => import('./components/AllocationChart.jsx'));
 export default function App() {
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [data, setData] = useState(null);
+  const [founders, setFounders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const activeRequest = useRef(null);
@@ -47,6 +48,19 @@ export default function App() {
     return () => activeRequest.current?.abort();
   }, [requestPortfolio]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    setFounders([]);
+    getFounders(config.universe, { signal: controller.signal })
+      .then(setFounders)
+      .catch((requestError) => {
+        if (requestError.name !== 'AbortError') {
+          setFounders([]);
+        }
+      });
+    return () => controller.abort();
+  }, [config.universe]);
+
   const handleGenerate = (event) => {
     event.preventDefault();
     requestPortfolio(config);
@@ -55,14 +69,26 @@ export default function App() {
   const handleChange = (event) => {
     const { checked, name, type, value } = event.target;
     const nextValue =
-      type === 'checkbox' ? checked : type === 'range' ? Number(value) : value;
-    setConfig((previous) => ({ ...previous, [name]: nextValue }));
+      type === 'checkbox'
+        ? checked
+        : type === 'range'
+          ? Number(value)
+          : name === 'founder' && value === ''
+            ? null
+            : value;
+    setConfig((previous) => {
+      if (name === 'universe') {
+        return { ...previous, universe: nextValue, founder: null };
+      }
+      return { ...previous, [name]: nextValue };
+    });
   };
 
   return (
     <div className="dashboard-container">
       <ControlPanel
         config={config}
+        founders={founders}
         loading={loading}
         onChange={handleChange}
         onSubmit={handleGenerate}
