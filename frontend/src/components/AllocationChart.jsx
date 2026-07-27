@@ -6,7 +6,10 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import { allocationByStrategy } from '../utils/allocation.js';
+import {
+  allocationByStrategy,
+  strategyAllocationLabel,
+} from '../utils/allocation.js';
 
 const COLORS = [
   '#66fcf1',
@@ -32,9 +35,11 @@ export default function AllocationChart({ weighted }) {
               cx="50%"
               cy="50%"
               innerRadius={60}
-              outerRadius={100}
+              outerRadius={90}
               paddingAngle={5}
               dataKey="value"
+              label={strategyAllocationLabel}
+              labelLine={{ stroke: '#8b929a', strokeWidth: 1 }}
               stroke="none"
             >
               {data.map((entry, index) => (

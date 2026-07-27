@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { allocationByStrategy } from '../utils/allocation.js';
+import {
+  allocationByStrategy,
+  strategyAllocationLabel,
+  strategyDisplayName,
+} from '../utils/allocation.js';
 
 describe('allocationByStrategy', () => {
   it('aggregates weights by strategy', () => {
@@ -13,5 +17,13 @@ describe('allocationByStrategy', () => {
       { name: 'equity', value: 50 },
       { name: 'debt', value: 50 },
     ]);
+  });
+
+  it('formats readable labels with percentages', () => {
+    expect(strategyDisplayName('money_market')).toBe('Money market');
+    expect(strategyDisplayName('other')).toBe('Unclassified');
+    expect(strategyAllocationLabel({ name: 'fund_of_funds', value: 25 })).toBe(
+      'Fund of funds · 25%',
+    );
   });
 });

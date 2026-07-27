@@ -297,6 +297,12 @@ tbody tr:hover {
   height: 300px;
 }
 
+.allocation-chart .recharts-pie-label-text {
+  fill: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .chart-loading {
   min-height: 300px;
   display: grid;

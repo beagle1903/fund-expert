@@ -9,3 +9,16 @@ export function allocationByStrategy(weighted) {
   });
   return Array.from(allocations, ([name, value]) => ({ name, value }));
 }
+
+export function strategyDisplayName(strategy) {
+  if (!strategy || strategy === 'other') {
+    return 'Unclassified';
+  }
+
+  const words = strategy.replaceAll('_', ' ');
+  return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
+}
+
+export function strategyAllocationLabel({ name, value }) {
+  return `${strategyDisplayName(name)} · ${value}%`;
+}
