@@ -108,6 +108,16 @@ def test_query_returns_empty_on_url_error(cache_dir, caplog):
     assert "Haber sorgusu başarısız" in caplog.text
 
 
+def test_query_returns_empty_on_timeout(cache_dir, caplog):
+    with patch("urllib.request.urlopen", side_effect=TimeoutError("timed out")):
+        hits = query_negative_news(
+            "AK PORTFÖY", ("ceza",), api_key="k", cache_dir=cache_dir,
+        )
+
+    assert hits == []
+    assert "Haber sorgusu başarısız" in caplog.text
+
+
 def test_query_returns_empty_on_malformed_json(cache_dir, caplog):
     class _BadResp:
         def __enter__(self_inner): return self_inner

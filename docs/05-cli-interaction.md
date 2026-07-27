@@ -1,5 +1,8 @@
 # 05 — CLI Interaction
 
+> Historical design snapshot. See `fundexpert/cli.py` and generated API
+> documentation for the current flags and prompts.
+
 Single command `fundexpert`. Interactive Turkish prompts collect the criteria; flags handle non-prompted modes.
 
 ## Entry Point

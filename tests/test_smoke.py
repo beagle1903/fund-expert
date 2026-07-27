@@ -60,3 +60,28 @@ def test_pipeline_long_horizon_drops_funds_with_no_long_history():
     )
     assert res.header["excluded_horizon"] > 0
     assert len(res.weighted) > 0
+
+
+def test_pipeline_handles_zero_valid_candidates():
+    from fundexpert.pipeline import PipelineConfig
+
+    candidates = _load_one("tefas")
+    candidates["applied_management_fee_pct"] = float("nan")
+    config = PipelineConfig(
+        universe="tefas",
+        risk_level="medium",
+        horizon="medium",
+        volume_priority="medium",
+        fee_priority="medium",
+        momentum_priority="medium",
+        n=5,
+        max_per_type=2,
+        now=datetime(2026, 5, 2, 11, 42),
+        validate_schemas=True,
+    )
+
+    result = run_pipeline(candidates=candidates, config=config)
+
+    assert result.weighted.empty
+    assert result.header["candidate_kept"] == 0
+    assert result.header["warning"] == "Aday havuzu boş — portföy oluşturulamadı."

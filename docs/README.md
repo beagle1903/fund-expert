@@ -1,5 +1,10 @@
 # Fund Expert — Design Docs
 
+> Historical design snapshot from 2026-05-02. Some decisions below were
+> superseded during implementation. See the repository `README.md`,
+> `AGENTS.md`, and generated `docs/fundexpert/` API pages for the current
+> behavior.
+
 Design specs for the **Fund Expert** CLI: a Python tool that recommends a Turkish investment-fund portfolio (TEFAS regular funds and BEFAS retirement funds) based on user-provided criteria.
 
 Date: 2026-05-02

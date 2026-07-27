@@ -1,5 +1,8 @@
 # 06 — News Pass (`--news`)
 
+> Historical design snapshot. The implementation uses Tavily with curated
+> domains and applies a fixed negative-news score penalty before selection.
+
 Optional, on-demand. v1 scope: **annotate** each picked fund with up to 3 recent Turkish financial-news headlines. **Zero scoring impact.**
 
 ## Goal in v1

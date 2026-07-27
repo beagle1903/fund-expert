@@ -1,5 +1,8 @@
 # 07 — Output & Testing
 
+> Historical design snapshot. See the current test suite, `AGENTS.md`, and
+> generated API documentation for the implemented contract.
+
 ## Renderer (`render/table.py`)
 
 Uses the `rich` library. One table on stdout, with a header block above and an optional footer block below.

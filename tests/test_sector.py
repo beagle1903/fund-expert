@@ -39,3 +39,12 @@ def test_sector_from_name_handles_none():
 def test_sector_from_name_handles_whitespace():
     assert sector_from_names(pd.Series(["   "])).iloc[0] == "diversified"
     assert sector_from_names(pd.Series(["\t\n"])).iloc[0] == "diversified"
+
+
+def test_sector_priority_follows_rules_not_textual_order():
+    names = pd.Series([
+        "SAĞLIK VE TEKNOLOJİ SEKTÖRLERİ FONU",
+        "ENERJİ VE BANKACILIK SEKTÖRLERİ FONU",
+    ])
+
+    assert sector_from_names(names).tolist() == ["tech", "energy"]

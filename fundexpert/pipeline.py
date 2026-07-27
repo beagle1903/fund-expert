@@ -22,6 +22,7 @@ from fundexpert.select.sector import sector_from_names
 from fundexpert.select.strategy import bucket_from_names
 from fundexpert.select.weights import compute_weights
 from fundexpert.data.merge import clean_candidates
+from fundexpert.utils.text import turkish_upper_series
 
 
 @dataclass
@@ -85,14 +86,14 @@ def run_pipeline(
         momentum_priority=config.momentum_priority,
         risk_level=config.risk_level,
         scoring_config=config.scoring_config,
+        validate_schema=config.validate_schemas,
     )
-    from fundexpert.utils.text import turkish_upper_series
     scored_fon_adi_upper = turkish_upper_series(scored["fon_adi"])
     scored = scored.assign(
         strategy=bucket_from_names(scored_fon_adi_upper),
         sector=sector_from_names(scored_fon_adi_upper),
     )
-    
+
     if config.validate_schemas:
         from fundexpert.schemas import ScoredCandidatesSchema
         scored = ScoredCandidatesSchema.validate(scored)
@@ -114,7 +115,7 @@ def run_pipeline(
         scored, n=config.n, max_per_type=config.max_per_type, max_per_sector=config.max_per_sector,
     )
     weighted = compute_weights(selected, config.selection_config)
-    
+
     if config.validate_schemas:
         from fundexpert.schemas import SelectedPortfolioSchema
         weighted = SelectedPortfolioSchema.validate(weighted)

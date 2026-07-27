@@ -5,6 +5,7 @@ import pandas as pd
 import logging
 
 from fundexpert.config import ScoringConfig
+from fundexpert.schemas import HorizonCandidatesSchema
 from fundexpert.scoring.normalize import minmax_normalize
 
 logger = logging.getLogger(__name__)
@@ -18,12 +19,16 @@ def score_candidates(
     momentum_priority: str,
     risk_level: str,
     scoring_config: ScoringConfig,
+    validate_schema: bool = False,
 ) -> pd.DataFrame:
     """Add `score` column. Input must already have `R` (from horizon).
 
     Score = weighted(R̂, V̂, 1−F̂, M̂) − risk_penalty.
     M̂ = minmax-normalized units_change_pct (fund-flow momentum).
     """
+    if validate_schema:
+        df = HorizonCandidatesSchema.validate(df)
+
     R_hat = minmax_normalize(df["R"])
     V_hat = minmax_normalize(np.log1p(np.maximum(df["aum_last"].fillna(0), 0)))
     F_hat = minmax_normalize(df["applied_management_fee_pct"])
@@ -51,7 +56,7 @@ def score_candidates(
     missing_count = risk_missing.sum()
     if missing_count > 0:
         logger.warning("Filled missing risk ratings with 7.0 for %d funds.", missing_count)
-        
+
     risk_arr = df["risk"].fillna(7.0).to_numpy(dtype=np.float32)
     risk_norm = (risk_arr - 1.0) / 6.0
     risk_penalty = lam * (risk_norm ** 2)

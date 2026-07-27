@@ -104,6 +104,22 @@ def test_pick_top_sector_cap_is_optional_for_legacy_callers():
     out, _ = pick_top(df, n=3, max_per_type=2)  # no max_per_sector
     assert list(out["fon_kodu"]) == ["A", "B", "C"]
 
+
+def test_pick_top_does_not_cap_other_strategy():
+    """Unclassified funds must not be treated as one concentrated strategy."""
+    df = pd.DataFrame({
+        "fon_kodu": ["A", "B", "C"],
+        "strategy": ["other", "other", "other"],
+        "sector": ["diversified", "diversified", "diversified"],
+        "score": [0.9, 0.8, 0.7],
+    })
+
+    out, warning = pick_top(df, n=3, max_per_type=1, max_per_sector=1)
+
+    assert list(out["fon_kodu"]) == ["A", "B", "C"]
+    assert warning is None
+
+
 @settings(suppress_health_check=[HealthCheck.too_slow], deadline=None)
 @given(
     df=data_frames(

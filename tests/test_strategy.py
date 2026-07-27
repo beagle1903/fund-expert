@@ -58,3 +58,12 @@ def test_bucket_from_name_empty_or_none() -> None:
     assert bucket_from_names(pd.Series(["   "])).iloc[0] == "other"
     assert bucket_from_names(pd.Series(["\n\t "])).iloc[0] == "other"
     assert bucket_from_names(pd.Series([None])).iloc[0] == "other"  # type: ignore[arg-type]
+
+
+def test_bucket_priority_follows_rules_not_textual_order() -> None:
+    names = pd.Series([
+        "BORÇLANMA ARAÇLARI VE HİSSE SENEDİ FONU",
+        "ENDEKS TAKİP EDEN PARA PİYASASI FONU",
+    ])
+
+    assert bucket_from_names(names).tolist() == ["equity", "money_market"]

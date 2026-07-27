@@ -59,9 +59,9 @@ Rejected/deferred options from the same brainstorm — keep in pocket for v2+:
 ## Other deferred items from review.md / today's discussion
 
 - **P1 cancellation crash** — ✅ shipped May 3 (`59f9f87`).
-- **P2 weights fallback for `n > 20`** — still open. Decide between hard-fail (`raise ValueError`), silent cap at 20, or document-the-contract. CLI side already constrains `n ≤ 20` via the prompt; only matters for non-CLI `run_pipeline` callers.
-- **P2 data path resolution** — `DATA_ROOT = repo/data` is brittle for non-editable installs. Add a `--data-root` flag or `FUNDEXPERT_DATA` env var with a clear "not found" error. Only relevant if we ever `pip install` outside the dev tree.
-- **P2 docs out of sync** — `docs/01-architecture.md` through `docs/07-output-and-testing.md` describe behavior that's drifted (umbrella-type cap, active news pass, etc.). Two paths: rewrite to match, or banner them as historical and lean on README + CLAUDE.md as the live contract.
+- **P2 weights fallback for `n > 20`** — ✅ resolved: `pick_top` hard-fails with a documented `ValueError`.
+- **P2 data path resolution** — ✅ resolved: `DATA_ROOT` is centralized in `config.py` and supports the `FUNDEXPERT_DATA_DIR` environment override.
+- **P2 docs out of sync** — ✅ resolved: historical design documents are explicitly bannered, the root README describes current behavior, and generated API docs are refreshed after feature work.
 - **P3 staged candidate funnel counts** — current `candidate_kept` blurs fee-NaN drop and horizon-NaN drop into one number. Split into per-stage counts in the header.
 - **Architecture: extract orchestration into `fundexpert/pipeline.py`** — `cli.py` now does prompts, argparse, last-run cache, two-universe loop, news (soon), error handling. If we add `--explain`, backtest mode, or a web UI, that file balloons. Worth pulling orchestration out before the next round of flags.
 - **Sector classifier growth** — `select/sector.py` keyword set is intentionally minimal. Add new sectors as real picks reveal what's missing.

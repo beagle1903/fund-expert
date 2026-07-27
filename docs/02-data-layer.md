@@ -1,5 +1,8 @@
 # 02 — Data Layer
 
+> Historical design snapshot. See `fundexpert/data/` and generated API
+> documentation for current behavior.
+
 Responsible for loading raw TEFAS/BEFAS CSVs, parsing Turkish-localized numbers, and joining the three files per universe into one fund-per-row DataFrame.
 
 ## Source Files

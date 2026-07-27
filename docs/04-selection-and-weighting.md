@@ -1,5 +1,8 @@
 # 04 — Selection & Weighting
 
+> Historical design snapshot. The implementation caps name-derived strategy
+> and sector buckets independently and uses 5% weight units.
+
 Two pure functions, both operating on the scored candidate DataFrame.
 
 ## Selector (`select/pick.py`)

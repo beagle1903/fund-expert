@@ -1,4 +1,5 @@
 import math
+import pandas as pd
 import pytest
 
 from fundexpert.data.loader import load_universe
@@ -68,6 +69,18 @@ def test_loader_renames_columns_to_internal_names(fixtures_dir):
     expected_yonetim = {"fon_kodu", "applied_management_fee_pct",
                         "bylaw_management_fee_pct"}
     assert expected_yonetim.issubset(set(frames.yonetim_ucreti.columns))
+
+
+def test_loader_uses_compact_string_and_category_dtypes(fixtures_dir):
+    frames = load_universe(
+        getiri_path=fixtures_dir / "getiri_small.csv",
+        buyukluk_path=fixtures_dir / "buyukluk_small.csv",
+        yonetim_path=fixtures_dir / "yonetim_small.csv",
+    )
+
+    assert frames.getiri["fon_kodu"].dtype.storage == "pyarrow"
+    assert frames.getiri["fon_adi"].dtype.storage == "pyarrow"
+    assert isinstance(frames.getiri["umbrella_type"].dtype, pd.CategoricalDtype)
 
 
 def test_loader_rejects_large_csv(fixtures_dir, monkeypatch):

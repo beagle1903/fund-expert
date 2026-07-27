@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+from hypothesis import HealthCheck, given, settings, strategies as st
 
 from fundexpert.news.penalty import apply_negative_news_penalty
 from fundexpert.news.tavily import NewsHit
@@ -82,6 +83,28 @@ def test_only_top_k_funds_are_queried(scored, cache_dir):
     # The two highest-scoring rows are A (0.90) and B (0.80).
     queried_prefixes = [c.kwargs["company_prefix"] for c in mock.call_args_list]
     assert sorted(queried_prefixes) == ["AK PORTFÖY", "BNP PORTFÖY"]
+
+
+def test_top_k_ties_are_broken_by_fund_code(cache_dir):
+    tied = pd.DataFrame({
+        "fon_kodu": ["B", "A"],
+        "fon_adi": ["BETA PORTFÖY FON", "ALFA PORTFÖY FON"],
+        "score": [0.8, 0.8],
+    })
+    with patch("fundexpert.news.penalty.query_negative_news", return_value=[]) as mock:
+        apply_negative_news_penalty(
+            tied,
+            top_k=1,
+            api_key="k",
+            news_config=NewsConfig(
+                negative_news_keywords=("ceza",),
+                cache_dir=cache_dir,
+                max_workers=1,
+            ),
+        )
+
+    assert mock.call_count == 1
+    assert mock.call_args.kwargs["company_prefix"] == "ALFA PORTFÖY"
 
 
 def test_matched_fund_loses_penalty_amount(scored, cache_dir):
@@ -164,14 +187,62 @@ def test_network_exception_is_caught_gracefully(scored, cache_dir, capsys):
     err = capsys.readouterr().err
     assert "Network down" in err
 
-def test_news_penalty_monotonicity(scored, cache_dir):
-    """If $Score(F_1) - Penalty < Score(F_2)$, hitting F_1 inverts rank ordering."""
+@settings(
+    max_examples=30,
+    deadline=None,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)
+@given(
+    lower_score=st.floats(
+        min_value=-1.0,
+        max_value=1.0,
+        allow_nan=False,
+        allow_infinity=False,
+    ),
+    initial_lead=st.floats(
+        min_value=0.001,
+        max_value=0.25,
+        allow_nan=False,
+        allow_infinity=False,
+    ),
+    inversion_margin=st.floats(
+        min_value=0.001,
+        max_value=0.25,
+        allow_nan=False,
+        allow_infinity=False,
+    ),
+)
+def test_news_penalty_monotonicity(
+    lower_score,
+    initial_lead,
+    inversion_margin,
+    cache_dir,
+):
+    """A penalty larger than F1's lead must invert its ordering with F2."""
+    penalty = initial_lead + inversion_margin
+    generated = pd.DataFrame({
+        "fon_kodu": ["F1", "F2"],
+        "fon_adi": ["ALFA PORTFÖY FON", "BETA PORTFÖY FON"],
+        "score": [lower_score + initial_lead, lower_score],
+    })
+
     def fake_query(company_prefix, **_kw):
-        return _make_hit() if company_prefix == "AK PORTFÖY" else []
+        return _make_hit() if company_prefix == "ALFA PORTFÖY" else []
+
     with patch("fundexpert.news.penalty.query_negative_news", side_effect=fake_query):
         out, _ = apply_negative_news_penalty(
-            scored, top_k=5, api_key="k", 
-            news_config=NewsConfig(negative_news_keywords=("ceza",), negative_news_penalty=0.20, cache_dir=cache_dir)
+            generated,
+            top_k=2,
+            api_key="k",
+            news_config=NewsConfig(
+                negative_news_keywords=("ceza",),
+                negative_news_penalty=penalty,
+                cache_dir=cache_dir,
+                max_workers=1,
+            ),
         )
-    assert out.loc[out["fon_kodu"] == "A", "score"].iloc[0] == pytest.approx(0.70)
-    assert out.loc[out["fon_kodu"] == "B", "score"].iloc[0] == pytest.approx(0.80)
+
+    f1_score = out.loc[out["fon_kodu"] == "F1", "score"].iloc[0]
+    f2_score = out.loc[out["fon_kodu"] == "F2", "score"].iloc[0]
+    assert generated.loc[0, "score"] > generated.loc[1, "score"]
+    assert f1_score < f2_score

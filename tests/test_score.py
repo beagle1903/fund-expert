@@ -208,3 +208,4 @@ def test_score_handles_all_nan_columns():
     out = score_candidates(df, "medium", "medium", "medium", "medium", scoring_config=DEFAULT_SCORING_CONFIG)
     assert not out.empty
     assert "score" in out.columns
+    assert np.isfinite(out["score"]).all()

@@ -1,5 +1,8 @@
 # 01 — Architecture
 
+> Historical design snapshot. See `AGENTS.md` and generated API documentation
+> for the implemented architecture.
+
 The CLI is a single-process Python app organized into modules with clear boundaries so each piece is testable in isolation.
 
 ## Module Layout
