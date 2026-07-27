@@ -123,8 +123,25 @@ export default function ControlPanel({
           <label htmlFor="news_enabled">Enable News Pass</label>
         </div>
 
+        <div className="control-group checkbox-control">
+          <input
+            type="checkbox"
+            name="refresh_data"
+            id="refresh_data"
+            checked={config.refresh_data}
+            onChange={onChange}
+          />
+          <label htmlFor="refresh_data">
+            Refresh stale TEFAS data before generating
+          </label>
+        </div>
+
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Generating…' : 'Generate Portfolio'}
+          {loading
+            ? config.refresh_data
+              ? 'Refreshing & Generating…'
+              : 'Generating…'
+            : 'Generate Portfolio'}
         </button>
       </form>
     </aside>

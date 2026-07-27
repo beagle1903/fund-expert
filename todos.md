@@ -2,10 +2,10 @@
 
 ## Data acquisition
 
-- Design the browser workflow that downloads all three TEFAS/BEFAS exports.
-- Download into a staging directory, then call `validate_bundle` and
-  `publish_bundle`; never write directly into the active bundle.
-- Define CAPTCHA/manual-handoff behavior and an explicit scheduling policy.
+- Monitor the undocumented TEFAS web-export transport for schema or access
+  changes; never weaken validation to accommodate partial responses.
+- Decide whether to add scheduling beyond the current once-per-local-day
+  freshness gate.
 
 ## Recommendation model
 

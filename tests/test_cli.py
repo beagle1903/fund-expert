@@ -499,6 +499,40 @@ def test_ensure_utf8_stdio():
         sys.stdout = orig_stdout
         sys.stderr = orig_stderr
 
+
+def test_main_refreshes_each_selected_universe_before_generation(monkeypatch):
+    from fundexpert.data.refresh import DataRefreshResult
+    from fundexpert.data.bundle import resolve_active_bundle
+
+    answers = {
+        "universe": "both",
+        "risk_level": "medium",
+        "horizon": "medium",
+        "volume_priority": "medium",
+        "fee_priority": "medium",
+        "momentum_priority": "medium",
+        "n": 3,
+    }
+    calls = []
+
+    def refresh(universe, data_root, *, force, now):
+        calls.append((universe, force))
+        manifest = resolve_active_bundle(universe, data_root).manifest
+        return DataRefreshResult(universe, False, manifest)
+
+    monkeypatch.setattr("sys.argv", ["fundexpert", "--refresh"])
+    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: answers)
+    monkeypatch.setattr("fundexpert.cli.save_last_run_state", lambda _: None)
+    monkeypatch.setattr("fundexpert.cli.refresh_universe", refresh)
+    monkeypatch.setattr("fundexpert.cli.render_portfolio", lambda *args, **kwargs: None)
+    monkeypatch.setattr("fundexpert.cli.save_run", lambda *args, **kwargs: None)
+
+    assert main() == 0
+    assert calls == [
+        ("tefas", False),
+        ("befas", False),
+    ]
+
 def test_load_last_run_returns_empty_on_oserror():
     from fundexpert.history.store import load_last_run
     from pathlib import Path

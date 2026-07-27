@@ -90,6 +90,10 @@ describe('App', () => {
       '/api/generate',
       expect.objectContaining({ method: 'POST' }),
     );
+    const firstGenerate = fetch.mock.calls.find(
+      ([url]) => url === '/api/generate',
+    );
+    expect(JSON.parse(firstGenerate[1].body).refresh_data).toBe(true);
   });
 
   it('submits portfolio size as a number', async () => {
@@ -180,7 +184,25 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByRole('button', { name: 'Generating…' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Refreshing & Generating…' }),
+    ).toBeDisabled();
+  });
+
+  it('can explicitly generate with the existing data bundle', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText('AAA');
+
+    await user.click(
+      screen.getByLabelText('Refresh stale TEFAS data before generating'),
+    );
+    await user.click(screen.getByRole('button', { name: 'Generate Portfolio' }));
+
+    const generateCalls = () =>
+      fetch.mock.calls.filter(([url]) => url === '/api/generate');
+    await waitFor(() => expect(generateCalls()).toHaveLength(2));
+    expect(JSON.parse(generateCalls()[1][1].body).refresh_data).toBe(false);
   });
 
   it('aborts the active request when unmounted', () => {

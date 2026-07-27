@@ -22,6 +22,7 @@ from fundexpert.render.table import render_portfolio
 
 
 from fundexpert.data.loader import load_candidates_for_universe
+from fundexpert.data.refresh import DataRefreshError, refresh_universe
 
 
 
@@ -45,6 +46,16 @@ def main() -> int:
         "--diff-last", action="store_true",
         help="Önceki run ile portföy karşılaştırması göster",
     )
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Portföyden önce güncel TEFAS/BEFAS CSV paketini indir",
+    )
+    parser.add_argument(
+        "--force-refresh",
+        action="store_true",
+        help="Bugün indirilmiş veri olsa da yeniden indir",
+    )
     args = parser.parse_args()
 
     last = load_last_run_state()
@@ -63,6 +74,28 @@ def main() -> int:
         ["tefas", "befas"] if answers["universe"] == "both" else [answers["universe"]]
     )
     now = datetime.now()
+
+    if args.refresh or args.force_refresh:
+        for universe in universes_to_run:
+            try:
+                refresh = refresh_universe(
+                    universe,
+                    DATA_ROOT,
+                    force=args.force_refresh,
+                    now=now,
+                )
+            except DataRefreshError as exc:
+                print(
+                    f"Veri yenileme başarısız ({universe.upper()}): {exc}",
+                    file=sys.stderr,
+                )
+                return 2
+            state = "yenilendi" if refresh.refreshed else "zaten güncel"
+            print(
+                f"Veri ({universe.upper()}): {state} "
+                f"[{refresh.manifest.bundle_id}]",
+                file=sys.stderr,
+            )
     
     for u in universes_to_run:
         candidates = load_candidates_for_universe(u, DATA_ROOT)

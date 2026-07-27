@@ -58,6 +58,9 @@ New-Item -ItemType Junction -Path "<worktree>/data" -Target "<repo>/data"
 ## Pipeline
 
 ```
+optional refresh.refresh_universe
+  → tefas_export.download_web_export_bundle (one request per required view)
+  → validate_bundle + publish_bundle (immutable version + atomic current.json)
 bundle.resolve_active_bundle (versioned current.json or validated legacy files)
   → loader.load_universe(getiri, buyukluk, yonetim)
   → merge.merge_universe (one universe per run; attributes canonical `kurucu` from the official fund-title prefix; `both` runs the pipeline twice and renders two portfolios)
@@ -76,7 +79,8 @@ bundle.resolve_active_bundle (versioned current.json or validated legacy files)
 ## Conventions
 
 - **CSV ingestion**: TEFAS/BEFAS export files have a 3-row preamble (`skiprows=3`), UTF-8 BOM, comma decimal separator inside quoted strings. Column names are Turkish — see `loader.py` for the rename map.
-- **Data bundles**: Treat `getiri.csv`, `buyukluk.csv`, and `yonetim ucreti.csv` as one acquisition. `validate_bundle` checks metadata, schemas, numeric values, exact code-set coverage, row counts, and a 30-minute timestamp window. `publish_bundle` writes an immutable version and atomically swaps `current.json`; browser automation must publish only through this seam.
+- **Data bundles**: Treat `getiri.csv`, `buyukluk.csv`, and `yonetim ucreti.csv` as one acquisition. `validate_bundle` checks metadata, schemas, numeric values, exact code-set coverage, row counts, and a 30-minute timestamp window. `publish_bundle` writes an immutable version and atomically swaps `current.json`; every automated acquisition must publish only through this seam.
+- **Automated refresh**: `tefas_export.py` calls the undocumented web-export transport used by the public TEFAS returns page. It is not an official API. Make exactly one request per required view and selected universe, enforce row floors plus exact code-set coverage, and fail closed on transport/schema drift. `refresh_universe` skips an already-current local-day bundle unless forced. Web generation opts in with `refresh_data`; CLI uses `--refresh` or `--force-refresh`.
 - **Founder (`kurucu`) filter**: The exported CSVs omit `Kurucu`. `fundexpert/founders.py` holds the separate official TEFAS and BEFAS labels and deterministically attributes rows from normalized official fund-title prefixes (including known `PYŞ` aliases). API options must come from the active bundle through `GET /api/founders`, so clients cannot select a founder with zero current candidates. Apply the filter before cleaning/scoring and reset it when the universe changes.
 - **Legacy compatibility**: Flat `data/<universe>/*.csv` files remain valid until the first versioned bundle is published. Never silently use cached candidates if the active bundle is missing or invalid.
 - **Risk** = SRRI scale 1–7 (column `Fonun Risk Değeri` → `risk`).
@@ -94,6 +98,7 @@ bundle.resolve_active_bundle (versioned current.json or validated legacy files)
 - `str.upper()` in Python is *not* Turkish-aware: `"i".upper() == "I"`, not `"İ"`. Use the i↔İ / ı↔I replace before `.upper()` (see `select/strategy.py`).
 - Stdout encoding: `ensure_utf8_stdio()` must be called before any rendering on Windows or Turkish characters break.
 - Last-run answers cached at `~/.fundexpert/last.json`; safe to delete.
+- Playwright-controlled Edge is rejected by the TEFAS WAF. Do not add anti-detection flags or attempt to bypass that control; use the bounded web-export adapter and fail closed if it becomes unavailable.
 - `LSP` MCP tool occasionally disconnects mid-session — not a code issue.
 
 ## AI Harness Protocol (Post-Feature Routine)

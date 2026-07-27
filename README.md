@@ -55,6 +55,24 @@ Existing flat files remain supported. Future import automation can call
 stores an immutable version and atomically changes `current.json` only after
 validation succeeds.
 
+Fundexpert can also acquire the three-file bundle through the same web-export
+transport used by the TEFAS returns page. The transport is undocumented and is
+not an official public API, so schema drift or access failures are treated as a
+hard refresh failure. It makes exactly one request per view and selected
+universe, enforces minimum row counts and exact cross-file fund-code coverage,
+renders the canonical UTF-8/BOM CSV format in a staging directory, and only
+then calls `publish_bundle`.
+
+Web portfolio generation enables a once-per-local-day freshness check by
+default. If refresh fails, the existing active bundle is preserved; clear
+**Refresh stale TEFAS data before generating** to explicitly generate with that
+existing snapshot. CLI refresh is opt-in:
+
+```powershell
+.venv\Scripts\python.exe -m fundexpert.cli --refresh
+.venv\Scripts\python.exe -m fundexpert.cli --force-refresh
+```
+
 Set `FUNDEXPERT_DATA_DIR` to override the default `data/` directory.
 
 ## Run
@@ -86,6 +104,10 @@ and uses the quantitative portfolio unchanged.
 - `POST /api/generate` validates configuration and returns a projected
   portfolio, news metadata, and the exact data snapshot used. Optional
   `founder` limits the candidate pool before cleaning, scoring, and selection.
+  Set `refresh_data=true` to freshness-check and, when needed, refresh the
+  selected universe before generation.
+- `POST /api/data-refresh` refreshes one selected universe. `force=true`
+  bypasses the once-per-day freshness check.
 - `GET /api/founders?universe=tefas|befas` returns only canonical founders
   present in the active universe bundle, with fund counts.
 - `GET /api/data-status` reports TEFAS/BEFAS availability, export metadata,

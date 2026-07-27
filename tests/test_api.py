@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import fundexpert.api as api
+from fundexpert.data.refresh import DataRefreshError, DataRefreshResult
 
 
 def _copy_universe(fixtures_dir: Path, data_root: Path, universe: str) -> Path:
@@ -61,6 +62,65 @@ def test_generate_returns_projected_contract_and_snapshot(client):
     assert body["header"]["candidate_total"] == 3
     assert body["header"]["candidate_after_founder"] == 3
     assert body["header"]["founder"] is None
+
+
+def test_generate_refreshes_selected_universe_when_requested(client, monkeypatch):
+    manifest = api.resolve_active_bundle("tefas", api.DATA_ROOT).manifest
+    calls = []
+
+    def refresh(universe, data_root, *, force):
+        calls.append((universe, data_root, force))
+        return DataRefreshResult(universe, False, manifest)
+
+    monkeypatch.setattr(api, "refresh_universe", refresh)
+
+    response = client.post(
+        "/api/generate",
+        json={"universe": "tefas", "refresh_data": True},
+    )
+
+    assert response.status_code == 200
+    assert calls == [("tefas", api.DATA_ROOT, False)]
+
+
+def test_generate_returns_safe_refresh_error(client, monkeypatch):
+    def fail(*args, **kwargs):
+        raise DataRefreshError("TEFAS web export is temporarily unavailable.")
+
+    monkeypatch.setattr(api, "refresh_universe", fail)
+
+    response = client.post(
+        "/api/generate",
+        json={"universe": "tefas", "refresh_data": True},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {
+            "code": "REFRESH_FAILED",
+            "message": "TEFAS web export is temporarily unavailable.",
+        }
+    }
+
+
+def test_data_refresh_endpoint_returns_snapshot(client, monkeypatch):
+    manifest = api.resolve_active_bundle("befas", api.DATA_ROOT).manifest
+
+    monkeypatch.setattr(
+        api,
+        "refresh_universe",
+        lambda *args, **kwargs: DataRefreshResult("befas", True, manifest),
+    )
+
+    response = client.post(
+        "/api/data-refresh",
+        json={"universe": "befas", "force": True},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["universe"] == "befas"
+    assert response.json()["refreshed"] is True
+    assert response.json()["snapshot"]["row_count"] == 3
 
 
 def test_founders_and_generate_use_active_universe_specific_options(

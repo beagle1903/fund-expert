@@ -8,4 +8,5 @@ export const DEFAULT_CONFIG = {
   momentum_priority: 'medium',
   n: 8,
   news_enabled: false,
+  refresh_data: true,
 };

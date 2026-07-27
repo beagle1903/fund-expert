@@ -23,6 +23,12 @@ from fundexpert.data.bundle import (
     resolve_active_bundle,
 )
 from fundexpert.data.merge import merge_universe
+from fundexpert.data.refresh import (
+    DataRefreshBusyError,
+    DataRefreshError,
+    DataRefreshResult,
+    refresh_universe,
+)
 from fundexpert.founders import available_founders
 from fundexpert.pipeline import PipelineConfig, run_pipeline
 
@@ -51,6 +57,7 @@ class GenerateRequest(BaseModel):
     max_per_sector: int = Field(default=DEFAULT_MAX_PER_SECTOR, ge=1, le=20)
     founder: str | None = Field(default=None, min_length=1, max_length=200)
     news_enabled: bool = False
+    refresh_data: bool = False
 
 
 class PortfolioFund(BaseModel):
@@ -90,6 +97,19 @@ class UniverseDataStatus(BaseModel):
 
 class DataStatusResponse(BaseModel):
     universes: list[UniverseDataStatus]
+
+
+class DataRefreshRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    universe: Universe
+    force: bool = False
+
+
+class DataRefreshResponse(BaseModel):
+    universe: Universe
+    refreshed: bool
+    snapshot: DataSnapshot
 
 
 class FounderOption(BaseModel):
@@ -169,6 +189,39 @@ def clear_candidate_cache() -> None:
     """Clear the process-local data cache, primarily for tests and tooling."""
     with _cache_lock:
         _cache.clear()
+
+
+def _refresh_data(
+    universe: Universe,
+    *,
+    force: bool = False,
+) -> DataRefreshResult:
+    try:
+        result = refresh_universe(
+            universe,
+            DATA_ROOT,
+            force=force,
+        )
+    except DataRefreshBusyError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "REFRESH_BUSY",
+                "message": "Another data refresh is already running.",
+            },
+        ) from exc
+    except DataRefreshError as exc:
+        logger.warning("Data refresh failed for %s.", universe, exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "REFRESH_FAILED",
+                "message": str(exc),
+            },
+        ) from exc
+    if result.refreshed:
+        clear_candidate_cache()
+    return result
 
 
 def _load_candidates(bundle: ActiveDataBundle) -> pd.DataFrame:
@@ -255,6 +308,19 @@ def get_data_status() -> DataStatusResponse:
     return DataStatusResponse(universes=[_status_for("tefas"), _status_for("befas")])
 
 
+@app.post("/api/data-refresh", response_model=DataRefreshResponse)
+def refresh_data(req: DataRefreshRequest) -> DataRefreshResponse:
+    result = _refresh_data(
+        req.universe,
+        force=req.force,
+    )
+    return DataRefreshResponse(
+        universe=req.universe,
+        refreshed=result.refreshed,
+        snapshot=DataSnapshot.model_validate(result.manifest.to_snapshot_dict()),
+    )
+
+
 @app.get("/api/founders", response_model=FoundersResponse)
 def get_founders(universe: Universe) -> FoundersResponse:
     try:
@@ -278,6 +344,9 @@ def get_founders(universe: Universe) -> FoundersResponse:
 
 @app.post("/api/generate", response_model=GenerateResponse)
 def generate_portfolio(req: GenerateRequest) -> GenerateResponse:
+    if req.refresh_data:
+        _refresh_data(req.universe)
+
     try:
         candidates, manifest = get_cached_candidates(req.universe)
     except DataUnavailableError as exc:

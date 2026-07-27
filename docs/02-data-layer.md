@@ -1,7 +1,5 @@
 # 02 — Data Layer
 
-> **Historical design:** This predates versioned bundle manifests, atomic publication, and strict cross-file validation. See the repository README and `fundexpert/data/bundle.py` for current behavior.
-
 Responsible for loading raw TEFAS/BEFAS CSVs, parsing Turkish-localized numbers, and joining the three files per universe into one fund-per-row DataFrame.
 
 ## Source Files
@@ -20,6 +18,25 @@ data/befas/
 ```
 
 Each CSV has 3 metadata rows (export timestamp, record count, blank) before the header on row 4.
+
+## Automated Acquisition
+
+`fundexpert/data/tefas_export.py` uses the web-export transport called by the
+TEFAS returns page. This is an undocumented website transport, not an official
+public API. The adapter therefore makes one bounded request per required view,
+applies universe row floors, requires identical fund-code sets, and renders the
+response into the same Turkish CSV contract as a browser download.
+
+`fundexpert/data/refresh.py` freshness-checks the active manifest once per local
+day. A stale or forced refresh is downloaded into a temporary staging
+directory. `validate_bundle` must accept all three files before
+`publish_bundle` creates an immutable version and atomically swaps
+`current.json`. A transport, schema, or validation failure leaves the previous
+active pointer unchanged.
+
+The size export uses the TEFAS page's one-calendar-month date window. TEFAS and
+BEFAS are refreshed independently; a `both` CLI run performs three requests
+for each universe.
 
 ## Schemas (raw column → internal name)
 
@@ -67,7 +84,7 @@ The internal-name mapping lives in one constants module. If a future TEFAS/BEFAS
 pd.read_csv(
     path,
     skiprows=3,             # metadata rows 0-2; header on row 3
-    encoding='utf-8',
+    encoding='utf-8-sig',
     decimal=',',            # Turkish decimal comma
     thousands=None,         # observed rows have no thousands grouping
 )
@@ -101,4 +118,6 @@ After loading, columns are renamed via the mapping above. Returns `dict[str, pd.
 
 ## Locale / Encoding
 
-Source CSVs are UTF-8 without BOM. Turkish characters render directly. Decimal-comma handling is the only locale concern.
+Source CSVs are UTF-8 with BOM. Turkish characters render directly. Numeric
+values use Turkish decimal commas, and CSV quoting protects values containing
+commas.
