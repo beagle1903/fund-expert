@@ -1,7 +1,6 @@
 # 07 — Output & Testing
 
-> Historical design snapshot. See the current test suite, `AGENTS.md`, and
-> generated API documentation for the implemented contract.
+> **Historical design:** This predates the current API/frontend tests and repository verification script. See the repository README and `scripts/check.ps1`.
 
 ## Renderer (`render/table.py`)
 

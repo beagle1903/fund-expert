@@ -1,7 +1,6 @@
 # 01 — Architecture
 
-> Historical design snapshot. See `AGENTS.md` and generated API documentation
-> for the implemented architecture.
+> **Historical design:** This predates the implemented FastAPI/React app and validated bundle layer. See the repository README, `AGENTS.md`, source, and tests for current behavior.
 
 The CLI is a single-process Python app organized into modules with clear boundaries so each piece is testable in isolation.
 

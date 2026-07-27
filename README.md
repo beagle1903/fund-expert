@@ -1,81 +1,108 @@
-# Fund Expert
+# Fundexpert
 
-A Python CLI that recommends an investment-fund portfolio from Turkish TEFAS
-(regular funds) and BEFAS (retirement funds) data.
+Fundexpert recommends a Turkish TEFAS or BEFAS investment-fund portfolio from
+local CSV exports. It provides both an interactive Python CLI and a local
+FastAPI/React dashboard.
 
-> Status: implemented and covered by unit, property, integration, and live-CSV
-> smoke tests. The numbered design documents are retained as historical context;
-> generated API documentation under `docs/fundexpert/` is the source-level
-> reference.
-
-## How it works (in one paragraph)
-
-The CLI prompts in Turkish for risk level, horizon, volume, fee and momentum
-priorities, and fund count. It loads three CSVs per universe, scores each fund
-with normalized return/AUM/fee/momentum signals minus an SRRI risk penalty,
-then picks the top N under independent strategy and sector caps. Weights are
-snapped to 5% units and sum to 100%. The optional `--news` pass queries Tavily
-for the top quantitative candidates and applies a fixed penalty when curated
-negative-news terms are found.
-
-## Repo layout
-
-```
-data/                  # local TEFAS/BEFAS CSV exports (gitignored)
-docs/                  # historical design notes + generated API docs
-fundexpert/            # Python package
-tests/                 # unit, property, integration, and smoke tests
-```
-
-## Bringing your own data
-
-The `data/` folder is gitignored, since TEFAS/BEFAS CSV exports are easily re-downloadable from the official portals and don't need to be checked in. Place your exports as:
-
-```
-data/tefas/{getiri,buyukluk,yonetim ucreti}.csv
-data/befas/{getiri,buyukluk,yonetim ucreti}.csv
-```
-
-Each file is the raw TEFAS/BEFAS web export (3 metadata rows + header + data). The loader handles Turkish decimals (`,`) and skips the metadata.
-
-Set `FUNDEXPERT_DATA_DIR` to override the default repository-local `data/`
-directory.
+The recommendation engine scores return, fund size, management fee, fund-flow
+momentum, and SRRI risk. It then applies independent strategy and sector
+diversification caps and assigns weights in 5% units.
 
 ## Setup
 
-```bash
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
+Python 3.11+ and Node.js are required.
 
-pip install -e ".[dev]"
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -e ".[dev,web]"
+npm --prefix frontend install
 ```
+
+`pyproject.toml` is the dependency source of truth. `requirements.txt` is a
+compiled development lock generated from `requirements.in`.
+
+## Data
+
+Place a complete three-file export under each universe:
+
+```text
+data/
+  tefas/
+    getiri.csv
+    buyukluk.csv
+    yonetim ucreti.csv
+  befas/
+    getiri.csv
+    buyukluk.csv
+    yonetim ucreti.csv
+```
+
+Each file must be a TEFAS/BEFAS CSV with the standard three-row preamble,
+UTF-8/BOM encoding, Turkish headers, and comma decimals.
+
+The loader validates all three files as one acquisition. It checks metadata,
+required columns, numeric fields, reported row counts, fund-code coverage, and
+that export timestamps fall within a 30-minute window.
+
+Existing flat files remain supported. Future import automation can call
+`fundexpert.data.bundle.validate_bundle` and `publish_bundle`; publication
+stores an immutable version and atomically changes `current.json` only after
+validation succeeds.
+
+Set `FUNDEXPERT_DATA_DIR` to override the default `data/` directory.
 
 ## Run
 
-```bash
-fundexpert            # interactive prompts
-fundexpert --news     # add Tavily negative-news screening
-python -m fundexpert  # equivalent module entry point
+CLI:
+
+```powershell
+.venv\Scripts\python.exe -m fundexpert.cli
+.venv\Scripts\python.exe -m fundexpert.cli --news
 ```
 
-## Test
+Local web application:
 
-```bash
-.venv/Scripts/python.exe -m pytest tests/
+```powershell
+# Terminal 1
+.venv\Scripts\python.exe -m uvicorn fundexpert.api:app --reload
+
+# Terminal 2
+npm --prefix frontend run dev
 ```
 
-## Documentation
+Open `http://127.0.0.1:5173`. Vite proxies `/api` to the local FastAPI server.
 
-- [Generated API documentation](docs/fundexpert.html)
-- [docs/README.md](docs/README.md) — historical design-document index
-- [docs/01-architecture.md](docs/01-architecture.md)
-- [docs/02-data-layer.md](docs/02-data-layer.md)
-- [docs/03-scoring-engine.md](docs/03-scoring-engine.md)
-- [docs/04-selection-and-weighting.md](docs/04-selection-and-weighting.md)
-- [docs/05-cli-interaction.md](docs/05-cli-interaction.md)
-- [docs/06-news-pass.md](docs/06-news-pass.md)
-- [docs/07-output-and-testing.md](docs/07-output-and-testing.md)
-- [docs/implementation-plan.md](docs/implementation-plan.md) — historical implementation plan
+The optional news pass requires `TAVILY_API_KEY`. Without a key, it fails soft
+and uses the quantitative portfolio unchanged.
+
+## API
+
+- `POST /api/generate` validates configuration and returns a projected
+  portfolio, news metadata, and the exact data snapshot used.
+- `GET /api/data-status` reports TEFAS/BEFAS availability, export metadata,
+  record counts, and file hashes.
+
+Invalid request values return `422`. Unavailable or invalid data returns a safe
+`503 DATA_UNAVAILABLE`.
+
+## Verification
+
+Run the complete local quality gate:
+
+```powershell
+.\scripts\check.ps1
+```
+
+It runs the Python suite with coverage, frontend tests, frontend lint and
+production build, dead-code analysis, dependency checks, and `git diff --check`.
+
+To refresh generated API documentation:
+
+```powershell
+.\scripts\refresh-docs.ps1
+```
+
+Historical design documents under `docs/01-*.md` through
+`docs/implementation-plan.md` describe the original pre-implementation design
+and are retained for context. This README, `AGENTS.md`, the source, and tests
+are the live contract.

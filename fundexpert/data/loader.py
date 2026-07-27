@@ -51,12 +51,14 @@ class UniverseData:
 
 
 def _read_one(path: Path, rename: dict[str, str]) -> pd.DataFrame:
+    if not path.is_file():
+        raise FileNotFoundError(f"Required CSV file is missing: {path.name}")
     if path.stat().st_size > MAX_CSV_SIZE_BYTES:
         raise ValueError(f"File {path.name} exceeds size limit of {MAX_CSV_SIZE_BYTES} bytes.")
     df = pd.read_csv(
         path,
         skiprows=3,        # rows 0-2: export metadata; row 3: header
-        encoding="utf-8",
+        encoding="utf-8-sig",
         decimal=",",
         usecols=list(rename.keys()),
         dtype={"Fon Kodu": "string[pyarrow]", "Fon Adı": "string[pyarrow]", "Şemsiye Fon Türü": "category"},
@@ -77,12 +79,9 @@ def load_universe(
     )
 
 def load_candidates_for_universe(universe: str, data_root: Path) -> pd.DataFrame:
-    """Helper to load and merge a single universe (tefas or befas) into a candidate frame."""
+    """Resolve, validate, load, and merge one universe's active data bundle."""
+    from fundexpert.data.bundle import load_bundle_frames, resolve_active_bundle
     from fundexpert.data.merge import merge_universe
-    folder = data_root / universe
-    frames = load_universe(
-        getiri_path=folder / "getiri.csv",
-        buyukluk_path=folder / "buyukluk.csv",
-        yonetim_path=folder / "yonetim ucreti.csv",
-    )
+    bundle = resolve_active_bundle(universe, data_root)
+    frames = load_bundle_frames(bundle)
     return merge_universe(frames, universe=universe)

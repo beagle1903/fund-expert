@@ -1,7 +1,6 @@
 # 03 — Scoring Engine
 
-> Historical design snapshot. The implemented scorer also includes fund-flow
-> momentum and optional pre-score schema validation; see generated API docs.
+> **Historical design:** Retained for design context. The source and tests are the current scoring contract.
 
 Pure functions over the merged candidate DataFrame. No IO. Five steps: horizon mapping → normalization → priority weights → score formula → explainability dict.
 
