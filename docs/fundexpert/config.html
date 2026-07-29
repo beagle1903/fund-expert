@@ -76,6 +76,12 @@
                     <a class="variable" href="#DEFAULT_MAX_PER_SECTOR">DEFAULT_MAX_PER_SECTOR</a>
             </li>
             <li>
+                    <a class="variable" href="#DiversificationMode">DiversificationMode</a>
+            </li>
+            <li>
+                    <a class="function" href="#resolve_diversification_caps">resolve_diversification_caps</a>
+            </li>
+            <li>
                     <a class="variable" href="#MAX_CSV_SIZE_BYTES">MAX_CSV_SIZE_BYTES</a>
             </li>
             <li>
@@ -316,6 +322,31 @@
 
     </div>
     <a class="headerlink" href="#DEFAULT_MAX_PER_SECTOR"></a>
+
+
+
+                </section>
+                <section id="DiversificationMode">
+                    <div class="attr variable">
+            <span class="name">DiversificationMode</span>        =
+<span class="default_value">typing.Literal[&#39;strict&#39;, &#39;balanced&#39;, &#39;relaxed&#39;]</span>
+
+
+    </div>
+    <a class="headerlink" href="#DiversificationMode"></a>
+
+
+
+                </section>
+                <section id="resolve_diversification_caps">
+                    <div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">resolve_diversification_caps</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">n</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;strict&#39;</span><span class="p">,</span> <span class="s1">&#39;balanced&#39;</span><span class="p">,</span> <span class="s1">&#39;relaxed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;balanced&#39;</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">max_per_type</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">max_per_sector</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#resolve_diversification_caps"></a>
 
 
 
@@ -568,7 +599,7 @@
                 <section id="DATA_ROOT">
                     <div class="attr variable">
             <span class="name">DATA_ROOT</span><span class="annotation">: pathlib._local.Path</span>        =
-<span class="default_value">WindowsPath(&#39;C:/Users/burha/Documents/dev/fund expert/data&#39;)</span>
+<span class="default_value">WindowsPath(&#39;&lt;repository&gt;/data&#39;)</span>
 
 
     </div>

@@ -24,7 +24,7 @@ from datetime import datetime
 from fundexpert.data.loader import load_candidates_for_universe
 from fundexpert.pipeline import run_pipeline, PipelineConfig
 from fundexpert.ui import ensure_utf8_stdio
-from fundexpert.config import DEFAULT_MAX_PER_TYPE, DEFAULT_MAX_PER_SECTOR, DATA_ROOT
+from fundexpert.config import DATA_ROOT
 from fundexpert.render.table import render_portfolio
 
 ensure_utf8_stdio()
@@ -33,7 +33,7 @@ candidates = load_candidates_for_universe(u, DATA_ROOT)
 config = PipelineConfig(
     universe=u, risk_level='medium', horizon='medium',
     volume_priority='medium', fee_priority='medium', momentum_priority='medium',
-    n=8, max_per_type=DEFAULT_MAX_PER_TYPE, max_per_sector=DEFAULT_MAX_PER_SECTOR,
+    n=8,
     now=datetime.now()
 )
 result = run_pipeline(candidates, config)
@@ -71,7 +71,10 @@ bundle.resolve_active_bundle (versioned current.json or validated legacy files)
   → assign strategy bucket via select.strategy.bucket_from_name(fon_adi)
   → assign sector bucket via select.sector.sector_from_name(fon_adi)
   → (--news only) news.penalty.apply_negative_news_penalty (top-K Tavily query, −0.20 binary penalty per fund with hits)
-  → select.pick.pick_top (N picks, capped at max_per_type per strategy AND max_per_sector per sector; "diversified" sector exempt)
+  → select.pick.pick_top (N picks, capped independently per strategy and named
+    sector; default Balanced caps scale 2/3/4 for N=1–11/12–15/16–20, Strict stays
+    at 2, Relaxed scales 3/4/5; "other" strategy and "diversified" sector are
+    exempt; explicit numeric overrides win)
   → select.weights.compute_weights (5% units, largest-remainder, 5% floor)
   → render.table.render_portfolio (--news adds: header line summarising top-K/hits/picks-changed, 📰+(−0.20) markers on penalised picks, "portföyde kaldı" footer for surviving hits, "portföyden düşen" footer for funds the penalty pushed out)
 ```

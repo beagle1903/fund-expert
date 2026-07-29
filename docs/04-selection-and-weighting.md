@@ -1,29 +1,55 @@
 # 04 — Selection & Weighting
 
-> **Historical design:** This predates the implemented strategy and sector caps. See the repository README, source, and tests for current behavior.
-
 Two pure functions, both operating on the scored candidate DataFrame.
 
 ## Selector (`select/pick.py`)
 
-**Inputs:** scored DataFrame, `N` (target count), `max_per_type` (default `2`).
+**Resolver/pipeline inputs:** scored DataFrame, `N` (target count), a
+diversification mode, and optional `max_per_type` / `max_per_sector` overrides.
+The resolver runs in the pipeline; `pick_top` receives the resulting concrete
+integer strategy and sector caps.
+
+The selector applies two independent caps:
+
+- **Strategy cap:** `strategy`, derived from the fund name, is the cap key. It
+  is not `umbrella_type` (`Şemsiye Fon Türü`), which is too coarse to represent
+  the portfolio strategy reliably.
+- **Named-sector cap:** `sector`, also derived from the fund name, limits
+  concentration in a named sector independently of strategy.
+
+The `"other"` strategy and `"diversified"` sector are exempt. The latter keeps
+otherwise-diversified funds from being artificially limited when they do not
+have a sector keyword.
+
+### Diversification schedules
+
+The same derived cap is used independently for strategy and named sector unless
+an explicit override is supplied.
+
+| Mode | N = 1–11 | N = 12–15 | N = 16–20 |
+|---|---:|---:|---:|
+| Strict | 2 | 2 | 2 |
+| Balanced (default) | 2 | 3 | 4 |
+| Relaxed | 3 | 4 | 5 |
+
+Balanced is the default in the API, CLI, and web UI. `--max-per-type N` and
+`--max-per-sector N` are independent power-user overrides: each provided
+numeric value replaces only its corresponding derived cap, while the other cap
+continues to follow the selected mode.
 
 **Algorithm:**
 
 1. Sort candidates by `score` descending.
 2. Walk down the sorted list. For each fund:
-   - If its `umbrella_type` (`Şemsiye Fon Türü`) already has `max_per_type` selections → skip.
-   - Else → select.
-   - Stop when `N` picks reached or list exhausted.
-3. **Up-to-N semantics:** if the cap blocks further selection before `N`, return what we have and emit a warning:
-   > `Picked 4 of requested 5 — no further fund of a different umbrella type qualified.`
-4. The cap is **never silently relaxed**. The user explicitly chose "cap per umbrella type" as the policy.
-5. If the candidate pool itself is smaller than `N` (e.g., extreme NaN exclusions), return everything in the pool with the same warning style.
-
-**Defaults:**
-
-- `max_per_type = 2` — kept in `config.py`. Not exposed via prompt in v1 to avoid prompt fatigue.
-- `--max-per-type N` is reserved as a future CLI flag for power-user override.
+   - If its non-exempt `strategy` already has its strategy cap selections,
+     skip it.
+   - If its non-exempt `sector` already has its sector cap selections, skip it.
+   - Otherwise select it.
+   - Stop when `N` picks are reached or the list is exhausted.
+3. **Up-to-N semantics:** if either constraint or the candidate pool prevents
+   reaching `N`, return the eligible picks and emit the existing partial-result
+   warning.
+4. Caps are never silently relaxed.
 
 ## Weight Calculator (`select/weights.py`)
 

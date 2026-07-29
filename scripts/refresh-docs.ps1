@@ -7,6 +7,10 @@ $DocsRoot = Join-Path $RepoRoot "docs"
 $PackageRoot = Join-Path $RepoRoot "fundexpert"
 $Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 
+# pdoc renders DATA_ROOT's evaluated default. Pin its process-local data path so
+# generated docs do not expose the absolute checkout or worktree location.
+$env:FUNDEXPERT_DATA_DIR = "<repository>/data"
+
 & $Pdoc --no-show-source -o $DocsRoot $PackageRoot
 if ($LASTEXITCODE -ne 0) {
     throw "pdoc failed with exit code $LASTEXITCODE."
