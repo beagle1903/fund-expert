@@ -58,10 +58,13 @@
                                 <a class="variable" href="#PipelineConfig.n">n</a>
                         </li>
                         <li>
-                                <a class="variable" href="#PipelineConfig.max_per_type">max_per_type</a>
+                                <a class="variable" href="#PipelineConfig.now">now</a>
                         </li>
                         <li>
-                                <a class="variable" href="#PipelineConfig.now">now</a>
+                                <a class="variable" href="#PipelineConfig.diversification_mode">diversification_mode</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#PipelineConfig.max_per_type">max_per_type</a>
                         </li>
                         <li>
                                 <a class="variable" href="#PipelineConfig.max_per_sector">max_per_sector</a>
@@ -151,7 +154,7 @@
                             <div id="PipelineConfig.__init__" class="classattr">
                                 <div class="attr function">
 
-        <span class="name">PipelineConfig</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">universe</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">risk_level</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">horizon</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">volume_priority</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">fee_priority</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">momentum_priority</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">n</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">max_per_type</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">now</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span>,</span><span class="param">	<span class="n">max_per_sector</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>,</span><span class="param">	<span class="n">founder</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">news_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>,</span><span class="param">	<span class="n">news_api_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">validate_schemas</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>,</span><span class="param">	<span class="n">scoring_config</span><span class="p">:</span> <span class="n"><a href="config.html#ScoringConfig">fundexpert.config.ScoringConfig</a></span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span>,</span><span class="param">	<span class="n">selection_config</span><span class="p">:</span> <span class="n"><a href="config.html#SelectionConfig">fundexpert.config.SelectionConfig</a></span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span>,</span><span class="param">	<span class="n">news_config</span><span class="p">:</span> <span class="n"><a href="config.html#NewsConfig">fundexpert.config.NewsConfig</a></span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span></span>)</span>
+        <span class="name">PipelineConfig</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">universe</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">risk_level</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">horizon</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">volume_priority</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">fee_priority</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">momentum_priority</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">n</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">now</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span>,</span><span class="param">	<span class="n">diversification_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;strict&#39;</span><span class="p">,</span> <span class="s1">&#39;balanced&#39;</span><span class="p">,</span> <span class="s1">&#39;relaxed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;balanced&#39;</span>,</span><span class="param">	<span class="n">max_per_type</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">max_per_sector</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">founder</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">news_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>,</span><span class="param">	<span class="n">news_api_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">validate_schemas</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>,</span><span class="param">	<span class="n">scoring_config</span><span class="p">:</span> <span class="n"><a href="config.html#ScoringConfig">fundexpert.config.ScoringConfig</a></span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span>,</span><span class="param">	<span class="n">selection_config</span><span class="p">:</span> <span class="n"><a href="config.html#SelectionConfig">fundexpert.config.SelectionConfig</a></span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span>,</span><span class="param">	<span class="n">news_config</span><span class="p">:</span> <span class="n"><a href="config.html#NewsConfig">fundexpert.config.NewsConfig</a></span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span></span>)</span>
 
 
     </div>
@@ -237,17 +240,6 @@
 
 
                             </div>
-                            <div id="PipelineConfig.max_per_type" class="classattr">
-                                <div class="attr variable">
-            <span class="name">max_per_type</span><span class="annotation">: int</span>
-
-
-    </div>
-    <a class="headerlink" href="#PipelineConfig.max_per_type"></a>
-
-
-
-                            </div>
                             <div id="PipelineConfig.now" class="classattr">
                                 <div class="attr variable">
             <span class="name">now</span><span class="annotation">: datetime.datetime</span>
@@ -259,10 +251,34 @@
 
 
                             </div>
+                            <div id="PipelineConfig.diversification_mode" class="classattr">
+                                <div class="attr variable">
+            <span class="name">diversification_mode</span><span class="annotation">: Literal[&#39;strict&#39;, &#39;balanced&#39;, &#39;relaxed&#39;]</span>        =
+<span class="default_value">&#39;balanced&#39;</span>
+
+
+    </div>
+    <a class="headerlink" href="#PipelineConfig.diversification_mode"></a>
+
+
+
+                            </div>
+                            <div id="PipelineConfig.max_per_type" class="classattr">
+                                <div class="attr variable">
+            <span class="name">max_per_type</span><span class="annotation">: int | None</span>        =
+<span class="default_value">None</span>
+
+
+    </div>
+    <a class="headerlink" href="#PipelineConfig.max_per_type"></a>
+
+
+
+                            </div>
                             <div id="PipelineConfig.max_per_sector" class="classattr">
                                 <div class="attr variable">
-            <span class="name">max_per_sector</span><span class="annotation">: int</span>        =
-<span class="default_value">2</span>
+            <span class="name">max_per_sector</span><span class="annotation">: int | None</span>        =
+<span class="default_value">None</span>
 
 
     </div>

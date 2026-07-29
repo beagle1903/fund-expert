@@ -70,6 +70,9 @@
                                 <a class="variable" href="#GenerateRequest.n">n</a>
                         </li>
                         <li>
+                                <a class="variable" href="#GenerateRequest.diversification_mode">diversification_mode</a>
+                        </li>
+                        <li>
                                 <a class="variable" href="#GenerateRequest.max_per_type">max_per_type</a>
                         </li>
                         <li>
@@ -574,10 +577,22 @@
 
 
                             </div>
+                            <div id="GenerateRequest.diversification_mode" class="classattr">
+                                <div class="attr variable">
+            <span class="name">diversification_mode</span><span class="annotation">: Literal[&#39;strict&#39;, &#39;balanced&#39;, &#39;relaxed&#39;]</span>        =
+<span class="default_value">&#39;balanced&#39;</span>
+
+
+    </div>
+    <a class="headerlink" href="#GenerateRequest.diversification_mode"></a>
+
+
+
+                            </div>
                             <div id="GenerateRequest.max_per_type" class="classattr">
                                 <div class="attr variable">
-            <span class="name">max_per_type</span><span class="annotation">: int</span>        =
-<span class="default_value">2</span>
+            <span class="name">max_per_type</span><span class="annotation">: int | None</span>        =
+<span class="default_value">None</span>
 
 
     </div>
@@ -588,8 +603,8 @@
                             </div>
                             <div id="GenerateRequest.max_per_sector" class="classattr">
                                 <div class="attr variable">
-            <span class="name">max_per_sector</span><span class="annotation">: int</span>        =
-<span class="default_value">2</span>
+            <span class="name">max_per_sector</span><span class="annotation">: int | None</span>        =
+<span class="default_value">None</span>
 
 
     </div>

@@ -71,7 +71,10 @@ bundle.resolve_active_bundle (versioned current.json or validated legacy files)
   → assign strategy bucket via select.strategy.bucket_from_name(fon_adi)
   → assign sector bucket via select.sector.sector_from_name(fon_adi)
   → (--news only) news.penalty.apply_negative_news_penalty (top-K Tavily query, −0.20 binary penalty per fund with hits)
-  → select.pick.pick_top (N picks, capped at max_per_type per strategy AND max_per_sector per sector; "diversified" sector exempt)
+  → select.pick.pick_top (N picks, capped independently per strategy and named
+    sector; default Balanced caps scale 2/3/4 for N=1–11/12–15/16–20, Strict stays
+    at 2, Relaxed scales 3/4/5; "other" strategy and "diversified" sector are
+    exempt; explicit numeric overrides win)
   → select.weights.compute_weights (5% units, largest-remainder, 5% floor)
   → render.table.render_portfolio (--news adds: header line summarising top-K/hits/picks-changed, 📰+(−0.20) markers on penalised picks, "portföyde kaldı" footer for surviving hits, "portföyden düşen" footer for funds the penalty pushed out)
 ```
