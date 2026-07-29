@@ -24,7 +24,7 @@ from datetime import datetime
 from fundexpert.data.loader import load_candidates_for_universe
 from fundexpert.pipeline import run_pipeline, PipelineConfig
 from fundexpert.ui import ensure_utf8_stdio
-from fundexpert.config import DEFAULT_MAX_PER_TYPE, DEFAULT_MAX_PER_SECTOR, DATA_ROOT
+from fundexpert.config import DATA_ROOT
 from fundexpert.render.table import render_portfolio
 
 ensure_utf8_stdio()
@@ -33,7 +33,7 @@ candidates = load_candidates_for_universe(u, DATA_ROOT)
 config = PipelineConfig(
     universe=u, risk_level='medium', horizon='medium',
     volume_priority='medium', fee_priority='medium', momentum_priority='medium',
-    n=8, max_per_type=DEFAULT_MAX_PER_TYPE, max_per_sector=DEFAULT_MAX_PER_SECTOR,
+    n=8,
     now=datetime.now()
 )
 result = run_pipeline(candidates, config)

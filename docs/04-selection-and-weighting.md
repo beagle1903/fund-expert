@@ -4,8 +4,10 @@ Two pure functions, both operating on the scored candidate DataFrame.
 
 ## Selector (`select/pick.py`)
 
-**Inputs:** scored DataFrame, `N` (target count), a diversification mode, and
-optional `max_per_type` / `max_per_sector` overrides.
+**Resolver/pipeline inputs:** scored DataFrame, `N` (target count), a
+diversification mode, and optional `max_per_type` / `max_per_sector` overrides.
+The resolver runs in the pipeline; `pick_top` receives the resulting concrete
+integer strategy and sector caps.
 
 The selector applies two independent caps:
 
