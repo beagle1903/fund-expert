@@ -1,4 +1,8 @@
 import { Briefcase } from 'lucide-react';
+import {
+  DIVERSIFICATION_OPTIONS,
+  getDiversificationCap,
+} from '../config.js';
 
 const PRIORITIES = ['low', 'medium', 'high'];
 
@@ -111,6 +115,18 @@ export default function ControlPanel({
             onChange={onChange}
           />
         </div>
+
+        <SelectControl
+          label="Diversification"
+          name="diversification_mode"
+          value={config.diversification_mode}
+          onChange={onChange}
+          options={DIVERSIFICATION_OPTIONS}
+        />
+        <p className="control-help" aria-live="polite">
+          Maximum {getDiversificationCap(config.n, config.diversification_mode)} funds
+          per strategy or named sector.
+        </p>
 
         <div className="control-group checkbox-control">
           <input

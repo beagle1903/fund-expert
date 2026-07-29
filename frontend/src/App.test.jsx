@@ -114,6 +114,45 @@ describe('App', () => {
     expect(typeof payload.n).toBe('number');
   });
 
+  it('defaults to balanced diversification and submits it', async () => {
+    render(<App />);
+    await screen.findByText('AAA');
+
+    expect(screen.getByLabelText('Diversification')).toHaveValue('balanced');
+    const firstGenerate = fetch.mock.calls.find(
+      ([url]) => url === '/api/generate',
+    );
+    expect(
+      JSON.parse(firstGenerate[1].body).diversification_mode,
+    ).toBe('balanced');
+  });
+
+  it('shows and submits the relaxed cap for a 12-fund portfolio', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText('AAA');
+
+    fireEvent.change(screen.getByLabelText(/Portfolio Size/), {
+      target: { value: '12' },
+    });
+    await user.selectOptions(
+      screen.getByLabelText('Diversification'),
+      'relaxed',
+    );
+
+    expect(
+      screen.getByText('Maximum 4 funds per strategy or named sector.'),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Generate Portfolio' }));
+    const generateCalls = () =>
+      fetch.mock.calls.filter(([url]) => url === '/api/generate');
+    await waitFor(() => expect(generateCalls()).toHaveLength(2));
+    expect(
+      JSON.parse(generateCalls()[1][1].body).diversification_mode,
+    ).toBe('relaxed');
+  });
+
   it('loads universe-specific founders and resets the selection on universe change', async () => {
     globalThis.fetch = vi.fn((url) => {
       if (url === '/api/founders?universe=tefas') {
