@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from typing import Literal
 
 from dataclasses import dataclass
 
@@ -45,6 +46,41 @@ DEFAULT_MAX_PER_TYPE: int = 2
 
 # Per-sector cap. "diversified" sector (no sector keyword in name) is exempt.
 DEFAULT_MAX_PER_SECTOR: int = 2
+
+
+DiversificationMode = Literal["strict", "balanced", "relaxed"]
+
+_DIVERSIFICATION_CAPS: dict[DiversificationMode, tuple[int, int, int]] = {
+    "strict": (2, 2, 2),
+    "balanced": (2, 3, 4),
+    "relaxed": (3, 4, 5),
+}
+
+
+def resolve_diversification_caps(
+    n: int,
+    mode: DiversificationMode = "balanced",
+    *,
+    max_per_type: int | None = None,
+    max_per_sector: int | None = None,
+) -> tuple[int, int]:
+    if not 1 <= n <= 20:
+        raise ValueError("Portfolio size must be between 1 and 20.")
+    if mode not in _DIVERSIFICATION_CAPS:
+        raise ValueError(f"Unsupported diversification mode: {mode!r}.")
+    for name, value in (
+        ("max_per_type", max_per_type),
+        ("max_per_sector", max_per_sector),
+    ):
+        if value is not None and not 1 <= value <= 20:
+            raise ValueError(f"{name} must be between 1 and 20.")
+
+    band = 0 if n <= 11 else 1 if n <= 15 else 2
+    derived = _DIVERSIFICATION_CAPS[mode][band]
+    return (
+        derived if max_per_type is None else max_per_type,
+        derived if max_per_sector is None else max_per_sector,
+    )
 
 MAX_CSV_SIZE_BYTES: int = 50 * 1024 * 1024
 @dataclass
