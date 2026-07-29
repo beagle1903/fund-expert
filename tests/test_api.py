@@ -179,10 +179,13 @@ def test_generate_rejects_founder_outside_active_universe(client):
         ("n", 21),
         ("n", "8"),
         ("n", True),
+        ("diversification_mode", "unlimited"),
         ("max_per_type", 0),
         ("max_per_type", 21),
+        ("max_per_type", "3"),
         ("max_per_sector", 0),
         ("max_per_sector", 21),
+        ("max_per_sector", True),
     ],
 )
 def test_generate_rejects_invalid_fields(client, field, value):
@@ -191,6 +194,31 @@ def test_generate_rejects_invalid_fields(client, field, value):
     response = client.post("/api/generate", json=payload)
 
     assert response.status_code == 422
+
+
+def test_generate_passes_mode_and_optional_caps_to_pipeline(client, monkeypatch):
+    captured = {}
+    real_run_pipeline = api.run_pipeline
+
+    def capture(candidates, config):
+        captured["config"] = config
+        return real_run_pipeline(candidates, config)
+
+    monkeypatch.setattr(api, "run_pipeline", capture)
+    response = client.post(
+        "/api/generate",
+        json={
+            "universe": "tefas",
+            "n": 12,
+            "diversification_mode": "relaxed",
+            "max_per_type": 6,
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured["config"].diversification_mode == "relaxed"
+    assert captured["config"].max_per_type == 6
+    assert captured["config"].max_per_sector is None
 
 
 def test_generate_rejects_extra_fields(client):

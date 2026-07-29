@@ -14,7 +14,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from fundexpert.config import DATA_ROOT, DEFAULT_MAX_PER_SECTOR, DEFAULT_MAX_PER_TYPE
+from fundexpert.config import DATA_ROOT, DiversificationMode
 from fundexpert.data.bundle import (
     ActiveDataBundle,
     BundleValidationError,
@@ -53,8 +53,9 @@ class GenerateRequest(BaseModel):
     fee_priority: Priority = "medium"
     momentum_priority: Priority = "medium"
     n: int = Field(default=8, ge=1, le=20)
-    max_per_type: int = Field(default=DEFAULT_MAX_PER_TYPE, ge=1, le=20)
-    max_per_sector: int = Field(default=DEFAULT_MAX_PER_SECTOR, ge=1, le=20)
+    diversification_mode: DiversificationMode = "balanced"
+    max_per_type: int | None = Field(default=None, ge=1, le=20)
+    max_per_sector: int | None = Field(default=None, ge=1, le=20)
     founder: str | None = Field(default=None, min_length=1, max_length=200)
     news_enabled: bool = False
     refresh_data: bool = False
@@ -383,6 +384,7 @@ def generate_portfolio(req: GenerateRequest) -> GenerateResponse:
         fee_priority=req.fee_priority,
         momentum_priority=req.momentum_priority,
         n=req.n,
+        diversification_mode=req.diversification_mode,
         max_per_type=req.max_per_type,
         max_per_sector=req.max_per_sector,
         founder=req.founder,

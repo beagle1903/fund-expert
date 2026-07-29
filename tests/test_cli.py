@@ -149,6 +149,80 @@ def test_main_exits_cleanly_on_keyboard_interrupt(capsys):
     assert "İptal" in capsys.readouterr().err
 
 
+def test_main_passes_diversification_mode_and_optional_overrides(monkeypatch):
+    captured = []
+    answers = {
+        "universe": "tefas",
+        "risk_level": "medium",
+        "horizon": "medium",
+        "volume_priority": "medium",
+        "fee_priority": "medium",
+        "momentum_priority": "medium",
+        "n": 12,
+    }
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "fundexpert",
+            "--diversification",
+            "relaxed",
+            "--max-per-sector",
+            "6",
+        ],
+    )
+    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: answers)
+    monkeypatch.setattr("fundexpert.cli.save_last_run_state", lambda _: None)
+    monkeypatch.setattr(
+        "fundexpert.cli.load_candidates_for_universe",
+        lambda *args: object(),
+    )
+
+    def fake_run_pipeline(candidates, config):
+        captured.append(config)
+        return PipelineResult(
+            weighted=pd.DataFrame(
+                {
+                    "fon_kodu": ["AAA"],
+                    "fon_adi": ["ALPHA FON"],
+                    "display_weight_pct": [100],
+                    "score": [0.7],
+                    "risk": [3],
+                }
+            ),
+            header={"warning": None},
+            hits_for_render={},
+            news_meta={"enabled": False},
+        )
+
+    monkeypatch.setattr("fundexpert.cli.run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr("fundexpert.cli.save_run", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "fundexpert.cli.render_portfolio", lambda *args, **kwargs: None
+    )
+
+    assert main() == 0
+    assert captured[0].diversification_mode == "relaxed"
+    assert captured[0].max_per_type is None
+    assert captured[0].max_per_sector == 6
+
+
+@pytest.mark.parametrize(
+    ("flag", "value"),
+    [
+        ("--max-per-type", "0"),
+        ("--max-per-type", "21"),
+        ("--max-per-sector", "0"),
+        ("--max-per-sector", "21"),
+    ],
+)
+def test_main_rejects_invalid_explicit_cap(monkeypatch, flag, value):
+    monkeypatch.setattr("sys.argv", ["fundexpert", flag, value])
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+    assert exc_info.value.code == 2
+
+
 def test_run_pipeline_rejects_both_universe():
     with pytest.raises(ValueError, match="tefas.*befas"):
         run_pipeline(candidates=None, config=PipelineConfig(universe="both", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", momentum_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2)))

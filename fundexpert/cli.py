@@ -6,8 +6,6 @@ import sys
 from datetime import datetime
 
 from fundexpert.config import (
-    DEFAULT_MAX_PER_SECTOR,
-    DEFAULT_MAX_PER_TYPE,
     HISTORY_DIR,
     NEWS_API_KEY_ENV,
     DATA_ROOT,
@@ -25,6 +23,12 @@ from fundexpert.data.loader import load_candidates_for_universe
 from fundexpert.data.refresh import DataRefreshError, refresh_universe
 
 
+def _cap_value(value: str) -> int:
+    parsed = int(value)
+    if not 1 <= parsed <= 20:
+        raise argparse.ArgumentTypeError("cap must be between 1 and 20")
+    return parsed
+
 
 
 def main() -> int:
@@ -35,12 +39,18 @@ def main() -> int:
         help="Tavily ile olumsuz haber taraması (gerekli: TAVILY_API_KEY env var)",
     )
     parser.add_argument(
-        "--max-per-type", type=int, default=DEFAULT_MAX_PER_TYPE,
-        help="Max funds per strateji (e.g. para piyasası, hisse, borçlanma)",
+        "--diversification",
+        choices=("strict", "balanced", "relaxed"),
+        default="balanced",
+        help="Çeşitlendirme: strict, balanced veya relaxed",
     )
     parser.add_argument(
-        "--max-per-sector", type=int, default=DEFAULT_MAX_PER_SECTOR,
-        help="Max funds per sektör (e.g. teknoloji, sağlık, enerji)",
+        "--max-per-type", type=_cap_value, default=None,
+        help="Seçilen modu geçersiz kılan strateji başına maksimum fon sayısı",
+    )
+    parser.add_argument(
+        "--max-per-sector", type=_cap_value, default=None,
+        help="Seçilen modu geçersiz kılan sektör başına maksimum fon sayısı",
     )
     parser.add_argument(
         "--diff-last", action="store_true",
@@ -107,6 +117,7 @@ def main() -> int:
             fee_priority=answers["fee_priority"],
             momentum_priority=answers["momentum_priority"],
             n=answers["n"],
+            diversification_mode=args.diversification,
             max_per_type=args.max_per_type,
             max_per_sector=args.max_per_sector,
             founder=answers.get("founders", {}).get(u),
