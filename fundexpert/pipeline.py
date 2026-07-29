@@ -5,13 +5,14 @@ from typing import Any
 import pandas as pd
 
 from fundexpert.config import (
-    DEFAULT_MAX_PER_SECTOR,
+    DiversificationMode,
     ScoringConfig,
     SelectionConfig,
     DEFAULT_SCORING_CONFIG,
     DEFAULT_SELECTION_CONFIG,
     NewsConfig,
     DEFAULT_NEWS_CONFIG,
+    resolve_diversification_caps,
 )
 from fundexpert.news.penalty import apply_negative_news_penalty
 from fundexpert.scoring.horizon import apply_horizon
@@ -35,9 +36,10 @@ class PipelineConfig:
     fee_priority: str
     momentum_priority: str
     n: int
-    max_per_type: int
     now: datetime
-    max_per_sector: int = DEFAULT_MAX_PER_SECTOR
+    diversification_mode: DiversificationMode = "balanced"
+    max_per_type: int | None = None
+    max_per_sector: int | None = None
     founder: str | None = None
     news_enabled: bool = False
     news_api_key: str | None = None
@@ -74,6 +76,12 @@ def run_pipeline(
             f"run_pipeline accepts 'tefas' or 'befas', got {config.universe!r}. "
             "Use main()'s 'both' option for dual-portfolio output."
         )
+    max_per_type, max_per_sector = resolve_diversification_caps(
+        config.n,
+        config.diversification_mode,
+        max_per_type=config.max_per_type,
+        max_per_sector=config.max_per_sector,
+    )
     total = len(candidates)
 
     if config.founder is not None:
@@ -123,7 +131,7 @@ def run_pipeline(
         )
 
     selected, warning = pick_top(
-        scored, n=config.n, max_per_type=config.max_per_type, max_per_sector=config.max_per_sector,
+        scored, n=config.n, max_per_type=max_per_type, max_per_sector=max_per_sector,
     )
     weighted = compute_weights(selected, config.selection_config)
 
@@ -150,8 +158,8 @@ def run_pipeline(
             picked_codes=picked_codes,
             hits_by_code=hits_by_code,
             n=config.n,
-            max_per_type=config.max_per_type,
-            max_per_sector=config.max_per_sector,
+            max_per_type=max_per_type,
+            max_per_sector=max_per_sector,
             penalty=config.news_config.negative_news_penalty,
         )
 
