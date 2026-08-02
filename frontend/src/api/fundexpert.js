@@ -66,3 +66,32 @@ export async function getFounders(universe, { signal } = {}) {
   }
   return payload.founders;
 }
+
+async function requestSelectionRules(url, options = {}) {
+  const response = await fetch(url, options);
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    throw new ApiError(extractApiError(payload, response), response.status);
+  }
+  return payload;
+}
+
+export function getSelectionRules({ signal } = {}) {
+  return requestSelectionRules('/api/selection-rules', { signal });
+}
+
+export function updateSelectionRules(rules, { signal } = {}) {
+  return requestSelectionRules('/api/selection-rules', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(rules),
+    signal,
+  });
+}

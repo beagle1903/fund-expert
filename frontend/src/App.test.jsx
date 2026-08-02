@@ -54,6 +54,15 @@ const responseBody = {
   },
 };
 
+const selectionRulesBody = {
+  bucket_rules: [
+    { keyword: 'HİSSE SENEDİ', category: 'equity' },
+    { keyword: 'DEĞİŞKEN', category: 'mixed' },
+  ],
+  sector_rules: [{ keyword: 'TEKNOLOJİ', category: 'tech' }],
+  exclusion_rules: ['OKS'],
+};
+
 function jsonResponse(body, { ok = true, status = 200 } = {}) {
   return Promise.resolve({
     ok,
@@ -64,16 +73,24 @@ function jsonResponse(body, { ok = true, status = 200 } = {}) {
 
 describe('App', () => {
   beforeEach(() => {
-    globalThis.fetch = vi.fn((url) =>
-      url.startsWith('/api/founders')
-        ? jsonResponse({
-            universe: 'tefas',
-            founders: [
-              { name: 'AK PORTFÖY YÖNETİMİ A.Ş.', fund_count: 2 },
-            ],
-          })
-        : jsonResponse(responseBody),
-    );
+    globalThis.fetch = vi.fn((url, options = {}) => {
+      if (url.startsWith('/api/founders')) {
+        return jsonResponse({
+          universe: 'tefas',
+          founders: [
+            { name: 'AK PORTFÖY YÖNETİMİ A.Ş.', fund_count: 2 },
+          ],
+        });
+      }
+      if (url === '/api/selection-rules') {
+        return jsonResponse(
+          options.method === 'PUT'
+            ? JSON.parse(options.body)
+            : selectionRulesBody,
+        );
+      }
+      return jsonResponse(responseBody);
+    });
   });
 
   afterEach(() => {
@@ -252,5 +269,72 @@ describe('App', () => {
     unmount();
 
     expect(signal.aborted).toBe(true);
+  });
+
+  it('edits selection rules and rebuilds with the existing data bundle', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText('AAA');
+
+    await user.click(
+      screen.getByRole('button', { name: 'Edit Selection Rules' }),
+    );
+    expect(
+      await screen.findByRole('dialog', { name: 'Selection Rules' }),
+    ).toBeInTheDocument();
+
+    const keyword = screen.getByLabelText('bucket_rules keyword 1');
+    await user.clear(keyword);
+    await user.type(keyword, 'HİSSE');
+    await user.click(screen.getByRole('button', { name: 'Move rule 2 up' }));
+    await user.click(screen.getByRole('button', { name: 'Save & Rebuild' }));
+
+    const putCalls = () =>
+      fetch.mock.calls.filter(
+        ([url, options]) =>
+          url === '/api/selection-rules' && options?.method === 'PUT',
+      );
+    await waitFor(() => expect(putCalls()).toHaveLength(1));
+    const saved = JSON.parse(putCalls()[0][1].body);
+    expect(saved.bucket_rules).toEqual([
+      { keyword: 'DEĞİŞKEN', category: 'mixed' },
+      { keyword: 'HİSSE', category: 'equity' },
+    ]);
+
+    await waitFor(() =>
+      expect(
+        fetch.mock.calls.filter(([url]) => url === '/api/generate'),
+      ).toHaveLength(2),
+    );
+    const rebuild = fetch.mock.calls.filter(
+      ([url]) => url === '/api/generate',
+    )[1];
+    expect(JSON.parse(rebuild[1].body).refresh_data).toBe(false);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('blocks duplicate rule keywords before saving', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText('AAA');
+    await user.click(
+      screen.getByRole('button', { name: 'Edit Selection Rules' }),
+    );
+    await screen.findByRole('dialog', { name: 'Selection Rules' });
+
+    await user.click(screen.getByRole('button', { name: 'Add rule' }));
+    await user.type(screen.getByLabelText('bucket_rules keyword 3'), 'değişken');
+    await user.type(screen.getByLabelText('bucket_rules category 3'), 'mixed');
+    await user.click(screen.getByRole('button', { name: 'Save & Rebuild' }));
+
+    expect(
+      screen.getByRole('alert'),
+    ).toHaveTextContent('Keywords must be unique within each section.');
+    expect(
+      fetch.mock.calls.filter(
+        ([url, options]) =>
+          url === '/api/selection-rules' && options?.method === 'PUT',
+      ),
+    ).toHaveLength(0);
   });
 });

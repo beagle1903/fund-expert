@@ -1,4 +1,4 @@
-import { Briefcase } from 'lucide-react';
+import { Briefcase, SlidersHorizontal } from 'lucide-react';
 import {
   DIVERSIFICATION_OPTIONS,
   getDiversificationCap,
@@ -26,6 +26,7 @@ export default function ControlPanel({
   founders,
   loading,
   onChange,
+  onEditRules,
   onSubmit,
 }) {
   const priorityOptions = PRIORITIES.map((value) => ({
@@ -158,6 +159,14 @@ export default function ControlPanel({
               ? 'Refreshing & Generating…'
               : 'Generating…'
             : 'Generate Portfolio'}
+        </button>
+
+        <button
+          type="button"
+          className="btn-secondary rules-launch-button"
+          onClick={onEditRules}
+        >
+          <SlidersHorizontal size={18} /> Edit Selection Rules
         </button>
       </form>
     </aside>

@@ -60,8 +60,11 @@ transport used by the TEFAS returns page. The transport is undocumented and is
 not an official public API, so schema drift or access failures are treated as a
 hard refresh failure. It makes exactly one request per view and selected
 universe, enforces minimum row counts and exact cross-file fund-code coverage,
-renders the canonical UTF-8/BOM CSV format in a staging directory, and only
-then calls `publish_bundle`.
+and, for TEFAS only, tolerates at most five codes that are not shared by every
+view by excluding them from all three staged files. BEFAS retains exact raw
+coverage. The aligned canonical files must still meet the row floor and exact
+code-set equality before the UTF-8/BOM bundle is rendered and passed to
+`publish_bundle`.
 
 Web portfolio generation enables a once-per-local-day freshness check by
 default. If refresh fails, the existing active bundle is preserved; clear
@@ -96,6 +99,12 @@ npm --prefix frontend run dev
 
 Open `http://127.0.0.1:5173`. Vite proxies `/api` to the local FastAPI server.
 
+Use **Edit Selection Rules** in the control panel to manage ordered strategy
+keywords, sector keywords, and whole-word exclusions without editing JSON by
+hand. Saving validates duplicate/blank values, atomically updates
+`fundexpert/rules.json`, preserves internal name-cleanup expressions, and
+rebuilds the visible portfolio from the existing data snapshot.
+
 The optional news pass requires `TAVILY_API_KEY`. Without a key, it fails soft
 and uses the quantitative portfolio unchanged.
 
@@ -112,6 +121,11 @@ and uses the quantitative portfolio unchanged.
   present in the active universe bundle, with fund counts.
 - `GET /api/data-status` reports TEFAS/BEFAS availability, export metadata,
   record counts, and file hashes.
+- `GET /api/selection-rules` returns the editable strategy, sector, and
+  exclusion criteria in a UI-friendly shape.
+- `PUT /api/selection-rules` validates and atomically saves those criteria;
+  ordered rules retain first-match priority and internal cleanup rules are not
+  exposed or overwritten.
 
 Invalid request values return `422`. Unavailable or invalid data returns a safe
 `503 DATA_UNAVAILABLE`.

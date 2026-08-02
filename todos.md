@@ -3,7 +3,9 @@
 ## Data acquisition
 
 - Monitor the undocumented TEFAS web-export transport for schema or access
-  changes; never weaken validation to accommodate partial responses.
+  changes; keep the TEFAS-only bounded five-code alignment policy and fail
+  closed if the difference grows or the aligned bundle misses any other
+  validation rule.
 - Decide whether to add scheduling beyond the current once-per-local-day
   freshness gate.
 
@@ -12,7 +14,8 @@
 - Backtest horizon averaging, risk calibration, and score-proportional weights
   before changing current recommendation behavior.
 - Consider an explainability view for per-signal score contributions.
-- Revisit strategy/sector keywords as real fund names expose gaps.
+- Use the selection-rule editor to revisit strategy/sector keywords as real
+  fund names expose gaps; keep first-match ordering deliberate.
 
 ## Product
 

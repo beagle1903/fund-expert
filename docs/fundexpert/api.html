@@ -244,6 +244,42 @@
 
             </li>
             <li>
+                    <a class="class" href="#ClassificationRule">ClassificationRule</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="variable" href="#ClassificationRule.keyword">keyword</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#ClassificationRule.category">category</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#ClassificationRule.normalize_keyword">normalize_keyword</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
+                    <a class="class" href="#SelectionRules">SelectionRules</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="variable" href="#SelectionRules.bucket_rules">bucket_rules</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#SelectionRules.sector_rules">sector_rules</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#SelectionRules.exclusion_rules">exclusion_rules</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#SelectionRules.normalize_exclusions">normalize_exclusions</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#SelectionRules.reject_duplicate_keywords">reject_duplicate_keywords</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
                     <a class="class" href="#PortfolioHeader">PortfolioHeader</a>
                             <ul class="memberlist">
                         <li>
@@ -392,6 +428,12 @@
             </li>
             <li>
                     <a class="function" href="#get_founders">get_founders</a>
+            </li>
+            <li>
+                    <a class="function" href="#get_selection_rules">get_selection_rules</a>
+            </li>
+            <li>
+                    <a class="function" href="#update_selection_rules">update_selection_rules</a>
             </li>
             <li>
                     <a class="function" href="#generate_portfolio">generate_portfolio</a>
@@ -1469,6 +1511,204 @@ __pydantic_private__: Values of private attributes set on the model instance.
 
                             </div>
                 </section>
+                <section id="ClassificationRule">
+                    <div class="attr class">
+
+    <span class="def">class</span>
+    <span class="name">ClassificationRule</span><wbr>(<span class="base">pydantic.main.BaseModel</span>):
+
+
+    </div>
+    <a class="headerlink" href="#ClassificationRule"></a>
+
+            <div class="docstring"><p>!!! abstract "Usage Documentation"
+    <a href="../concepts/models.md">Models</a></p>
+
+<p>A base class for creating Pydantic models.</p>
+
+<p>Attributes:
+    __class_vars__: The names of the class variables defined on the model.
+    __private_attributes__: Metadata about the private attributes of the model.
+    __signature__: The synthesized <code>__init__</code> [<code>Signature</code>][inspect.Signature] of the model.</p>
+
+<pre><code>__pydantic_complete__: Whether model building is completed, or if there are still undefined fields.
+__pydantic_core_schema__: The core schema of the model.
+__pydantic_custom_init__: Whether the model has a custom `__init__` function.
+__pydantic_decorators__: Metadata containing the decorators defined on the model.
+    This replaces `Model.__validators__` and `Model.__root_validators__` from Pydantic V1.
+__pydantic_generic_metadata__: A dictionary containing metadata about generic Pydantic models.
+    The `origin` and `args` items map to the [`__origin__`][genericalias.__origin__]
+    and [`__args__`][genericalias.__args__] attributes of [generic aliases][types-genericalias],
+    and the `parameter` item maps to the `__parameter__` attribute of generic classes.
+__pydantic_parent_namespace__: Parent namespace of the model, used for automatic rebuilding of models.
+__pydantic_post_init__: The name of the post-init method for the model, if defined.
+__pydantic_root_model__: Whether the model is a [`RootModel`][pydantic.root_model.RootModel].
+__pydantic_serializer__: The `pydantic-core` `SchemaSerializer` used to dump instances of the model.
+__pydantic_validator__: The `pydantic-core` `SchemaValidator` used to validate instances of the model.
+
+__pydantic_fields__: A dictionary of field names and their corresponding [`FieldInfo`][pydantic.fields.FieldInfo] objects.
+__pydantic_computed_fields__: A dictionary of computed field names and their corresponding [`ComputedFieldInfo`][pydantic.fields.ComputedFieldInfo] objects.
+
+__pydantic_extra__: A dictionary containing extra values, if [`extra`][pydantic.config.ConfigDict.extra]
+    is set to `'allow'`.
+__pydantic_fields_set__: The names of fields explicitly set during instantiation.
+__pydantic_private__: Values of private attributes set on the model instance.
+</code></pre>
+</div>
+
+
+                            <div id="ClassificationRule.keyword" class="classattr">
+                                <div class="attr variable">
+            <span class="name">keyword</span><span class="annotation">: str</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#ClassificationRule.keyword"></a>
+
+
+
+                            </div>
+                            <div id="ClassificationRule.category" class="classattr">
+                                <div class="attr variable">
+            <span class="name">category</span><span class="annotation">: str</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#ClassificationRule.category"></a>
+
+
+
+                            </div>
+                            <div id="ClassificationRule.normalize_keyword" class="classattr">
+                                <div class="attr function">
+                    <div class="decorator decorator-field_validator">@field_validator(&#39;keyword&#39;)</div>
+        <div class="decorator decorator-classmethod">@classmethod</div>
+
+        <span class="def">def</span>
+        <span class="name">normalize_keyword</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">cls</span>, </span><span class="param"><span class="n">value</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="nb">str</span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#ClassificationRule.normalize_keyword"></a>
+
+
+
+                            </div>
+                </section>
+                <section id="SelectionRules">
+                    <div class="attr class">
+
+    <span class="def">class</span>
+    <span class="name">SelectionRules</span><wbr>(<span class="base">pydantic.main.BaseModel</span>):
+
+
+    </div>
+    <a class="headerlink" href="#SelectionRules"></a>
+
+            <div class="docstring"><p>!!! abstract "Usage Documentation"
+    <a href="../concepts/models.md">Models</a></p>
+
+<p>A base class for creating Pydantic models.</p>
+
+<p>Attributes:
+    __class_vars__: The names of the class variables defined on the model.
+    __private_attributes__: Metadata about the private attributes of the model.
+    __signature__: The synthesized <code>__init__</code> [<code>Signature</code>][inspect.Signature] of the model.</p>
+
+<pre><code>__pydantic_complete__: Whether model building is completed, or if there are still undefined fields.
+__pydantic_core_schema__: The core schema of the model.
+__pydantic_custom_init__: Whether the model has a custom `__init__` function.
+__pydantic_decorators__: Metadata containing the decorators defined on the model.
+    This replaces `Model.__validators__` and `Model.__root_validators__` from Pydantic V1.
+__pydantic_generic_metadata__: A dictionary containing metadata about generic Pydantic models.
+    The `origin` and `args` items map to the [`__origin__`][genericalias.__origin__]
+    and [`__args__`][genericalias.__args__] attributes of [generic aliases][types-genericalias],
+    and the `parameter` item maps to the `__parameter__` attribute of generic classes.
+__pydantic_parent_namespace__: Parent namespace of the model, used for automatic rebuilding of models.
+__pydantic_post_init__: The name of the post-init method for the model, if defined.
+__pydantic_root_model__: Whether the model is a [`RootModel`][pydantic.root_model.RootModel].
+__pydantic_serializer__: The `pydantic-core` `SchemaSerializer` used to dump instances of the model.
+__pydantic_validator__: The `pydantic-core` `SchemaValidator` used to validate instances of the model.
+
+__pydantic_fields__: A dictionary of field names and their corresponding [`FieldInfo`][pydantic.fields.FieldInfo] objects.
+__pydantic_computed_fields__: A dictionary of computed field names and their corresponding [`ComputedFieldInfo`][pydantic.fields.ComputedFieldInfo] objects.
+
+__pydantic_extra__: A dictionary containing extra values, if [`extra`][pydantic.config.ConfigDict.extra]
+    is set to `'allow'`.
+__pydantic_fields_set__: The names of fields explicitly set during instantiation.
+__pydantic_private__: Values of private attributes set on the model instance.
+</code></pre>
+</div>
+
+
+                            <div id="SelectionRules.bucket_rules" class="classattr">
+                                <div class="attr variable">
+            <span class="name">bucket_rules</span><span class="annotation">: list[<a href="#ClassificationRule">ClassificationRule</a>]</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#SelectionRules.bucket_rules"></a>
+
+
+
+                            </div>
+                            <div id="SelectionRules.sector_rules" class="classattr">
+                                <div class="attr variable">
+            <span class="name">sector_rules</span><span class="annotation">: list[<a href="#ClassificationRule">ClassificationRule</a>]</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#SelectionRules.sector_rules"></a>
+
+
+
+                            </div>
+                            <div id="SelectionRules.exclusion_rules" class="classattr">
+                                <div class="attr variable">
+            <span class="name">exclusion_rules</span><span class="annotation">: list[str]</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#SelectionRules.exclusion_rules"></a>
+
+
+
+                            </div>
+                            <div id="SelectionRules.normalize_exclusions" class="classattr">
+                                <div class="attr function">
+                    <div class="decorator decorator-field_validator">@field_validator(&#39;exclusion_rules&#39;)</div>
+        <div class="decorator decorator-classmethod">@classmethod</div>
+
+        <span class="def">def</span>
+        <span class="name">normalize_exclusions</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">cls</span>, </span><span class="param"><span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#SelectionRules.normalize_exclusions"></a>
+
+
+
+                            </div>
+                            <div id="SelectionRules.reject_duplicate_keywords" class="classattr">
+                                <div class="attr function">
+                    <div class="decorator decorator-model_validator">@model_validator(mode=&#39;after&#39;)</div>
+
+        <span class="def">def</span>
+        <span class="name">reject_duplicate_keywords</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">) -> <span class="n"><a href="#SelectionRules">SelectionRules</a></span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#SelectionRules.reject_duplicate_keywords"></a>
+
+
+
+                            </div>
+                </section>
                 <section id="PortfolioHeader">
                     <div class="attr class">
 
@@ -2183,6 +2423,34 @@ __pydantic_private__: Values of private attributes set on the model instance.
 
     </div>
     <a class="headerlink" href="#get_founders"></a>
+
+
+
+                </section>
+                <section id="get_selection_rules">
+                    <div class="attr function">
+                    <div class="decorator decorator-app.get">@app.get(&#39;/api/selection-rules&#39;, response_model=SelectionRules)</div>
+
+        <span class="def">def</span>
+        <span class="name">get_selection_rules</span><span class="signature pdoc-code condensed">(<span class="return-annotation">) -> <span class="n"><a href="#SelectionRules">SelectionRules</a></span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#get_selection_rules"></a>
+
+
+
+                </section>
+                <section id="update_selection_rules">
+                    <div class="attr function">
+                    <div class="decorator decorator-app.put">@app.put(&#39;/api/selection-rules&#39;, response_model=SelectionRules)</div>
+
+        <span class="def">def</span>
+        <span class="name">update_selection_rules</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">req</span><span class="p">:</span> <span class="n"><a href="#SelectionRules">SelectionRules</a></span></span><span class="return-annotation">) -> <span class="n"><a href="#SelectionRules">SelectionRules</a></span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#update_selection_rules"></a>
 
 
 

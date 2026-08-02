@@ -17,6 +17,7 @@ from urllib.request import Request, urlopen
 TEFAS_EXPORT_URL = "https://www.tefas.gov.tr/api/fund-returns/export"
 FUND_TYPE_BY_UNIVERSE = {"tefas": "YAT", "befas": "EMK"}
 MIN_ROWS_BY_UNIVERSE = {"tefas": 500, "befas": 100}
+MAX_IGNORED_TEFAS_CODE_SET_DIFFERENCES = 5
 
 
 @dataclass(frozen=True)
@@ -207,6 +208,40 @@ def _write_csv(
             )
 
 
+def _align_code_sets(
+    datasets: list[tuple[ExportDefinition, list[dict[str, Any]]]],
+    *,
+    maximum_tolerated: int,
+) -> list[tuple[ExportDefinition, list[dict[str, Any]]]]:
+    """Drop a bounded number of codes not shared by every export view."""
+    code_sets = [
+        {str(row.get("fonKodu", "")) for row in rows}
+        for _, rows in datasets
+    ]
+    common_codes = set.intersection(*code_sets)
+    mismatched_codes = set.union(*code_sets) - common_codes
+    if len(mismatched_codes) > maximum_tolerated:
+        sample = ", ".join(sorted(mismatched_codes)[:6])
+        raise WebExportError(
+            f"TEFAS fund-code coverage differs by {len(mismatched_codes)} "
+            "codes across exports; maximum tolerated is "
+            f"{maximum_tolerated}. Codes: {sample}."
+        )
+    if not mismatched_codes:
+        return datasets
+    return [
+        (
+            definition,
+            [
+                row
+                for row in rows
+                if str(row.get("fonKodu", "")) in common_codes
+            ],
+        )
+        for definition, rows in datasets
+    ]
+
+
 def download_web_export_bundle(
     universe: str,
     staged_dir: Path,
@@ -240,13 +275,18 @@ def download_web_export_bundle(
             )
         datasets.append((definition, rows))
 
-    reference_codes = {str(row.get("fonKodu", "")) for row in datasets[0][1]}
-    for definition, rows in datasets[1:]:
-        codes = {str(row.get("fonKodu", "")) for row in rows}
-        if codes != reference_codes:
+    datasets = _align_code_sets(
+        datasets,
+        maximum_tolerated=(
+            MAX_IGNORED_TEFAS_CODE_SET_DIFFERENCES if universe == "tefas" else 0
+        ),
+    )
+    minimum = MIN_ROWS_BY_UNIVERSE[universe]
+    for definition, rows in datasets:
+        if len(rows) < minimum:
             raise WebExportError(
-                f"TEFAS {definition.listing_type} fund-code coverage does not "
-                "match the return export."
+                f"TEFAS returned only {len(rows)} aligned {universe.upper()} "
+                f"rows for {definition.listing_type}; expected at least {minimum}."
             )
 
     for definition, rows in datasets:
