@@ -67,7 +67,7 @@ export async function getFounders(universe, { signal } = {}) {
   return payload.founders;
 }
 
-async function requestSelectionRules(url, options = {}) {
+async function requestJson(url, options = {}) {
   const response = await fetch(url, options);
 
   let payload;
@@ -84,14 +84,27 @@ async function requestSelectionRules(url, options = {}) {
 }
 
 export function getSelectionRules({ signal } = {}) {
-  return requestSelectionRules('/api/selection-rules', { signal });
+  return requestJson('/api/selection-rules', { signal });
 }
 
 export function updateSelectionRules(rules, { signal } = {}) {
-  return requestSelectionRules('/api/selection-rules', {
+  return requestJson('/api/selection-rules', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(rules),
+    signal,
+  });
+}
+
+export function getBuildProfile({ signal } = {}) {
+  return requestJson('/api/build-profile', { signal });
+}
+
+export function updateBuildProfile(profile, { signal } = {}) {
+  return requestJson('/api/build-profile', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile),
     signal,
   });
 }

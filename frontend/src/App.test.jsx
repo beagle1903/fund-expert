@@ -63,6 +63,54 @@ const selectionRulesBody = {
   exclusion_rules: ['OKS'],
 };
 
+const buildProfileBody = {
+  profile: {
+    schema_version: '1.0',
+    profile_id: 'burhan-medium-high-60d',
+    universe: 'tefas',
+    risk_tolerance: 'medium_high',
+    allowed_risk_values: [4, 5, 6],
+    holding_period_days: 60,
+    fund_count: 6,
+    metric_weights: {
+      return: 1,
+      current_aum: 0.1,
+      aum_growth: 0.45,
+      units_growth: 0.6,
+      management_fee: 0,
+    },
+    risk_penalty_weight: 0.1,
+    exclude_missing_risk: true,
+    exclude_qualified_investor_funds: true,
+    new_fund_policy: {
+      definition: 'missing_1y_return',
+      growth_treatment: 'neutral',
+    },
+    growth_winsorization: {
+      lower_quantile: 0.05,
+      upper_quantile: 0.95,
+    },
+    diversification: {
+      max_per_strategy: 2,
+      max_per_sector: 2,
+    },
+    market_context: {
+      enabled: true,
+      lookback_days: 7,
+      selection_influence: 'qualitative_overlay',
+      source_ids: ['garanti_bbva_yatirim'],
+    },
+    audit: {
+      max_data_age_days: 3,
+      max_single_fund_weight_pct: 30,
+      target_weighted_risk_range: [4, 5.5],
+    },
+  },
+  profile_path:
+    'C:\\Users\\burha\\Documents\\Codex\\Fund Expert\\profiles\\default.json',
+  source: 'saved',
+};
+
 function jsonResponse(body, { ok = true, status = 200 } = {}) {
   return Promise.resolve({
     ok,
@@ -72,6 +120,13 @@ function jsonResponse(body, { ok = true, status = 200 } = {}) {
 }
 
 describe('App', () => {
+  async function openPortfolioSettings(user) {
+    await user.click(
+      screen.getByRole('button', { name: 'Web Run Settings' }),
+    );
+    await screen.findByRole('dialog', { name: 'Web Run Settings' });
+  }
+
   beforeEach(() => {
     globalThis.fetch = vi.fn((url, options = {}) => {
       if (url.startsWith('/api/founders')) {
@@ -87,6 +142,16 @@ describe('App', () => {
           options.method === 'PUT'
             ? JSON.parse(options.body)
             : selectionRulesBody,
+        );
+      }
+      if (url === '/api/build-profile') {
+        return jsonResponse(
+          options.method === 'PUT'
+            ? {
+                ...buildProfileBody,
+                profile: JSON.parse(options.body),
+              }
+            : buildProfileBody,
         );
       }
       return jsonResponse(responseBody);
@@ -118,9 +183,11 @@ describe('App', () => {
     render(<App />);
     await screen.findByText('AAA');
 
-    fireEvent.change(screen.getByLabelText(/Portfolio Size/), {
+    await openPortfolioSettings(user);
+    fireEvent.change(screen.getByLabelText('Portfolio Size (N)'), {
       target: { value: '12' },
     });
+    await user.click(screen.getByRole('button', { name: 'Apply settings' }));
     await user.click(screen.getByRole('button', { name: 'Generate Portfolio' }));
 
     const generateCalls = () =>
@@ -132,9 +199,11 @@ describe('App', () => {
   });
 
   it('defaults to balanced diversification and submits it', async () => {
+    const user = userEvent.setup();
     render(<App />);
     await screen.findByText('AAA');
 
+    await openPortfolioSettings(user);
     expect(screen.getByLabelText('Diversification')).toHaveValue('balanced');
     const firstGenerate = fetch.mock.calls.find(
       ([url]) => url === '/api/generate',
@@ -142,6 +211,7 @@ describe('App', () => {
     expect(
       JSON.parse(firstGenerate[1].body).diversification_mode,
     ).toBe('balanced');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
   });
 
   it('shows and submits the relaxed cap for a 12-fund portfolio', async () => {
@@ -149,7 +219,8 @@ describe('App', () => {
     render(<App />);
     await screen.findByText('AAA');
 
-    fireEvent.change(screen.getByLabelText(/Portfolio Size/), {
+    await openPortfolioSettings(user);
+    fireEvent.change(screen.getByLabelText('Portfolio Size (N)'), {
       target: { value: '12' },
     });
     await user.selectOptions(
@@ -161,6 +232,7 @@ describe('App', () => {
       screen.getByText('Maximum 4 funds per strategy or named sector.'),
     ).toBeInTheDocument();
 
+    await user.click(screen.getByRole('button', { name: 'Apply settings' }));
     await user.click(screen.getByRole('button', { name: 'Generate Portfolio' }));
     const generateCalls = () =>
       fetch.mock.calls.filter(([url]) => url === '/api/generate');
@@ -194,6 +266,7 @@ describe('App', () => {
     render(<App />);
     await screen.findByText('AAA');
 
+    await openPortfolioSettings(user);
     await user.selectOptions(
       screen.getByLabelText('Founder (Kurucu)'),
       'AK PORTFÖY YÖNETİMİ A.Ş.',
@@ -250,15 +323,63 @@ describe('App', () => {
     render(<App />);
     await screen.findByText('AAA');
 
+    await openPortfolioSettings(user);
     await user.click(
-      screen.getByLabelText('Refresh stale TEFAS data before generating'),
+      screen.getByRole('checkbox', { name: /Refresh stale TEFAS data/ }),
     );
+    await user.click(screen.getByRole('button', { name: 'Apply settings' }));
     await user.click(screen.getByRole('button', { name: 'Generate Portfolio' }));
 
     const generateCalls = () =>
       fetch.mock.calls.filter(([url]) => url === '/api/generate');
     await waitFor(() => expect(generateCalls()).toHaveLength(2));
     expect(JSON.parse(generateCalls()[1][1].body).refresh_data).toBe(false);
+  });
+
+  it('edits and saves the exact build-plugin profile without starting a build', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText('AAA');
+
+    await user.click(
+      screen.getByRole('button', { name: 'Build Plugin Profile' }),
+    );
+    expect(
+      await screen.findByRole('dialog', { name: 'Build Plugin Profile' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Target fund count')).toHaveValue(6);
+    expect(screen.getByText(/profiles\\default.json/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Target fund count'), {
+      target: { value: '8' },
+    });
+    await user.click(screen.getByRole('tab', { name: 'Scoring & selection' }));
+    fireEvent.change(screen.getByLabelText('Management fee'), {
+      target: { value: '0.2' },
+    });
+    await user.click(
+      screen.getByRole('button', { name: 'Save plugin profile' }),
+    );
+
+    const putCalls = () =>
+      fetch.mock.calls.filter(
+        ([url, options]) =>
+          url === '/api/build-profile' && options?.method === 'PUT',
+      );
+    await waitFor(() => expect(putCalls()).toHaveLength(1));
+    const saved = JSON.parse(putCalls()[0][1].body);
+    expect(saved.fund_count).toBe(8);
+    expect(saved.metric_weights.management_fee).toBe(0.2);
+    expect(saved.market_context.source_ids).toEqual(['garanti_bbva_yatirim']);
+    expect(saved.schema_version).toBe('1.0');
+    expect(
+      await screen.findByText(
+        'Saved. The next build-portfolio plugin run will use this profile.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      fetch.mock.calls.filter(([url]) => url === '/api/generate'),
+    ).toHaveLength(1);
   });
 
   it('aborts the active request when unmounted', () => {

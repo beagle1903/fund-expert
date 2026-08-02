@@ -433,6 +433,12 @@
                     <a class="function" href="#get_selection_rules">get_selection_rules</a>
             </li>
             <li>
+                    <a class="function" href="#get_build_profile">get_build_profile</a>
+            </li>
+            <li>
+                    <a class="function" href="#update_build_profile">update_build_profile</a>
+            </li>
+            <li>
                     <a class="function" href="#update_selection_rules">update_selection_rules</a>
             </li>
             <li>
@@ -2438,6 +2444,38 @@ __pydantic_private__: Values of private attributes set on the model instance.
     </div>
     <a class="headerlink" href="#get_selection_rules"></a>
 
+
+
+                </section>
+                <section id="get_build_profile">
+                    <div class="attr function">
+                    <div class="decorator decorator-app.get">@app.get(&#39;/api/build-profile&#39;, response_model=BuildProfileResponse)</div>
+
+        <span class="def">def</span>
+        <span class="name">get_build_profile</span><span class="signature pdoc-code condensed">(<span class="return-annotation">) -> <span class="n"><a href="build_profile.html#BuildProfileResponse">fundexpert.build_profile.BuildProfileResponse</a></span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#get_build_profile"></a>
+
+            <div class="docstring"><p>Return the validated profile consumed by the build-portfolio plugin.</p>
+</div>
+
+
+                </section>
+                <section id="update_build_profile">
+                    <div class="attr function">
+                    <div class="decorator decorator-app.put">@app.put(&#39;/api/build-profile&#39;, response_model=BuildProfileResponse)</div>
+
+        <span class="def">def</span>
+        <span class="name">update_build_profile</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">req</span><span class="p">:</span> <span class="n"><a href="build_profile.html#BuildProfile">fundexpert.build_profile.BuildProfile</a></span></span><span class="return-annotation">) -> <span class="n"><a href="build_profile.html#BuildProfileResponse">fundexpert.build_profile.BuildProfileResponse</a></span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#update_build_profile"></a>
+
+            <div class="docstring"><p>Atomically replace the profile consumed by the build-portfolio plugin.</p>
+</div>
 
 
                 </section>

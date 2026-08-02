@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import fundexpert.api as api
+from fundexpert.build_profile import DEFAULT_BUILD_PROFILE, BuildProfileError
 from fundexpert.data.refresh import DataRefreshError, DataRefreshResult
 from fundexpert.utils import rules as rules_module
 
@@ -155,6 +156,85 @@ def test_selection_rules_endpoint_projects_editable_rules(
     }
     assert body["exclusion_rules"] == ["OKS"]
     assert "cleanup_rules" not in body
+
+
+def test_build_profile_endpoint_reads_and_saves_plugin_profile(
+    client, tmp_path, monkeypatch
+):
+    state_dir = tmp_path / "plugin-state"
+    monkeypatch.setenv("FUND_EXPERT_STATE_DIR", str(state_dir))
+
+    initial = client.get("/api/build-profile")
+
+    assert initial.status_code == 200
+    assert initial.json()["source"] == "default_template"
+    assert initial.json()["profile"]["fund_count"] == 6
+    assert initial.json()["profile_path"] == str(
+        (state_dir / "profiles" / "default.json").resolve()
+    )
+
+    payload = initial.json()["profile"]
+    payload["fund_count"] = 8
+    saved = client.put("/api/build-profile", json=payload)
+
+    assert saved.status_code == 200
+    assert saved.json()["source"] == "saved"
+    assert saved.json()["profile"]["fund_count"] == 8
+    assert json.loads(
+        (state_dir / "profiles" / "default.json").read_text(encoding="utf-8")
+    )["fund_count"] == 8
+    assert client.get("/api/build-profile").json()["source"] == "saved"
+
+
+def test_build_profile_endpoint_rejects_invalid_contract(client):
+    payload = json.loads(json.dumps(DEFAULT_BUILD_PROFILE))
+    payload["fund_count"] = 21
+
+    response = client.put("/api/build-profile", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_build_profile_endpoint_returns_safe_read_error(
+    client, tmp_path, monkeypatch
+):
+    state_dir = tmp_path / "plugin-state"
+    profile_path = state_dir / "profiles" / "default.json"
+    profile_path.parent.mkdir(parents=True)
+    profile_path.write_text('{"private": "sensitive"}', encoding="utf-8")
+    monkeypatch.setenv("FUND_EXPERT_STATE_DIR", str(state_dir))
+
+    response = client.get("/api/build-profile")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {
+            "code": "BUILD_PROFILE_UNAVAILABLE",
+            "message": "Build-plugin profile is unavailable or invalid.",
+        }
+    }
+    assert "sensitive" not in response.text
+
+
+def test_build_profile_endpoint_returns_safe_write_error(client, monkeypatch):
+    monkeypatch.setattr(
+        api,
+        "save_build_profile",
+        lambda profile: (_ for _ in ()).throw(
+            BuildProfileError("sensitive path")
+        ),
+    )
+
+    response = client.put("/api/build-profile", json=DEFAULT_BUILD_PROFILE)
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": {
+            "code": "BUILD_PROFILE_SAVE_FAILED",
+            "message": "Build-plugin profile could not be saved.",
+        }
+    }
+    assert "sensitive path" not in response.text
 
 
 def test_selection_rules_update_is_atomic_and_preserves_cleanup_rules(

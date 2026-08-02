@@ -105,6 +105,13 @@ hand. Saving validates duplicate/blank values, atomically updates
 `fundexpert/rules.json`, preserves internal name-cleanup expressions, and
 rebuilds the visible portfolio from the existing data snapshot.
 
+Use **Build Plugin Profile** to edit the complete English profile consumed by
+`fund-expert:build-fund-portfolio`. The editor validates the plugin's schema,
+scoring inputs, diversification constraints, and audit feasibility before it
+atomically saves the personal `profiles/default.json`. Saving the profile does
+not run the plugin; the next plugin invocation reads the saved values. **Web
+Run Settings** remains separate and only changes the current dashboard run.
+
 The optional news pass requires `TAVILY_API_KEY`. Without a key, it fails soft
 and uses the quantitative portfolio unchanged.
 
@@ -121,6 +128,11 @@ and uses the quantitative portfolio unchanged.
   present in the active universe bundle, with fund counts.
 - `GET /api/data-status` reports TEFAS/BEFAS availability, export metadata,
   record counts, and file hashes.
+- `GET /api/build-profile` returns the validated personal profile consumed by
+  the build-portfolio plugin, its path, and whether it came from the saved file
+  or the schema-default template.
+- `PUT /api/build-profile` validates the complete plugin profile contract and
+  atomically replaces the personal `profiles/default.json`.
 - `GET /api/selection-rules` returns the editable strategy, sector, and
   exclusion criteria in a UI-friendly shape.
 - `PUT /api/selection-rules` validates and atomically saves those criteria;

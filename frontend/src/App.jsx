@@ -1,9 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { generatePortfolio, getFounders } from './api/fundexpert.js';
+import BuildProfileSettings from './components/BuildProfileSettings.jsx';
 import ControlPanel from './components/ControlPanel.jsx';
 import ErrorPanel from './components/ErrorPanel.jsx';
 import NewsResults from './components/NewsResults.jsx';
 import PortfolioTable from './components/PortfolioTable.jsx';
+import PortfolioSettings from './components/PortfolioSettings.jsx';
 import RuleEditor from './components/RuleEditor.jsx';
 import SummaryCards from './components/SummaryCards.jsx';
 import { DEFAULT_CONFIG } from './config.js';
@@ -16,6 +18,8 @@ export default function App() {
   const [founders, setFounders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [buildProfileOpen, setBuildProfileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const activeRequest = useRef(null);
 
@@ -68,37 +72,24 @@ export default function App() {
     requestPortfolio(config);
   };
 
-  const handleChange = (event) => {
-    const { checked, name, type, value } = event.target;
-    const nextValue =
-      type === 'checkbox'
-        ? checked
-        : type === 'range'
-          ? Number(value)
-          : name === 'founder' && value === ''
-            ? null
-            : value;
-    setConfig((previous) => {
-      if (name === 'universe') {
-        return { ...previous, universe: nextValue, founder: null };
-      }
-      return { ...previous, [name]: nextValue };
-    });
-  };
-
   const handleRulesSaved = () => {
     setRulesOpen(false);
     requestPortfolio({ ...config, refresh_data: false });
+  };
+
+  const handleSettingsApplied = (nextConfig) => {
+    setConfig(nextConfig);
+    setSettingsOpen(false);
   };
 
   return (
     <div className="dashboard-container">
       <ControlPanel
         config={config}
-        founders={founders}
         loading={loading}
-        onChange={handleChange}
+        onEditBuildProfile={() => setBuildProfileOpen(true)}
         onEditRules={() => setRulesOpen(true)}
+        onEditSettings={() => setSettingsOpen(true)}
         onSubmit={handleGenerate}
       />
 
@@ -138,6 +129,19 @@ export default function App() {
           </>
         )}
       </main>
+
+      {buildProfileOpen && (
+        <BuildProfileSettings onClose={() => setBuildProfileOpen(false)} />
+      )}
+
+      {settingsOpen && (
+        <PortfolioSettings
+          config={config}
+          founders={founders}
+          onClose={() => setSettingsOpen(false)}
+          onApply={handleSettingsApplied}
+        />
+      )}
 
       {rulesOpen && (
         <RuleEditor

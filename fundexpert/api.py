@@ -14,6 +14,13 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from fundexpert.build_profile import (
+    BuildProfile,
+    BuildProfileError,
+    BuildProfileResponse,
+    load_build_profile,
+    save_build_profile,
+)
 from fundexpert.config import DATA_ROOT, DiversificationMode
 from fundexpert.data.bundle import (
     ActiveDataBundle,
@@ -428,6 +435,50 @@ def get_selection_rules() -> SelectionRules:
                 "message": "Selection rules are unavailable or invalid.",
             },
         ) from exc
+
+
+@app.get("/api/build-profile", response_model=BuildProfileResponse)
+def get_build_profile() -> BuildProfileResponse:
+    """Return the validated profile consumed by the build-portfolio plugin."""
+
+    try:
+        profile, profile_path, source = load_build_profile()
+    except BuildProfileError as exc:
+        logger.warning("Build-plugin profile is unavailable.", exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "BUILD_PROFILE_UNAVAILABLE",
+                "message": "Build-plugin profile is unavailable or invalid.",
+            },
+        ) from exc
+    return BuildProfileResponse(
+        profile=profile,
+        profile_path=str(profile_path),
+        source=source,
+    )
+
+
+@app.put("/api/build-profile", response_model=BuildProfileResponse)
+def update_build_profile(req: BuildProfile) -> BuildProfileResponse:
+    """Atomically replace the profile consumed by the build-portfolio plugin."""
+
+    try:
+        profile, profile_path = save_build_profile(req)
+    except BuildProfileError as exc:
+        logger.exception("Build-plugin profile could not be saved.")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "BUILD_PROFILE_SAVE_FAILED",
+                "message": "Build-plugin profile could not be saved.",
+            },
+        ) from exc
+    return BuildProfileResponse(
+        profile=profile,
+        profile_path=str(profile_path),
+        source="saved",
+    )
 
 
 @app.put("/api/selection-rules", response_model=SelectionRules)
