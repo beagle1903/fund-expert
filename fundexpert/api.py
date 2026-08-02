@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from fundexpert.config import DATA_ROOT, DiversificationMode
 from fundexpert.data.bundle import (
@@ -31,6 +31,8 @@ from fundexpert.data.refresh import (
 )
 from fundexpert.founders import available_founders
 from fundexpert.pipeline import PipelineConfig, run_pipeline
+from fundexpert.utils.rules import get_editable_rules, save_editable_rules
+from fundexpert.utils.text import turkish_lower
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +123,50 @@ class FounderOption(BaseModel):
 class FoundersResponse(BaseModel):
     universe: Universe
     founders: list[FounderOption]
+
+
+class ClassificationRule(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    keyword: str = Field(min_length=1, max_length=120)
+    category: str = Field(min_length=1, max_length=40, pattern=r"^[a-z][a-z0-9_]*$")
+
+    @field_validator("keyword")
+    @classmethod
+    def normalize_keyword(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Keyword cannot be blank.")
+        return normalized
+
+
+class SelectionRules(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    bucket_rules: list[ClassificationRule] = Field(max_length=200)
+    sector_rules: list[ClassificationRule] = Field(max_length=200)
+    exclusion_rules: list[str] = Field(max_length=100)
+
+    @field_validator("exclusion_rules")
+    @classmethod
+    def normalize_exclusions(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip() for value in values]
+        if any(not value for value in normalized):
+            raise ValueError("Exclusion keywords cannot be blank.")
+        return normalized
+
+    @model_validator(mode="after")
+    def reject_duplicate_keywords(self) -> "SelectionRules":
+        groups = (
+            ("strategy", [rule.keyword for rule in self.bucket_rules]),
+            ("sector", [rule.keyword for rule in self.sector_rules]),
+            ("exclusion", self.exclusion_rules),
+        )
+        for label, values in groups:
+            normalized = [turkish_lower(value) for value in values]
+            if len(normalized) != len(set(normalized)):
+                raise ValueError(f"Duplicate {label} keywords are not allowed.")
+        return self
 
 
 class PortfolioHeader(BaseModel):
@@ -304,6 +350,32 @@ def _status_for(universe: Universe) -> UniverseDataStatus:
     )
 
 
+def _project_selection_rules(raw_rules: dict[str, Any]) -> SelectionRules:
+    return SelectionRules(
+        bucket_rules=[
+            ClassificationRule(keyword=keyword, category=category)
+            for keyword, category in raw_rules.get("bucket_rules", [])
+        ],
+        sector_rules=[
+            ClassificationRule(keyword=keyword, category=category)
+            for keyword, category in raw_rules.get("sector_rules", [])
+        ],
+        exclusion_rules=raw_rules.get("exclusion_rules", []),
+    )
+
+
+def _serialize_selection_rules(rules: SelectionRules) -> dict[str, Any]:
+    return {
+        "bucket_rules": [
+            [rule.keyword, rule.category] for rule in rules.bucket_rules
+        ],
+        "sector_rules": [
+            [rule.keyword, rule.category] for rule in rules.sector_rules
+        ],
+        "exclusion_rules": rules.exclusion_rules,
+    }
+
+
 @app.get("/api/data-status", response_model=DataStatusResponse)
 def get_data_status() -> DataStatusResponse:
     return DataStatusResponse(universes=[_status_for("tefas"), _status_for("befas")])
@@ -341,6 +413,37 @@ def get_founders(universe: Universe) -> FoundersResponse:
             for founder in available_founders(candidates)
         ],
     )
+
+
+@app.get("/api/selection-rules", response_model=SelectionRules)
+def get_selection_rules() -> SelectionRules:
+    try:
+        return _project_selection_rules(get_editable_rules())
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError) as exc:
+        logger.warning("Selection rules are unavailable.", exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "RULES_UNAVAILABLE",
+                "message": "Selection rules are unavailable or invalid.",
+            },
+        ) from exc
+
+
+@app.put("/api/selection-rules", response_model=SelectionRules)
+def update_selection_rules(req: SelectionRules) -> SelectionRules:
+    try:
+        save_editable_rules(_serialize_selection_rules(req))
+        return _project_selection_rules(get_editable_rules())
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError) as exc:
+        logger.exception("Selection rules could not be saved.")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "RULES_SAVE_FAILED",
+                "message": "Selection rules could not be saved.",
+            },
+        ) from exc
 
 
 @app.post("/api/generate", response_model=GenerateResponse)

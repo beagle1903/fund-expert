@@ -30,6 +30,9 @@ def sector_from_names(fon_adi_series: pd.Series) -> pd.Series:
     rules = get_sector_rules()
     if not rules:
         return pd.Series("diversified", index=fon_adi_series.index)
-    conditions = [cleaned.str.contains(k, case=False, na=False) for k, _ in rules]
+    conditions = [
+        cleaned.str.contains(k, case=False, na=False, regex=False)
+        for k, _ in rules
+    ]
     choices = [v for _, v in rules]
     return pd.Series(np.select(conditions, choices, default="diversified"), index=fon_adi_series.index)

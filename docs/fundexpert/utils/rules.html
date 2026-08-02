@@ -31,6 +31,18 @@
             <h2>API Documentation</h2>
                 <ul class="memberlist">
             <li>
+                    <a class="variable" href="#RULES_FILE">RULES_FILE</a>
+            </li>
+            <li>
+                    <a class="function" href="#clear_rules_cache">clear_rules_cache</a>
+            </li>
+            <li>
+                    <a class="function" href="#get_editable_rules">get_editable_rules</a>
+            </li>
+            <li>
+                    <a class="function" href="#save_editable_rules">save_editable_rules</a>
+            </li>
+            <li>
                     <a class="function" href="#get_bucket_rules">get_bucket_rules</a>
             </li>
             <li>
@@ -63,6 +75,63 @@
 
 
             </section>
+                <section id="RULES_FILE">
+                    <div class="attr variable">
+            <span class="name">RULES_FILE</span>        =
+<span class="default_value">WindowsPath(&#39;C:/Users/burha/.codex/worktrees/0cfd/fund expert/fundexpert/rules.json&#39;)</span>
+
+
+    </div>
+    <a class="headerlink" href="#RULES_FILE"></a>
+
+
+
+                </section>
+                <section id="clear_rules_cache">
+                    <div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">clear_rules_cache</span><span class="signature pdoc-code condensed">(<span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#clear_rules_cache"></a>
+
+            <div class="docstring"><p>Make subsequent rule reads observe the latest on-disk configuration.</p>
+</div>
+
+
+                </section>
+                <section id="get_editable_rules">
+                    <div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">get_editable_rules</span><span class="signature pdoc-code condensed">(<span class="return-annotation">) -> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#get_editable_rules"></a>
+
+            <div class="docstring"><p>Return a defensive copy of the selection rules exposed by the web UI.</p>
+</div>
+
+
+                </section>
+                <section id="save_editable_rules">
+                    <div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">save_editable_rules</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">rules</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#save_editable_rules"></a>
+
+            <div class="docstring"><p>Atomically replace editable rules while preserving internal cleanup rules.</p>
+</div>
+
+
+                </section>
                 <section id="get_bucket_rules">
                     <div class="attr function">
                     <div class="decorator decorator-lru_cache">@lru_cache(maxsize=1)</div>

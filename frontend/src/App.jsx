@@ -4,6 +4,7 @@ import ControlPanel from './components/ControlPanel.jsx';
 import ErrorPanel from './components/ErrorPanel.jsx';
 import NewsResults from './components/NewsResults.jsx';
 import PortfolioTable from './components/PortfolioTable.jsx';
+import RuleEditor from './components/RuleEditor.jsx';
 import SummaryCards from './components/SummaryCards.jsx';
 import { DEFAULT_CONFIG } from './config.js';
 
@@ -15,6 +16,7 @@ export default function App() {
   const [founders, setFounders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const activeRequest = useRef(null);
 
   const requestPortfolio = useCallback(async (requestConfig) => {
@@ -84,6 +86,11 @@ export default function App() {
     });
   };
 
+  const handleRulesSaved = () => {
+    setRulesOpen(false);
+    requestPortfolio({ ...config, refresh_data: false });
+  };
+
   return (
     <div className="dashboard-container">
       <ControlPanel
@@ -91,6 +98,7 @@ export default function App() {
         founders={founders}
         loading={loading}
         onChange={handleChange}
+        onEditRules={() => setRulesOpen(true)}
         onSubmit={handleGenerate}
       />
 
@@ -130,6 +138,13 @@ export default function App() {
           </>
         )}
       </main>
+
+      {rulesOpen && (
+        <RuleEditor
+          onClose={() => setRulesOpen(false)}
+          onSaved={handleRulesSaved}
+        />
+      )}
     </div>
   );
 }

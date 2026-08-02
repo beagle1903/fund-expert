@@ -127,7 +127,60 @@ def test_download_web_export_bundle_rejects_short_response(tmp_path):
         download_web_export_bundle("tefas", tmp_path, opener=opener)
 
 
-def test_download_web_export_bundle_rejects_code_set_mismatch(tmp_path):
+def test_download_web_export_bundle_ignores_up_to_five_code_set_differences(tmp_path):
+    opener = RecordingOpener(rows=505)
+    original_call = opener.__call__
+
+    def mismatch(request, *, timeout):
+        response = original_call(request, timeout=timeout)
+        payload = json.loads(request.data.decode("utf-8"))
+        if payload["listingType"] == "management":
+            response.payload = response.payload[:-5]
+        return response
+
+    download_web_export_bundle("tefas", tmp_path, opener=mismatch)
+
+    manifest = validate_bundle(tmp_path, "tefas", source="tefas-web-export")
+    assert manifest.row_count == 500
+    for path in tmp_path.iterdir():
+        contents = path.read_text(encoding="utf-8-sig")
+        assert "F0500" not in contents
+        assert "F0504" not in contents
+
+
+def test_download_web_export_bundle_rejects_more_than_five_code_set_differences(
+    tmp_path,
+):
+    opener = RecordingOpener(rows=506)
+    original_call = opener.__call__
+
+    def mismatch(request, *, timeout):
+        response = original_call(request, timeout=timeout)
+        payload = json.loads(request.data.decode("utf-8"))
+        if payload["listingType"] == "management":
+            response.payload = response.payload[:-6]
+        return response
+
+    with pytest.raises(WebExportError, match="differs by 6 codes"):
+        download_web_export_bundle("tefas", tmp_path, opener=mismatch)
+
+
+def test_download_web_export_bundle_keeps_exact_befas_code_coverage(tmp_path):
+    opener = RecordingOpener(rows=101)
+    original_call = opener.__call__
+
+    def mismatch(request, *, timeout):
+        response = original_call(request, timeout=timeout)
+        payload = json.loads(request.data.decode("utf-8"))
+        if payload["listingType"] == "management":
+            response.payload = response.payload[:-1]
+        return response
+
+    with pytest.raises(WebExportError, match="maximum tolerated is 0"):
+        download_web_export_bundle("befas", tmp_path, opener=mismatch)
+
+
+def test_download_web_export_bundle_keeps_row_floor_after_alignment(tmp_path):
     opener = RecordingOpener()
     original_call = opener.__call__
 
@@ -138,7 +191,7 @@ def test_download_web_export_bundle_rejects_code_set_mismatch(tmp_path):
             response.payload[0]["fonKodu"] = "DIFFERENT"
         return response
 
-    with pytest.raises(WebExportError, match="fund-code coverage"):
+    with pytest.raises(WebExportError, match="only 499 aligned TEFAS rows"):
         download_web_export_bundle("tefas", tmp_path, opener=mismatch)
 
 

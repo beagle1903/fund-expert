@@ -1,4 +1,5 @@
 import shutil
+import json
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,7 @@ from fastapi.testclient import TestClient
 
 import fundexpert.api as api
 from fundexpert.data.refresh import DataRefreshError, DataRefreshResult
+from fundexpert.utils import rules as rules_module
 
 
 def _copy_universe(fixtures_dir: Path, data_root: Path, universe: str) -> Path:
@@ -31,6 +33,19 @@ def client(fixtures_dir, tmp_path, monkeypatch):
     with TestClient(api.app) as test_client:
         yield test_client
     api.clear_candidate_cache()
+
+
+@pytest.fixture
+def isolated_rules_file(tmp_path, monkeypatch):
+    path = tmp_path / "rules.json"
+    path.write_text(
+        rules_module.RULES_FILE.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(rules_module, "RULES_FILE", path)
+    rules_module.clear_rules_cache()
+    yield path
+    rules_module.clear_rules_cache()
 
 
 def test_generate_returns_projected_contract_and_snapshot(client):
@@ -121,6 +136,93 @@ def test_data_refresh_endpoint_returns_snapshot(client, monkeypatch):
     assert response.json()["universe"] == "befas"
     assert response.json()["refreshed"] is True
     assert response.json()["snapshot"]["row_count"] == 3
+
+
+def test_selection_rules_endpoint_projects_editable_rules(
+    client, isolated_rules_file
+):
+    response = client.get("/api/selection-rules")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["bucket_rules"][0] == {
+        "keyword": "HİSSE SENEDİ",
+        "category": "equity",
+    }
+    assert body["sector_rules"][0] == {
+        "keyword": "TEKNOLOJİ",
+        "category": "tech",
+    }
+    assert body["exclusion_rules"] == ["OKS"]
+    assert "cleanup_rules" not in body
+
+
+def test_selection_rules_update_is_atomic_and_preserves_cleanup_rules(
+    client, isolated_rules_file
+):
+    original = json.loads(isolated_rules_file.read_text(encoding="utf-8"))
+    payload = {
+        "bucket_rules": [
+            {"keyword": "YENİ STRATEJİ", "category": "custom_strategy"},
+        ],
+        "sector_rules": [
+            {"keyword": "UZAY", "category": "space"},
+        ],
+        "exclusion_rules": ["OKS", "KAPALI"],
+    }
+
+    response = client.put("/api/selection-rules", json=payload)
+
+    assert response.status_code == 200
+    assert response.json() == payload
+    saved = json.loads(isolated_rules_file.read_text(encoding="utf-8"))
+    assert saved["bucket_rules"] == [["YENİ STRATEJİ", "custom_strategy"]]
+    assert saved["sector_rules"] == [["UZAY", "space"]]
+    assert saved["exclusion_rules"] == ["OKS", "KAPALI"]
+    assert saved["cleanup_rules"] == original["cleanup_rules"]
+    assert rules_module.get_bucket_rules() == (
+        ("YENİ STRATEJİ", "custom_strategy"),
+    )
+
+
+def test_selection_rules_update_rejects_duplicate_keywords(
+    client, isolated_rules_file
+):
+    payload = {
+        "bucket_rules": [
+            {"keyword": "ALTIN", "category": "precious_metals"},
+            {"keyword": "altın", "category": "other"},
+        ],
+        "sector_rules": [],
+        "exclusion_rules": [],
+    }
+
+    response = client.put("/api/selection-rules", json=payload)
+
+    assert response.status_code == 422
+    assert "Duplicate strategy keywords" in response.text
+
+
+def test_selection_rules_update_returns_safe_write_error(
+    client, isolated_rules_file, monkeypatch
+):
+    monkeypatch.setattr(
+        api,
+        "save_editable_rules",
+        lambda rules: (_ for _ in ()).throw(OSError("sensitive path")),
+    )
+    payload = client.get("/api/selection-rules").json()
+
+    response = client.put("/api/selection-rules", json=payload)
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": {
+            "code": "RULES_SAVE_FAILED",
+            "message": "Selection rules could not be saved.",
+        }
+    }
+    assert "sensitive path" not in response.text
 
 
 def test_founders_and_generate_use_active_universe_specific_options(

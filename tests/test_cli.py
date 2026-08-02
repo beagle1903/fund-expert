@@ -13,6 +13,12 @@ from fundexpert.pipeline import run_pipeline, PipelineConfig, PipelineResult
 from fundexpert.ui import prompt_user, ensure_utf8_stdio
 
 
+@pytest.fixture(autouse=True)
+def isolate_cli_run_history(monkeypatch, tmp_path):
+    """Never let CLI tests write fixture portfolios into the user's history."""
+    monkeypatch.setattr("fundexpert.cli.HISTORY_DIR", tmp_path / "runs")
+
+
 @pytest.fixture
 def fake_universe_loader():
     from fundexpert.data.loader import UniverseData
