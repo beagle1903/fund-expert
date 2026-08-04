@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -171,7 +172,8 @@ def test_score_monotonicity_invariant(R1, R2):
 )
 @settings(max_examples=20, deadline=None)
 def test_score_fee_monotonicity_invariant(F1, F2):
-    if F1 == F2: return
+    if F1 == F2:
+        return
     df = pd.DataFrame({
         "fon_kodu": ["A", "B"],
         "R": [0.0, 0.0],
@@ -190,8 +192,6 @@ def test_score_fee_monotonicity_invariant(F1, F2):
         assert s1 <= s2
     elif F1 < F2:
         assert s1 >= s2
-
-import numpy as np
 
 def test_score_handles_all_nan_columns():
     df = pd.DataFrame({

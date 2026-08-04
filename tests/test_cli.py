@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -6,11 +7,12 @@ import pytest
 
 from fundexpert.cli import main, DATA_ROOT
 from fundexpert.data.loader import load_candidates_for_universe
+from fundexpert.pipeline import PipelineConfig, PipelineResult, run_pipeline
+from fundexpert.ui import ensure_utf8_stdio, prompt_user
+
 
 def _load_one(universe):
     return load_candidates_for_universe(universe, DATA_ROOT)
-from fundexpert.pipeline import run_pipeline, PipelineConfig, PipelineResult
-from fundexpert.ui import prompt_user, ensure_utf8_stdio
 
 
 @pytest.fixture(autouse=True)
@@ -486,7 +488,6 @@ def test_run_pipeline_news_enabled_without_api_key_falls_back_to_quant(
 
 def test_main_saves_run_on_every_execution(monkeypatch):
     """save_run is called once per universe even without --diff-last."""
-    import sys
     monkeypatch.setattr("sys.argv", ["fundexpert"])
     monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: {
         "universe": "tefas", "risk_level": "medium", "horizon": "medium",
@@ -499,7 +500,6 @@ def test_main_saves_run_on_every_execution(monkeypatch):
         "candidate_total": 100, "candidate_kept": 90, "warning": None,
         "excluded_horizon": 0,
     }
-    from pathlib import Path
     fake_selected = pd.DataFrame({
         "fon_kodu": ["AAK"], "fon_adi": ["AK FON"],
         "umbrella_type": ["Değişken"], "risk": [3],
@@ -521,7 +521,6 @@ def test_main_saves_run_on_every_execution(monkeypatch):
 
 def test_main_diff_last_calls_render_diff_when_previous_exists(monkeypatch):
     """--diff-last calls render_diff when a previous run is available."""
-    import sys
     monkeypatch.setattr("sys.argv", ["fundexpert", "--diff-last"])
     monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: {
         "universe": "tefas", "risk_level": "medium", "horizon": "medium",

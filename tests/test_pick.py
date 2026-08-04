@@ -1,3 +1,5 @@
+import math
+
 import pandas as pd
 import pytest
 from hypothesis import given, settings, HealthCheck, strategies as st
@@ -173,8 +175,6 @@ def test_pick_cap_bypass_invariant(df, n):
         return
     out, _ = pick_top(df, n=n, max_per_type=n, max_per_sector=n)
     assert len(out) == min(n, len(df))
-
-import math
 
 @settings(suppress_health_check=[HealthCheck.too_slow], deadline=None)
 @given(

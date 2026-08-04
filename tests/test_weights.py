@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 from hypothesis import given, strategies as st
 from hypothesis.extra.pandas import column, data_frames
 
