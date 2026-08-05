@@ -1,5 +1,3 @@
-import json
-import pytest
 from fundexpert.ui import load_last_run_state, save_last_run_state
 
 def test_load_save_last_run_state(tmp_path, monkeypatch):

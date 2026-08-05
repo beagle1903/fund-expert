@@ -4,6 +4,23 @@ export const DIVERSIFICATION_OPTIONS = [
   { value: 'relaxed', label: 'Relaxed' },
 ];
 
+export const UNIVERSE_OPTIONS = [
+  { value: 'tefas', label: 'TEFAS' },
+  { value: 'befas', label: 'BEFAS' },
+];
+
+export const HORIZON_OPTIONS = [
+  { value: 'short', label: 'Short' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'long', label: 'Long' },
+];
+
+export const PRIORITY_OPTIONS = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+];
+
 const DIVERSIFICATION_CAPS = {
   strict: [2, 2, 2],
   balanced: [2, 3, 4],

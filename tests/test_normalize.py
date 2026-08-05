@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 
 from fundexpert.scoring.normalize import minmax_normalize
 
