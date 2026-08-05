@@ -166,6 +166,9 @@ describe('App', () => {
     render(<App />);
 
     expect(await screen.findByText('AAA')).toBeInTheDocument();
+    const portfolioPanel = screen.getByText('Selected Portfolio').closest('.glass-panel');
+    const allocationChart = await screen.findByText('Allocation chart');
+    expect(portfolioPanel.nextElementSibling).toContainElement(allocationChart);
     expect(screen.getByText('2026-05-02 11:02')).toBeInTheDocument();
     expect(screen.getByText('Data Exported · legacy')).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith(

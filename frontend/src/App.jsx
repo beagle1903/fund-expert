@@ -104,6 +104,17 @@ export default function App() {
               snapshot={data.data_snapshot}
             />
 
+            <PortfolioTable
+              header={data.header}
+              hitsForRender={data.hits_for_render}
+              weighted={data.weighted}
+            />
+
+            <NewsResults
+              hitsForRender={data.hits_for_render}
+              newsMeta={data.news_meta}
+            />
+
             <div className="charts-row">
               <Suspense
                 fallback={
@@ -115,17 +126,6 @@ export default function App() {
                 <AllocationChart weighted={data.weighted} />
               </Suspense>
             </div>
-
-            <PortfolioTable
-              header={data.header}
-              hitsForRender={data.hits_for_render}
-              weighted={data.weighted}
-            />
-
-            <NewsResults
-              hitsForRender={data.hits_for_render}
-              newsMeta={data.news_meta}
-            />
           </>
         )}
       </main>
