@@ -1,0 +1,14 @@
+---
+description: Tests, CSVs, and quality gate
+globs: tests/**/*.py
+alwaysApply: false
+---
+
+# Tests and data
+
+- Smoke tests in `tests/test_smoke.py` read real CSVs from `data/`. In a git worktree under `.Agent/worktrees/`, junction `data` to the main repo.
+- CSV exports: 3-row preamble (`skiprows=3`), UTF-8 BOM, comma decimals in quoted strings, Turkish column names (see `loader.py`).
+- Treat `getiri.csv`, `buyukluk.csv`, and `yonetim ucreti.csv` as one acquisition.
+- Enable pandera schema validation in pipeline smoke/real-data tests (`PipelineConfig.validate_schemas=True`).
+- Coverage floor is 90% (`pyproject.toml`). Full gate: `./scripts/check.ps1`.
+- News pass is opt-in (`TAVILY_API_KEY`); missing key fail-soft. Do not add issuer-owned domains to `NewsConfig.domain_allowlist`.

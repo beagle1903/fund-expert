@@ -1,0 +1,14 @@
+---
+description: Local React dashboard conventions
+globs: frontend/**/*.{js,jsx,css}
+alwaysApply: false
+---
+
+# Frontend (Vite + React)
+
+- UI copy and identifiers are English. Vite proxies `/api` to FastAPI.
+- Founder options must come from `GET /api/founders` for the active universe; do not invent founders with zero candidates.
+- Selection-rule editor: `GET/PUT /api/selection-rules`. Keywords are case-insensitive plain text; preserve first-match order. Never expose or overwrite `cleanup_rules`. After save, rebuild from the existing snapshot (no forced data refresh).
+- Build-plugin profile: `GET/PUT /api/build-profile`. This is the personal `profiles/default.json` plugin contract, not `DEFAULT_CONFIG`. Saving must not generate a portfolio.
+- Web run settings stay separate from the plugin profile.
+- Verify UI changes in the browser (or tests/curl if browser tools are unavailable). Lint with oxlint; tests with vitest (`npm --prefix frontend test`).

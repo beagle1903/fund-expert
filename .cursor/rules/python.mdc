@@ -1,0 +1,18 @@
+---
+description: Python pipeline, API, and CLI conventions
+globs: fundexpert/**/*.py
+alwaysApply: false
+---
+
+# Python (fundexpert)
+
+- CLI strings are Turkish; code, identifiers, and API fields are English.
+- Call `ensure_utf8_stdio()` before any CLI render on Windows.
+- Turkish case: do not use `str.upper()` on fund names. Apply i↔İ / ı↔I then `.upper()` (see `select/strategy.py`).
+- Strategy and sector buckets come from `fundexpert/rules.json` name keywords, not `umbrella_type`.
+- Founder (`kurucu`) is attributed from official title prefixes; TEFAS and BEFAS lists stay separate. Filter founders before scoring.
+- Bundle writes go only through `validate_bundle` then `publish_bundle`. Never silently fall back to cached candidates if the active bundle is missing or invalid.
+- TEFAS web export is undocumented: one request per view/universe, fail closed on schema/access drift. Do not add Playwright WAF bypasses.
+- Tunables live in `fundexpert/config.py`. Weights are 5% units, ≥5% floor, sum 100.
+- After a feature: `vulture fundexpert/` and `./scripts/refresh-docs.ps1` if architecture changed.
+- If tests fail, stop other work and fix tests first (`./scripts/check.ps1`).
