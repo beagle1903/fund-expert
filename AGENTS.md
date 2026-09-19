@@ -110,7 +110,7 @@ bundle.resolve_active_bundle (versioned current.json or validated legacy files)
 
 Whenever we finish implementing a new feature, the AI assistant MUST automatically run a wrap-up routine before moving on. This includes:
 1. **Dead Code Analysis**: Run a dead-code finder (e.g. `vulture fundexpert/`) and actively clean up any orphaned code or unused imports.
-2. **Documentation Update**: Run `./scripts/refresh-docs.ps1` to ensure the `docs/` folder is up to date, and revise `AGENTS.md` / `todos.md` if the architecture changed.
+2. **Documentation Update**: Run `./scripts/refresh-docs.ps1` to ensure the `docs/` folder is up to date, and revise `AGENTS.md` if the architecture changed.
 
 ## Agent Insights
 - Create a parallel code review system for my repos. In `.Agent/agents/` define 5 specialized review subagents: security-reviewer, architecture-reviewer, test-coverage-reviewer, performance-reviewer, and business-logic-reviewer. Each should have a focused system prompt, a clear output schema, and write to `reviews/<agent-name>.md`. Then create a `/review-parallel` slash command that launches all 5 in parallel via the Task tool against the current repo, waits for completion, and runs a final synthesizer agent that reads all 5 outputs and produces `reviews/SUMMARY.md` with prioritized P0/P1/P2 findings and suggested fixes as actionable Agent prompts. Run it once on fundexpert as a demo.
