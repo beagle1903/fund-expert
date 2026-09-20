@@ -18,6 +18,14 @@ const responseBody = {
       display_weight_pct: 100,
       score: 0.7123,
       risk: 4,
+      breakdown: {
+        return_contrib: 0.4,
+        volume_contrib: 0.2,
+        fee_contrib: 0.15,
+        momentum_contrib: 0.1,
+        risk_penalty: 0.1377,
+        news_penalty: 0,
+      },
     },
   ],
   header: {

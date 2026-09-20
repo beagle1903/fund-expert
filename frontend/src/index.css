@@ -972,6 +972,56 @@ tbody tr:hover {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.score-breakdown-toggle {
+  background: none;
+  border: none;
+  color: var(--accent-primary);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline dotted;
+}
+
+.score-breakdown-toggle:hover,
+.score-breakdown-toggle:focus-visible {
+  color: var(--text-primary);
+}
+
+.score-breakdown-row td {
+  background: rgba(0, 0, 0, 0.25);
+  padding-top: 8px;
+  padding-bottom: 16px;
+}
+
+.score-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+
+.score-breakdown div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.score-breakdown dt {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.score-breakdown dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-breakdown dd.penalty {
+  color: var(--danger);
+}
+
 .badge {
   display: inline-block;
   padding: 4px 8px;

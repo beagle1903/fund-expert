@@ -10,6 +10,17 @@ from rich.table import Table
 from fundexpert.config import NEGATIVE_NEWS_PENALTY
 
 
+def _format_contributions(row: pd.Series) -> str:
+    return (
+        f"{row['return_contrib']:.2f}/"
+        f"{row['volume_contrib']:.2f}/"
+        f"{row['fee_contrib']:.2f}/"
+        f"{row['momentum_contrib']:.2f}/"
+        f"−{row['risk_penalty']:.2f}/"
+        f"−{row['news_penalty']:.2f}"
+    )
+
+
 def render_portfolio(
     selected: pd.DataFrame,
     header: dict[str, Any],
@@ -115,6 +126,13 @@ def render_portfolio(
     footer.extend(["[bold]Toplam[/bold]", f"[bold]{int(total_weight)}[/bold]", ""])
     table.add_row(*footer)
     console.print(table)
+
+    if "return_contrib" in selected.columns:
+        console.print("\n[bold]Skor katkısı[/bold]  (Getiri / Hacim / Ücret / Momentum / −Risk / −Haber)")
+        for _, r in selected.iterrows():
+            console.print(
+                f"  {escape(str(r['fon_kodu']))}  {_format_contributions(r)}"
+            )
 
     if news:
         console.print(

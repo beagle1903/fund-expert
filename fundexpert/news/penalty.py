@@ -104,6 +104,9 @@ def apply_negative_news_penalty(
 
     for idx, new_score, code, hits in updates:
         adjusted.at[idx, "score"] = new_score
+        if "news_penalty" not in adjusted.columns:
+            adjusted["news_penalty"] = 0.0
+        adjusted.at[idx, "news_penalty"] = news_config.negative_news_penalty
         hits_by_code[code] = hits
 
     return adjusted, hits_by_code

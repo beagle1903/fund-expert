@@ -122,6 +122,9 @@ def test_matched_fund_loses_penalty_amount(scored, cache_dir):
         assert out.loc[out["fon_kodu"] == code, "score"].iloc[0] == pytest.approx(expected)
     assert list(hits.keys()) == ["B"]
     assert hits["B"][0].title == "BAD"
+    assert out.loc[out["fon_kodu"] == "B", "news_penalty"].iloc[0] == pytest.approx(0.20)
+    for code in ("A", "C", "D", "E"):
+        assert out.loc[out["fon_kodu"] == code, "news_penalty"].iloc[0] == pytest.approx(0.0)
 
 
 def test_no_matches_returns_empty_hits_dict(scored, cache_dir):

@@ -71,7 +71,26 @@ def test_generate_returns_projected_contract_and_snapshot(client):
         "display_weight_pct",
         "score",
         "risk",
+        "breakdown",
     }
+    breakdown = body["weighted"][0]["breakdown"]
+    assert set(breakdown) == {
+        "return_contrib",
+        "volume_contrib",
+        "fee_contrib",
+        "momentum_contrib",
+        "risk_penalty",
+        "news_penalty",
+    }
+    reconstructed = (
+        breakdown["return_contrib"]
+        + breakdown["volume_contrib"]
+        + breakdown["fee_contrib"]
+        + breakdown["momentum_contrib"]
+        - breakdown["risk_penalty"]
+        - breakdown["news_penalty"]
+    )
+    assert reconstructed == pytest.approx(body["weighted"][0]["score"], abs=1e-6)
     assert body["data_snapshot"]["source"] == "legacy"
     assert body["data_snapshot"]["row_count"] == 3
     assert body["data_snapshot"]["exported_at"] == "2026-05-02T11:02:13"
