@@ -13,9 +13,10 @@ are English.
 fundexpert
 
 # Web UI (FastAPI backend + Vite/React frontend)
-# In terminal 1 (Backend):
+# Start or reuse API :8000 and Vite :5173 (JSON status on stdout)
+./scripts/run.ps1
+# Manual (two terminals):
 .venv/Scripts/python.exe -m uvicorn fundexpert.api:app --reload
-# In terminal 2 (Frontend):
 cd frontend && npm run dev
 
 # Non-interactive (skip prompts, useful from Agent shell)
@@ -49,7 +50,10 @@ render_portfolio(result.weighted, result.header, news=result.hits_for_render or 
 ./scripts/check.ps1
 ```
 
-Smoke tests in `tests/test_smoke.py` read real CSVs from `data/`. When working in a git worktree under `.Agent/worktrees/`, junction the data dir in:
+Smoke tests in `tests/test_smoke.py` read real CSVs from `data/`. GitHub Actions
+runs `./scripts/check.ps1` on pull requests and `main`; those smoke tests skip
+when the gitignored CSVs are absent. When working in a git worktree under
+`.Agent/worktrees/`, junction the data dir in:
 
 ```powershell
 New-Item -ItemType Junction -Path "<worktree>/data" -Target "<repo>/data"

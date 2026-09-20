@@ -236,7 +236,15 @@ def test_run_pipeline_rejects_both_universe():
         run_pipeline(candidates=None, config=PipelineConfig(universe="both", risk_level="medium", horizon="medium", volume_priority="medium", fee_priority="medium", momentum_priority="medium", n=2, max_per_type=2, now=datetime(2026, 5, 2)))
 
 
-def test_main_renders_two_portfolios_when_universe_is_both():
+@pytest.fixture
+def stub_cli_candidate_load(monkeypatch):
+    monkeypatch.setattr(
+        "fundexpert.cli.load_candidates_for_universe",
+        lambda *args, **kwargs: object(),
+    )
+
+
+def test_main_renders_two_portfolios_when_universe_is_both(stub_cli_candidate_load):
     """`both` runs pipeline once per platform; render_portfolio is called twice."""
     answers = {
         "universe": "both", "risk_level": "medium", "horizon": "medium",
@@ -263,7 +271,7 @@ def test_main_renders_two_portfolios_when_universe_is_both():
     assert universes_called == ["tefas", "befas"]
 
 
-def test_main_passes_news_api_key_when_news_flag_set(monkeypatch):
+def test_main_passes_news_api_key_when_news_flag_set(monkeypatch, stub_cli_candidate_load):
     """--news + TAVILY_API_KEY env var → run_pipeline called with news_enabled=True."""
     answers = {
         "universe": "tefas", "risk_level": "medium", "horizon": "medium",
@@ -290,7 +298,7 @@ def test_main_passes_news_api_key_when_news_flag_set(monkeypatch):
     assert run_mock.call_args.kwargs["config"].news_api_key == "tvly-test-key"
 
 
-def test_main_passes_selected_founder_to_pipeline():
+def test_main_passes_selected_founder_to_pipeline(stub_cli_candidate_load):
     founder = "AK PORTFÖY YÖNETİMİ A.Ş."
     answers = {
         "universe": "tefas",
@@ -341,7 +349,7 @@ def test_main_passes_selected_founder_to_pipeline():
     assert run_mock.call_args.kwargs["config"].founder == founder
 
 
-def test_main_default_run_does_not_pass_news_key(monkeypatch):
+def test_main_default_run_does_not_pass_news_key(monkeypatch, stub_cli_candidate_load):
     """No --news flag → news_enabled=False, news_api_key=None."""
     answers = {
         "universe": "tefas", "risk_level": "medium", "horizon": "medium",
@@ -486,7 +494,7 @@ def test_run_pipeline_news_enabled_without_api_key_falls_back_to_quant(
     assert "TAVILY_API_KEY tanımlı değil" in capsys.readouterr().err
 
 
-def test_main_saves_run_on_every_execution(monkeypatch):
+def test_main_saves_run_on_every_execution(monkeypatch, stub_cli_candidate_load):
     """save_run is called once per universe even without --diff-last."""
     monkeypatch.setattr("sys.argv", ["fundexpert"])
     monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: {
@@ -519,7 +527,7 @@ def test_main_saves_run_on_every_execution(monkeypatch):
     assert len(save_calls) == 1
 
 
-def test_main_diff_last_calls_render_diff_when_previous_exists(monkeypatch):
+def test_main_diff_last_calls_render_diff_when_previous_exists(monkeypatch, stub_cli_candidate_load):
     """--diff-last calls render_diff when a previous run is available."""
     monkeypatch.setattr("sys.argv", ["fundexpert", "--diff-last"])
     monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: {
@@ -579,9 +587,10 @@ def test_ensure_utf8_stdio():
         sys.stderr = orig_stderr
 
 
-def test_main_refreshes_each_selected_universe_before_generation(monkeypatch):
+def test_main_refreshes_each_selected_universe_before_generation(
+    monkeypatch, stub_cli_candidate_load
+):
     from fundexpert.data.refresh import DataRefreshResult
-    from fundexpert.data.bundle import resolve_active_bundle
 
     answers = {
         "universe": "both",
@@ -596,8 +605,7 @@ def test_main_refreshes_each_selected_universe_before_generation(monkeypatch):
 
     def refresh(universe, data_root, *, force, now):
         calls.append((universe, force))
-        manifest = resolve_active_bundle(universe, data_root).manifest
-        return DataRefreshResult(universe, False, manifest)
+        return DataRefreshResult(universe, False, MagicMock())
 
     monkeypatch.setattr("sys.argv", ["fundexpert", "--refresh"])
     monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: answers)
@@ -605,6 +613,23 @@ def test_main_refreshes_each_selected_universe_before_generation(monkeypatch):
     monkeypatch.setattr("fundexpert.cli.refresh_universe", refresh)
     monkeypatch.setattr("fundexpert.cli.render_portfolio", lambda *args, **kwargs: None)
     monkeypatch.setattr("fundexpert.cli.save_run", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "fundexpert.cli.run_pipeline",
+        lambda **kwargs: PipelineResult(
+            weighted=pd.DataFrame(
+                {
+                    "fon_kodu": ["AAK"],
+                    "fon_adi": ["AK FON"],
+                    "display_weight_pct": [100.0],
+                    "score": [0.7],
+                    "risk": [3],
+                }
+            ),
+            header={"warning": None},
+            hits_for_render={},
+            news_meta={"enabled": False},
+        ),
+    )
 
     assert main() == 0
     assert calls == [

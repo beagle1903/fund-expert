@@ -90,6 +90,13 @@ CLI:
 Local web application:
 
 ```powershell
+.\scripts\run.ps1
+```
+
+That starts or reuses the API on `127.0.0.1:8000` and Vite on `127.0.0.1:5173`.
+To run them yourself:
+
+```powershell
 # Terminal 1
 .venv\Scripts\python.exe -m uvicorn fundexpert.api:app --reload
 
@@ -152,6 +159,9 @@ Run the complete local quality gate:
 
 It runs the Python suite with coverage, frontend tests, frontend lint and
 production build, dead-code analysis, dependency checks, and `git diff --check`.
+The same script is the GitHub Actions check on pull requests and `main`. Live
+TEFAS/BEFAS CSV smoke tests skip in CI because `/data/` is not in the public
+repository.
 
 To refresh generated API documentation:
 

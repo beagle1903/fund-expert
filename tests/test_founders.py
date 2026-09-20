@@ -11,6 +11,7 @@ from fundexpert.founders import (
     founder_from_name,
     validate_founder,
 )
+from tests.live_data import requires_live_data
 
 
 @pytest.mark.parametrize(
@@ -44,6 +45,7 @@ def test_founder_from_name_handles_platform_specific_titles(
     assert founder_from_name(fund_name, universe) == expected
 
 
+@requires_live_data
 def test_current_real_bundles_have_complete_founder_attribution():
     for universe in ("tefas", "befas"):
         candidates = load_candidates_for_universe(universe, Path(DATA_ROOT))
