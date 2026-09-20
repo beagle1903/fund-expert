@@ -13,9 +13,10 @@ are English.
 fundexpert
 
 # Web UI (FastAPI backend + Vite/React frontend)
-# In terminal 1 (Backend):
+# Start or reuse API :8000 and Vite :5173 (JSON status on stdout)
+./scripts/run.ps1
+# Manual (two terminals):
 .venv/Scripts/python.exe -m uvicorn fundexpert.api:app --reload
-# In terminal 2 (Frontend):
 cd frontend && npm run dev
 
 # Non-interactive (skip prompts, useful from Agent shell)

@@ -90,6 +90,13 @@ CLI:
 Local web application:
 
 ```powershell
+.\scripts\run.ps1
+```
+
+That starts or reuses the API on `127.0.0.1:8000` and Vite on `127.0.0.1:5173`.
+To run them yourself:
+
+```powershell
 # Terminal 1
 .venv\Scripts\python.exe -m uvicorn fundexpert.api:app --reload
 
