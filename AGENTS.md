@@ -50,7 +50,10 @@ render_portfolio(result.weighted, result.header, news=result.hits_for_render or 
 ./scripts/check.ps1
 ```
 
-Smoke tests in `tests/test_smoke.py` read real CSVs from `data/`. When working in a git worktree under `.Agent/worktrees/`, junction the data dir in:
+Smoke tests in `tests/test_smoke.py` read real CSVs from `data/`. GitHub Actions
+runs `./scripts/check.ps1` on pull requests and `main`; those smoke tests skip
+when the gitignored CSVs are absent. When working in a git worktree under
+`.Agent/worktrees/`, junction the data dir in:
 
 ```powershell
 New-Item -ItemType Junction -Path "<worktree>/data" -Target "<repo>/data"

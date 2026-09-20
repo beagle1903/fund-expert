@@ -159,6 +159,9 @@ Run the complete local quality gate:
 
 It runs the Python suite with coverage, frontend tests, frontend lint and
 production build, dead-code analysis, dependency checks, and `git diff --check`.
+The same script is the GitHub Actions check on pull requests and `main`. Live
+TEFAS/BEFAS CSV smoke tests skip in CI because `/data/` is not in the public
+repository.
 
 To refresh generated API documentation:
 

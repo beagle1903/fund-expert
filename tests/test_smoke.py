@@ -5,6 +5,10 @@ import pytest
 from fundexpert.pipeline import run_pipeline
 from fundexpert.cli import DATA_ROOT
 from fundexpert.data.loader import load_candidates_for_universe
+from tests.live_data import requires_live_data
+
+pytestmark = requires_live_data
+
 
 def _load_one(universe):
     return load_candidates_for_universe(universe, DATA_ROOT)
