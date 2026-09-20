@@ -62,4 +62,13 @@ def score_candidates(
     risk_penalty = lam * (risk_norm ** 2)
 
     score = base_score - risk_penalty
-    return df.assign(score=score)
+    news_penalty = pd.Series(0.0, index=df.index)
+    return df.assign(
+        score=score,
+        return_contrib=R_contrib,
+        volume_contrib=V_contrib,
+        fee_contrib=F_contrib,
+        momentum_contrib=M_contrib,
+        risk_penalty=risk_penalty,
+        news_penalty=news_penalty,
+    )

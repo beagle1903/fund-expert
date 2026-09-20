@@ -91,6 +91,30 @@
 
             </li>
             <li>
+                    <a class="class" href="#ScoreBreakdown">ScoreBreakdown</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="variable" href="#ScoreBreakdown.return_contrib">return_contrib</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#ScoreBreakdown.volume_contrib">volume_contrib</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#ScoreBreakdown.fee_contrib">fee_contrib</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#ScoreBreakdown.momentum_contrib">momentum_contrib</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#ScoreBreakdown.risk_penalty">risk_penalty</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#ScoreBreakdown.news_penalty">news_penalty</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
                     <a class="class" href="#PortfolioFund">PortfolioFund</a>
                             <ul class="memberlist">
                         <li>
@@ -113,6 +137,9 @@
                         </li>
                         <li>
                                 <a class="variable" href="#PortfolioFund.risk">risk</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#PortfolioFund.breakdown">breakdown</a>
                         </li>
                 </ul>
 
@@ -698,6 +725,125 @@
 
                             </div>
                 </section>
+                <section id="ScoreBreakdown">
+                    <div class="attr class">
+
+    <span class="def">class</span>
+    <span class="name">ScoreBreakdown</span><wbr>(<span class="base">pydantic.main.BaseModel</span>):
+
+
+    </div>
+    <a class="headerlink" href="#ScoreBreakdown"></a>
+
+            <div class="docstring"><p>!!! abstract "Usage Documentation"
+    <a href="../concepts/models.md">Models</a></p>
+
+<p>A base class for creating Pydantic models.</p>
+
+<p>Attributes:
+    __class_vars__: The names of the class variables defined on the model.
+    __private_attributes__: Metadata about the private attributes of the model.
+    __signature__: The synthesized <code>__init__</code> [<code>Signature</code>][inspect.Signature] of the model.</p>
+
+<pre><code>__pydantic_complete__: Whether model building is completed, or if there are still undefined fields.
+__pydantic_core_schema__: The core schema of the model.
+__pydantic_custom_init__: Whether the model has a custom `__init__` function.
+__pydantic_decorators__: Metadata containing the decorators defined on the model.
+    This replaces `Model.__validators__` and `Model.__root_validators__` from Pydantic V1.
+__pydantic_generic_metadata__: A dictionary containing metadata about generic Pydantic models.
+    The `origin` and `args` items map to the [`__origin__`][genericalias.__origin__]
+    and [`__args__`][genericalias.__args__] attributes of [generic aliases][types-genericalias],
+    and the `parameter` item maps to the `__parameter__` attribute of generic classes.
+__pydantic_parent_namespace__: Parent namespace of the model, used for automatic rebuilding of models.
+__pydantic_post_init__: The name of the post-init method for the model, if defined.
+__pydantic_root_model__: Whether the model is a [`RootModel`][pydantic.root_model.RootModel].
+__pydantic_serializer__: The `pydantic-core` `SchemaSerializer` used to dump instances of the model.
+__pydantic_validator__: The `pydantic-core` `SchemaValidator` used to validate instances of the model.
+
+__pydantic_fields__: A dictionary of field names and their corresponding [`FieldInfo`][pydantic.fields.FieldInfo] objects.
+__pydantic_computed_fields__: A dictionary of computed field names and their corresponding [`ComputedFieldInfo`][pydantic.fields.ComputedFieldInfo] objects.
+
+__pydantic_extra__: A dictionary containing extra values, if [`extra`][pydantic.config.ConfigDict.extra]
+    is set to `'allow'`.
+__pydantic_fields_set__: The names of fields explicitly set during instantiation.
+__pydantic_private__: Values of private attributes set on the model instance.
+</code></pre>
+</div>
+
+
+                            <div id="ScoreBreakdown.return_contrib" class="classattr">
+                                <div class="attr variable">
+            <span class="name">return_contrib</span><span class="annotation">: float</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#ScoreBreakdown.return_contrib"></a>
+
+
+
+                            </div>
+                            <div id="ScoreBreakdown.volume_contrib" class="classattr">
+                                <div class="attr variable">
+            <span class="name">volume_contrib</span><span class="annotation">: float</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#ScoreBreakdown.volume_contrib"></a>
+
+
+
+                            </div>
+                            <div id="ScoreBreakdown.fee_contrib" class="classattr">
+                                <div class="attr variable">
+            <span class="name">fee_contrib</span><span class="annotation">: float</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#ScoreBreakdown.fee_contrib"></a>
+
+
+
+                            </div>
+                            <div id="ScoreBreakdown.momentum_contrib" class="classattr">
+                                <div class="attr variable">
+            <span class="name">momentum_contrib</span><span class="annotation">: float</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#ScoreBreakdown.momentum_contrib"></a>
+
+
+
+                            </div>
+                            <div id="ScoreBreakdown.risk_penalty" class="classattr">
+                                <div class="attr variable">
+            <span class="name">risk_penalty</span><span class="annotation">: float</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#ScoreBreakdown.risk_penalty"></a>
+
+
+
+                            </div>
+                            <div id="ScoreBreakdown.news_penalty" class="classattr">
+                                <div class="attr variable">
+            <span class="name">news_penalty</span><span class="annotation">: float</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#ScoreBreakdown.news_penalty"></a>
+
+
+
+                            </div>
+                </section>
                 <section id="PortfolioFund">
                     <div class="attr class">
 
@@ -824,6 +970,18 @@ __pydantic_private__: Values of private attributes set on the model instance.
 
     </div>
     <a class="headerlink" href="#PortfolioFund.risk"></a>
+
+
+
+                            </div>
+                            <div id="PortfolioFund.breakdown" class="classattr">
+                                <div class="attr variable">
+            <span class="name">breakdown</span><span class="annotation">: <a href="#ScoreBreakdown">ScoreBreakdown</a></span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#PortfolioFund.breakdown"></a>
 
 
 

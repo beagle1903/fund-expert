@@ -14,6 +14,12 @@ def _selected():
         "risk":          [4, 6],
         "display_weight_pct": [60.0, 40.0],
         "score":         [0.71, 0.55],
+        "return_contrib": [0.40, 0.30],
+        "volume_contrib": [0.20, 0.15],
+        "fee_contrib": [0.15, 0.12],
+        "momentum_contrib": [0.10, 0.08],
+        "risk_penalty": [0.04, 0.10],
+        "news_penalty": [0.10, 0.00],
     })
 
 
@@ -36,6 +42,14 @@ def test_render_includes_fund_codes(capsys):
     captured = capsys.readouterr()
     assert "AAA" in captured.out
     assert "BBB" in captured.out
+
+
+def test_render_includes_score_contributions(capsys):
+    render_portfolio(_selected(), _header(), news=None)
+    captured = capsys.readouterr()
+    assert "0.40/0.20/0.15/0.10/−0.04/−0.10" in captured.out
+    assert "0.30/0.15/0.12/0.08/−0.10/−0.00" in captured.out
+    assert "Skor katkısı" in captured.out
 
 
 def test_render_includes_total_row(capsys):

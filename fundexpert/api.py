@@ -70,6 +70,15 @@ class GenerateRequest(BaseModel):
     refresh_data: bool = False
 
 
+class ScoreBreakdown(BaseModel):
+    return_contrib: float
+    volume_contrib: float
+    fee_contrib: float
+    momentum_contrib: float
+    risk_penalty: float
+    news_penalty: float
+
+
 class PortfolioFund(BaseModel):
     fon_kodu: str
     fon_adi: str
@@ -78,6 +87,7 @@ class PortfolioFund(BaseModel):
     display_weight_pct: int
     score: float
     risk: int | None
+    breakdown: ScoreBreakdown
 
 
 class DataSnapshot(BaseModel):
@@ -330,6 +340,14 @@ def _project_portfolio(weighted: pd.DataFrame) -> list[PortfolioFund]:
                 display_weight_pct=int(row["display_weight_pct"]),
                 score=_safe_number(row["score"]),
                 risk=risk,
+                breakdown=ScoreBreakdown(
+                    return_contrib=_safe_number(row["return_contrib"]),
+                    volume_contrib=_safe_number(row["volume_contrib"]),
+                    fee_contrib=_safe_number(row["fee_contrib"]),
+                    momentum_contrib=_safe_number(row["momentum_contrib"]),
+                    risk_penalty=_safe_number(row["risk_penalty"]),
+                    news_penalty=_safe_number(row["news_penalty"]),
+                ),
             )
         )
     return projected

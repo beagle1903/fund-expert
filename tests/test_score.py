@@ -23,6 +23,16 @@ def horizon_ready():
     })
 
 
+CONTRIB_COLUMNS = (
+    "return_contrib",
+    "volume_contrib",
+    "fee_contrib",
+    "momentum_contrib",
+    "risk_penalty",
+    "news_penalty",
+)
+
+
 def test_score_returns_score_column(horizon_ready):
     out = score_candidates(horizon_ready,
                            volume_priority="medium",
@@ -32,6 +42,31 @@ def test_score_returns_score_column(horizon_ready):
                            scoring_config=DEFAULT_SCORING_CONFIG)
     assert "score" in out.columns
     assert len(out) == 3
+
+
+def test_score_exposes_weighted_contributions_that_sum_to_score(horizon_ready):
+    out = score_candidates(
+        horizon_ready,
+        volume_priority="medium",
+        fee_priority="medium",
+        momentum_priority="medium",
+        risk_level="medium",
+        scoring_config=DEFAULT_SCORING_CONFIG,
+    )
+    for column in CONTRIB_COLUMNS:
+        assert column in out.columns
+    reconstructed = (
+        out["return_contrib"]
+        + out["volume_contrib"]
+        + out["fee_contrib"]
+        + out["momentum_contrib"]
+        - out["risk_penalty"]
+        - out["news_penalty"]
+    )
+    pd.testing.assert_series_equal(
+        reconstructed, out["score"], check_names=False, atol=1e-6
+    )
+    assert (out["news_penalty"] == 0.0).all()
 
 
 def test_higher_R_with_equal_other_features_scores_higher():
