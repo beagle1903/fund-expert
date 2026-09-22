@@ -128,6 +128,30 @@ def test_load_last_run_returns_none_on_corrupt_json(tmp_path):
     result = load_last_run("tefas", history_dir=tmp_path)
     assert result is None
 
+def test_older_run_saved_later_does_not_replace_latest(tmp_path):
+    newer = {**_make_header(), "timestamp": datetime(2026, 5, 12, 10, 30, 5)}
+    older = {**_make_header(), "timestamp": datetime(2026, 5, 12, 10, 30, 1)}
+    save_run(_make_selected(), newer, history_dir=tmp_path)
+    save_run(_make_selected(), older, history_dir=tmp_path)
+
+    result = load_last_run("tefas", history_dir=tmp_path)
+
+    assert result["timestamp"].startswith("2026-05-12T10:30:05")
+
+
+def test_same_second_runs_keep_separate_archive_files(tmp_path):
+    first = {**_make_header(), "timestamp": datetime(2026, 5, 12, 10, 30, 0, 1)}
+    second = {**_make_header(), "timestamp": datetime(2026, 5, 12, 10, 30, 0, 2)}
+
+    first_path = save_run(_make_selected(), first, history_dir=tmp_path)
+    second_path = save_run(_make_selected(), second, history_dir=tmp_path)
+
+    assert first_path != second_path
+    assert first_path.exists()
+    assert second_path.exists()
+    assert load_last_run("tefas", history_dir=tmp_path)["timestamp"] == "2026-05-12T10:30:00.000002"
+
+
 def test_save_run_ignores_oserror_on_replace_latest(tmp_path):
     from unittest.mock import patch
     import os
