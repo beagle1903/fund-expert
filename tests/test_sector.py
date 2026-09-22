@@ -48,3 +48,50 @@ def test_sector_priority_follows_rules_not_textual_order():
     ])
 
     assert sector_from_names(names).tolist() == ["tech", "energy"]
+
+
+@pytest.mark.parametrize("name,expected", [
+    # EMLAK SEKTÖRÜ is the live real-estate wording. The Emlak Katılım issuer is not.
+    ("İŞ PORTFÖY EMLAK SEKTÖRÜ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)", "real_estate"),
+    ("AK PORTFÖY EMLAK SEKTÖRÜ DEĞİŞKEN FON", "real_estate"),
+    (
+        "ANADOLU HAYAT EMEKLİLİK A.Ş. EMLAK SEKTÖRÜ HİSSE SENEDİ EMEKLİLİK YATIRIM FONU",
+        "real_estate",
+    ),
+    ("EMLAK KATILIM PORTFÖY PARA PİYASASI KATILIM (TL) FONU", "diversified"),
+    # "BANKA ENDEKS" matches the banking index without matching BANKASI.
+    (
+        "AK PORTFÖY BIST BANKA ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+        "finance",
+    ),
+    (
+        "İŞ PORTFÖY İŞ BANKASI İŞTİRAKLERİ ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+        "diversified",
+    ),
+    (
+        "İŞ PORTFÖY SÜRDÜRÜLEBİLİRLİK HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+        "sustainability",
+    ),
+    ("DENİZ PORTFÖY ESG-SÜRDÜRÜLEBİLİRLİK FON SEPETİ FONU", "sustainability"),
+    # TARIM stays ahead of the broader sustainability keyword.
+    ("İŞ PORTFÖY SÜRDÜRÜLEBİLİRLİK VE TARIM FON SEPETİ FONU", "agriculture"),
+    ("AKTİF PORTFÖY TARIM VE SÜRDÜRÜLEBİLİRLİK FON SEPETİ FONU", "agriculture"),
+    (
+        "GARANTİ PORTFÖY GARANTİ BBVA İKLİM ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+        "sustainability",
+    ),
+    ("ROTA PORTFÖY İKLİM DEĞİŞİKLİĞİ ÇÖZÜMLERİ DEĞİŞKEN FON", "sustainability"),
+    ("AZİMUT PORTFÖY EMTİA FON SEPETİ FONU", "commodities"),
+    ("AURA PORTFÖY EMTİA SERBEST FON", "commodities"),
+    (
+        "DENİZ PORTFÖY BİST TEMETTÜ 25 ENDEKSİ HİSSE SENEDİ FONU ( HİSSE SENEDİ YOĞUN FON )",
+        "dividend",
+    ),
+    ("DENİZ PORTFÖY TEMETTÜ ÖDEYEN ŞİRKETLER DEĞİŞKEN FON", "dividend"),
+    (
+        "ALLIANZ YAŞAM VE EMEKLİLİK A.Ş. BIST TEMETTÜ ENDEKSİ EMEKLİLİK YATIRIM FONU",
+        "dividend",
+    ),
+])
+def test_sector_from_name_covers_live_keyword_gaps(name, expected):
+    assert sector_from_names(pd.Series([name])).iloc[0] == expected
