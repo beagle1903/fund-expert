@@ -21,7 +21,7 @@ from fundexpert.build_profile import (
     load_build_profile,
     save_build_profile,
 )
-from fundexpert.config import DATA_ROOT, DiversificationMode
+from fundexpert.config import DATA_ROOT, HISTORY_DIR, DiversificationMode
 from fundexpert.data.bundle import (
     ActiveDataBundle,
     BundleValidationError,
@@ -37,6 +37,7 @@ from fundexpert.data.refresh import (
     refresh_universe,
 )
 from fundexpert.founders import available_founders
+from fundexpert.history.store import save_run
 from fundexpert.pipeline import PipelineConfig, run_pipeline
 from fundexpert.utils.rules import get_editable_rules, save_editable_rules
 from fundexpert.utils.text import turkish_lower
@@ -583,6 +584,13 @@ def generate_portfolio(req: GenerateRequest) -> GenerateResponse:
                 "message": "Portfolio generation failed unexpectedly.",
             },
         ) from exc
+
+    history_header = dict(result.header)
+    history_header["data_snapshot"] = manifest.to_snapshot_dict()
+    try:
+        save_run(result.weighted, history_header, history_dir=HISTORY_DIR)
+    except OSError:
+        logger.warning("Portfolio history could not be saved.", exc_info=True)
 
     return GenerateResponse(
         weighted=weighted,

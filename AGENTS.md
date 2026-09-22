@@ -81,6 +81,7 @@ bundle.resolve_active_bundle (versioned current.json or validated legacy files)
     exempt; explicit numeric overrides win)
   → select.weights.compute_weights (5% units, largest-remainder, 5% floor)
   → render.table.render_portfolio (footer lists G/H/Ü/M/−R/−N contributions; --news adds: header line summarising top-K/hits/picks-changed, 📰+(−0.20) markers on penalised picks, "portföyde kaldı" footer for surviving hits, "portföyden düşen" footer for funds the penalty pushed out)
+  → history.store.save_run (CLI and successful POST /api/generate share ~/.fundexpert/runs; a write error is fail-soft and does not fail the run)
 ```
 
 ## Conventions

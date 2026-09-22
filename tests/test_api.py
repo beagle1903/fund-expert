@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 import fundexpert.api as api
 from fundexpert.build_profile import DEFAULT_BUILD_PROFILE, BuildProfileError
 from fundexpert.data.refresh import DataRefreshError, DataRefreshResult
+from fundexpert.history.store import load_last_run
 from fundexpert.utils import rules as rules_module
 
 
@@ -30,6 +31,7 @@ def client(fixtures_dir, tmp_path, monkeypatch):
     _copy_universe(fixtures_dir, data_root, "tefas")
     _copy_universe(fixtures_dir, data_root, "befas")
     monkeypatch.setattr(api, "DATA_ROOT", data_root)
+    monkeypatch.setattr(api, "HISTORY_DIR", tmp_path / "runs")
     api.clear_candidate_cache()
     with TestClient(api.app) as test_client:
         yield test_client
@@ -469,6 +471,54 @@ def test_generate_passes_mode_and_optional_caps_to_pipeline(client, monkeypatch)
     assert captured["config"].diversification_mode == "relaxed"
     assert captured["config"].max_per_type == 6
     assert captured["config"].max_per_sector is None
+
+
+def test_generate_writes_run_the_cli_history_loader_can_read(client):
+    response = client.post(
+        "/api/generate",
+        json={
+            "universe": "tefas",
+            "momentum_priority": "high",
+            "n": 12,
+            "diversification_mode": "relaxed",
+            "max_per_type": 6,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) == {
+        "weighted",
+        "header",
+        "hits_for_render",
+        "news_meta",
+        "data_snapshot",
+    }
+    record = load_last_run("tefas", history_dir=api.HISTORY_DIR)
+    assert record is not None
+    assert [pick["fon_kodu"] for pick in record["picks"]] == [
+        fund["fon_kodu"] for fund in body["weighted"]
+    ]
+    assert record["momentum_priority"] == "high"
+    assert record["founder"] is None
+    assert record["max_per_type"] == 6
+    assert record["max_per_sector"] == 4
+    assert record["data_snapshot"]["bundle_id"] == body["data_snapshot"]["bundle_id"]
+    assert record["universe"] == "tefas"
+    assert record["n"] == 12
+
+
+def test_generate_returns_portfolio_when_history_write_fails(client, monkeypatch):
+    def fail_save(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(api, "save_run", fail_save)
+
+    response = client.post("/api/generate", json={"universe": "tefas"})
+
+    assert response.status_code == 200
+    assert response.json()["header"]["universe"] == "tefas"
+    assert load_last_run("tefas", history_dir=api.HISTORY_DIR) is None
 
 
 def test_generate_rejects_extra_fields(client):

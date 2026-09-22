@@ -27,19 +27,28 @@ def save_run(
         "volume_priority": header["volume_priority"],
         "fee_priority": header["fee_priority"],
         "n": header["n"],
-        "picks": [
-            {
-                "fon_kodu": str(r["fon_kodu"]),
-                "fon_adi": str(r["fon_adi"]),
-                "score": float(r["score"]),
-                "weight_pct": int(r["display_weight_pct"]),
-                "risk": int(r["risk"]) if pd.notna(r["risk"]) else None,
-                "strategy": str(r.get("strategy", "")),
-                "sector": str(r.get("sector", "")),
-            }
-            for _, r in selected.iterrows()
-        ],
     }
+    for key in (
+        "founder",
+        "momentum_priority",
+        "max_per_type",
+        "max_per_sector",
+        "data_snapshot",
+    ):
+        if key in header:
+            record[key] = header[key]
+    record["picks"] = [
+        {
+            "fon_kodu": str(r["fon_kodu"]),
+            "fon_adi": str(r["fon_adi"]),
+            "score": float(r["score"]),
+            "weight_pct": int(r["display_weight_pct"]),
+            "risk": int(r["risk"]) if pd.notna(r["risk"]) else None,
+            "strategy": str(r.get("strategy", "")),
+            "sector": str(r.get("sector", "")),
+        }
+        for _, r in selected.iterrows()
+    ]
     path = history_dir / filename
     import tempfile
     import os
