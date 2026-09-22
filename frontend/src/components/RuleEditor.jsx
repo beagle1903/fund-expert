@@ -28,6 +28,10 @@ const CATEGORY_SUGGESTIONS = {
     'fund_of_funds',
     'index',
     'mixed',
+    'unconstrained',
+    'standard',
+    'lifecycle',
+    'participation',
     'other',
   ],
   sector_rules: [
@@ -45,6 +49,9 @@ const CATEGORY_SUGGESTIONS = {
     'telecom',
     'transport',
     'defense',
+    'sustainability',
+    'commodities',
+    'dividend',
     'diversified',
   ],
 };

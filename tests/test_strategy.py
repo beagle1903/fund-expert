@@ -40,8 +40,8 @@ from fundexpert.select.strategy import bucket_from_names
         # index (non-equity)
         ("ANONIM PORTFÖY BIST TAHVİL ENDEKSİ FONU", "index"),
 
-        # fallback
-        ("OPAQUE PORTFÖY MUTLAK GETİRİ SERBEST FONU", "other"),
+        # fallback — no strategy keyword, including the new residual ones
+        ("OPAQUE PORTFÖY MUTLAK GETİRİ FONU", "other"),
     ],
 )
 def test_bucket_from_name_matches_expected(name: str, expected: str) -> None:
@@ -67,3 +67,61 @@ def test_bucket_priority_follows_rules_not_textual_order() -> None:
     ])
 
     assert bucket_from_names(names).tolist() == ["equity", "money_market"]
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        # Live TEFAS names spell DEĞİŞKEN with ASCII I, so the Turkish-İ keyword misses them.
+        ("BULLS PORTFÖY ATAK DEĞIŞKEN FON", "mixed"),
+        ("TACİRLER PORTFÖY DEĞIŞKEN FON", "mixed"),
+        ("ÜNLÜ PORTFÖY ÜÇÜNCÜ DEĞIŞKEN FON", "mixed"),
+        # The ASCII-I spelling stays behind earlier asset-class keywords.
+        ("ÖRNEK PORTFÖY PARA PİYASASI DEĞIŞKEN FON", "money_market"),
+        # Live "FON SEPETI" uses ASCII I. GÜMÜŞ still wins when both appear.
+        ("HSBC PORTFÖY YABANCI BYF FON SEPETI", "fund_of_funds"),
+        ("AK PORTFÖY GÜMÜŞ FON SEPETI FONU", "precious_metals"),
+        # Singular KİRA SERTİFİKASI is not the plural keyword, and it beats KATILIM.
+        ("AKTİF PORTFÖY KISA VADELİ KİRA SERTİFİKASI KATILIM (TL) FONU", "debt"),
+        ("ASTRA PORTFÖY KİRA SERTİFİKASI KATILIM (DÖVİZ) FONU", "debt"),
+        (
+            "YAPI KREDİ PORTFÖY KAR PAYI ÖDEYEN KİRA SERTİFİKALARI KATILIM SERBEST (DÖVİZ) FON",
+            "debt",
+        ),
+        # SERBEST is the residual unconstrained bucket, after specific strategies.
+        ("AURA PORTFÖY EMTİA SERBEST FON", "unconstrained"),
+        ("GARANTİ PORTFÖY İKİNCİ PARA PİYASASI SERBEST (TL) FON", "money_market"),
+        (
+            "PARDUS PORTFÖY İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+            "equity",
+        ),
+        # STANDART pension funds outrank a trailing KATILIM keyword.
+        ("AGESA HAYAT VE EMEKLİLİK A.Ş. STANDART EMEKLİLİK YATIRIM FONU", "standard"),
+        (
+            "AGESA HAYAT VE EMEKLİLİK A.Ş. KATILIM STANDART EMEKLİLİK YATIRIM FONU",
+            "standard",
+        ),
+        ("KUVEYT TÜRK PORTFÖY AGRESİF KATILIM FONU", "participation"),
+        ("ALBARAKA PORTFÖY KATILIM FONU", "participation"),
+        # The Katılım Emeklilik issuer name must not override an earlier strategy.
+        (
+            "KATILIM EMEKLİLİK VE HAYAT A.Ş. KİRA SERTİFİKALARI KATILIM EMEKLİLİK YATIRIM FONU",
+            "debt",
+        ),
+        (
+            "KATILIM EMEKLİLİK VE HAYAT A.Ş. HİSSE SENEDİ EMEKLİLİK YATIRIM FONU",
+            "equity",
+        ),
+        (
+            "TÜRKİYE HAYAT VE EMEKLİLİK A.Ş. BİRİNCİ YAŞAM DÖNGÜSÜ EMEKLİLİK YATIRIM FONU",
+            "lifecycle",
+        ),
+        # "YAŞAM" in the Allianz issuer is not the lifecycle keyword.
+        (
+            "ALLIANZ YAŞAM VE EMEKLİLİK A.Ş. STANDART EMEKLİLİK YATIRIM FONU",
+            "standard",
+        ),
+    ],
+)
+def test_bucket_from_name_covers_live_keyword_gaps(name: str, expected: str) -> None:
+    assert bucket_from_names(pd.Series([name])).iloc[0] == expected

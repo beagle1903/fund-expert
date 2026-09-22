@@ -158,6 +158,10 @@ def test_data_refresh_endpoint_returns_snapshot(client, monkeypatch):
     assert response.json()["snapshot"]["row_count"] == 3
 
 
+def _keyword_index(rules: list[dict[str, str]]) -> dict[str, int]:
+    return {rule["keyword"]: index for index, rule in enumerate(rules)}
+
+
 def test_selection_rules_endpoint_projects_editable_rules(
     client, isolated_rules_file
 ):
@@ -175,6 +179,51 @@ def test_selection_rules_endpoint_projects_editable_rules(
     }
     assert body["exclusion_rules"] == ["OKS"]
     assert "cleanup_rules" not in body
+
+
+def test_selection_rules_keep_live_keyword_priority(
+    client, isolated_rules_file
+):
+    """Specific asset-class and sector keywords stay ahead of the audited fallbacks."""
+    response = client.get("/api/selection-rules")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "cleanup_rules" not in body
+    strategy = _keyword_index(body["bucket_rules"])
+    sector = _keyword_index(body["sector_rules"])
+
+    assert strategy["KİRA SERTİFİKASI"] == strategy["KİRA SERTİFİKALARI"] + 1
+    assert strategy["KİRA SERTİFİKASI"] < strategy["KATILIM"]
+    assert strategy["FON SEPETI"] == strategy["FON SEPETİ"] + 1
+    assert strategy["FON SEPETI"] < strategy["SERBEST"]
+    assert strategy["DEĞIŞKEN"] == strategy["DEĞİŞKEN"] + 1
+    assert strategy["DEĞIŞKEN"] < strategy["SERBEST"]
+    assert strategy["GÜMÜŞ"] < strategy["FON SEPETI"]
+    assert strategy["PARA PİYASASI"] < strategy["SERBEST"]
+    assert strategy["HİSSE SENEDİ"] < strategy["SERBEST"]
+    assert strategy["STANDART"] < strategy["KATILIM"]
+    assert strategy["YAŞAM DÖNGÜSÜ"] < strategy["KATILIM"]
+    assert strategy["SERBEST"] < strategy["KATILIM"]
+    assert body["bucket_rules"][strategy["SERBEST"]]["category"] == "unconstrained"
+    assert body["bucket_rules"][strategy["STANDART"]]["category"] == "standard"
+    assert body["bucket_rules"][strategy["YAŞAM DÖNGÜSÜ"]]["category"] == "lifecycle"
+    assert body["bucket_rules"][strategy["KATILIM"]]["category"] == "participation"
+
+    assert sector["FİNANS"] < sector["BANKA ENDEKS"] < sector["GAYRİMENKUL"]
+    assert sector["İNŞAAT"] + 1 == sector["EMLAK SEKTÖRÜ"]
+    assert sector["TARIM"] < sector["SÜRDÜRÜLEBİLİR"]
+    assert sector["SÜRDÜRÜLEBİLİR"] < sector["İKLİM"]
+    assert body["sector_rules"][sector["BANKA ENDEKS"]]["category"] == "finance"
+    assert body["sector_rules"][sector["EMLAK SEKTÖRÜ"]]["category"] == "real_estate"
+    assert body["sector_rules"][sector["SÜRDÜRÜLEBİLİR"]]["category"] == "sustainability"
+    assert body["sector_rules"][sector["İKLİM"]]["category"] == "sustainability"
+    assert body["sector_rules"][sector["EMTİA"]]["category"] == "commodities"
+    assert body["sector_rules"][sector["TEMETTÜ"]]["category"] == "dividend"
+    assert body["exclusion_rules"] == ["OKS"]
+
+    saved = json.loads(isolated_rules_file.read_text(encoding="utf-8"))
+    assert "QNB SAĞLIK HAYAT" in next(iter(saved["cleanup_rules"]))
 
 
 def test_build_profile_endpoint_reads_and_saves_plugin_profile(
