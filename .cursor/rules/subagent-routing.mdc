@@ -1,0 +1,38 @@
+---
+description: Route Fund Expert work through the fe- project subagents
+alwaysApply: true
+---
+
+# Subagent routing
+
+The parent chat is the coordinator. Project subagents do one job each. Always dispatch the matching agent, including for small tasks. Do not nest subagents: a nested launch drops the model pin. Give every launch a self-contained prompt; subagents do not see the parent chat.
+
+The parent owns issues, branches, commits, and pull requests. `fe-implement` does not commit unless the user already asked for a commit in that turn. Bugbot and security-review run only when the user asks.
+
+## Roster
+
+| Agent | When | Model |
+| --- | --- | --- |
+| `fe-explore` | Before a change, when file layout or data flow is unknown | `composer-2.5-fast`, readonly |
+| `fe-implement` | One scoped change after the parent already has a plan | `inherit` |
+| `fe-strategy-review` | Right after persistence, ranking, selection, import, or bundle work | `claude-opus-5-thinking-high` |
+| `fe-ui-review` | Right after local web UI or web presentation changes | `claude-4-sonnet` |
+
+`fe-strategy-review` covers history saves, scoring, pick and weights, founder attribution, the news penalty, `rules.json`, and bundle validate, publish, or refresh. `fe-ui-review` covers the Vite/React dashboard, portfolio rendering, the selection-rule editor, the build-profile editor, and the API fields those screens read.
+
+## Cascade
+
+If the requested slug is missing or rejected, follow that agent's cascade and stop after `inherit`. Do not invent another model.
+
+| Agent | Cascade |
+| --- | --- |
+| `fe-explore` | `composer-2.5-fast` → `inherit` |
+| `fe-implement` | `inherit` |
+| `fe-strategy-review` | `claude-opus-5-thinking-high` → `inherit` |
+| `fe-ui-review` | `claude-4-sonnet` → `inherit` |
+
+A strategy or UI review that ran on the fallback still counts unless the user says otherwise.
+
+## After every launch
+
+Report the requested slug, the model that actually ran if known, and whether that was a downgrade.

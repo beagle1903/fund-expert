@@ -6,6 +6,7 @@ The live engineering contract is:
 2. `AGENTS.md` for implementation conventions and validation requirements.
 3. The source and automated tests for exact behavior.
 4. Generated API documentation under `docs/fundexpert/`.
+5. `docs/rules/workflow.md` and `docs/context/cursor-operator.md` for the `fe-` subagent roster. The always-on rule is `.cursor/rules/subagent-routing.mdc`.
 
 The numbered Markdown documents and `implementation-plan.md` are historical
 design records from before the CLI, Tavily news pass, strategy/sector caps,
