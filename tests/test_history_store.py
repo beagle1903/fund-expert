@@ -61,6 +61,34 @@ def test_save_run_record_structure(tmp_path):
     assert isinstance(pick["score"], float)
 
 
+def test_save_run_keeps_compare_fields_load_last_run_can_read(tmp_path):
+    header = _make_header()
+    header.update(
+        founder="AK PORTFÖY YÖNETİMİ A.Ş.",
+        momentum_priority="high",
+        max_per_type=6,
+        max_per_sector=4,
+        data_snapshot={
+            "universe": "tefas",
+            "bundle_id": "tefas-20260502T110213Z",
+            "source": "legacy",
+            "exported_at": "2026-05-02T11:02:13",
+            "imported_at": None,
+            "row_count": 3,
+        },
+    )
+
+    save_run(_make_selected(), header, history_dir=tmp_path)
+    record = load_last_run("tefas", history_dir=tmp_path)
+
+    assert record["founder"] == "AK PORTFÖY YÖNETİMİ A.Ş."
+    assert record["momentum_priority"] == "high"
+    assert record["max_per_type"] == 6
+    assert record["max_per_sector"] == 4
+    assert record["data_snapshot"]["bundle_id"] == "tefas-20260502T110213Z"
+    assert record["picks"][0]["fon_kodu"] == "AAK"
+
+
 def test_save_run_creates_history_dir_if_missing(tmp_path):
     nested = tmp_path / "does" / "not" / "exist"
     save_run(_make_selected(), _make_header(), history_dir=nested)
@@ -99,6 +127,30 @@ def test_load_last_run_returns_none_on_corrupt_json(tmp_path):
     corrupt.write_text("not valid json", encoding="utf-8")
     result = load_last_run("tefas", history_dir=tmp_path)
     assert result is None
+
+def test_older_run_saved_later_does_not_replace_latest(tmp_path):
+    newer = {**_make_header(), "timestamp": datetime(2026, 5, 12, 10, 30, 5)}
+    older = {**_make_header(), "timestamp": datetime(2026, 5, 12, 10, 30, 1)}
+    save_run(_make_selected(), newer, history_dir=tmp_path)
+    save_run(_make_selected(), older, history_dir=tmp_path)
+
+    result = load_last_run("tefas", history_dir=tmp_path)
+
+    assert result["timestamp"].startswith("2026-05-12T10:30:05")
+
+
+def test_same_second_runs_keep_separate_archive_files(tmp_path):
+    first = {**_make_header(), "timestamp": datetime(2026, 5, 12, 10, 30, 0, 1)}
+    second = {**_make_header(), "timestamp": datetime(2026, 5, 12, 10, 30, 0, 2)}
+
+    first_path = save_run(_make_selected(), first, history_dir=tmp_path)
+    second_path = save_run(_make_selected(), second, history_dir=tmp_path)
+
+    assert first_path != second_path
+    assert first_path.exists()
+    assert second_path.exists()
+    assert load_last_run("tefas", history_dir=tmp_path)["timestamp"] == "2026-05-12T10:30:00.000002"
+
 
 def test_save_run_ignores_oserror_on_replace_latest(tmp_path):
     from unittest.mock import patch

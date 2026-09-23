@@ -176,6 +176,8 @@ def run_pipeline(
         "fee_priority": config.fee_priority,
         "momentum_priority": config.momentum_priority,
         "n": config.n,
+        "max_per_type": max_per_type,
+        "max_per_sector": max_per_sector,
         "warning": warning,
         "excluded_horizon": excluded_horizon,
     }
