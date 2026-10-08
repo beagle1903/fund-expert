@@ -24,8 +24,13 @@ Each CSV has 3 metadata rows (export timestamp, record count, blank) before the 
 `fundexpert/data/tefas_export.py` uses the web-export transport called by the
 TEFAS returns page. This is an undocumented website transport, not an official
 public API. The adapter therefore makes one bounded request per required view,
-applies universe row floors, requires identical fund-code sets, and renders the
-response into the same Turkish CSV contract as a browser download.
+applies universe row floors, aligns fund codes across the three views, and renders the
+response into the same Turkish CSV contract as a browser download. BEFAS
+refresh sends İşlem Durumu = Tümü (`islem` null); TEFAS refresh keeps işlem
+gören (`islem` 1). Both universes may exclude up to five codes that are not
+shared by all three views; the staged files still share one code set, and six
+or more differences fail closed. The BEFAS row floor is 350, so an
+işlem-gören-only response fails closed.
 
 `fundexpert/data/refresh.py` freshness-checks the active manifest once per local
 day. A stale or forced refresh is downloaded into a temporary staging

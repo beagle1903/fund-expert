@@ -17,7 +17,7 @@ Pinned model: `claude-opus-5-thinking-high`. If that slug is missing or rejected
 ## Invariants
 
 - `getiri.csv`, `buyukluk.csv`, and `yonetim ucreti.csv` are one acquisition. `validate_bundle` checks metadata, schemas, numeric values, exact code-set coverage, row counts, and a 30-minute timestamp window. `publish_bundle` writes an immutable version and atomically swaps `current.json`.
-- Automated refresh makes one request per required view and selected universe. TEFAS may drop at most five codes that are not shared by all three views. Six or more TEFAS differences, and any other transport or schema drift, fail closed. BEFAS keeps exact raw coverage. An already-current local-day bundle is skipped unless the refresh is forced.
+- Automated refresh makes one request per required view and selected universe. Both universes may drop at most five codes that are not shared by all three views. Six or more differences, and any other transport or schema drift, fail closed. The BEFAS row floor rejects an işlem-gören-only response. An already-current local-day bundle is skipped unless the refresh is forced.
 - Never silently use cached candidates when the active bundle is missing or invalid.
 - Do not add Playwright anti-detection flags or a TEFAS WAF bypass.
 - Attribute `kurucu` from official fund-title prefixes. Keep TEFAS and BEFAS founder lists separate. Apply the founder filter before cleaning and scoring.
