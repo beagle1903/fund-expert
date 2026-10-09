@@ -59,10 +59,11 @@ Fundexpert can also acquire the three-file bundle through the same web-export
 transport used by the TEFAS returns page. The transport is undocumented and is
 not an official public API, so schema drift or access failures are treated as a
 hard refresh failure. It makes exactly one request per view and selected
-universe, enforces minimum row counts and exact cross-file fund-code coverage,
-and, for TEFAS only, tolerates at most five codes that are not shared by every
-view by excluding them from all three staged files. BEFAS retains exact raw
-coverage. The aligned canonical files must still meet the row floor and exact
+universe, and enforces minimum row counts. Both universes tolerate at most five
+codes that are not shared by every view by excluding them from all three staged
+files; the staged files still share one code set. Six or more differences fail
+closed. The BEFAS row floor is 350, so an işlem-gören-only response fails
+closed. The aligned canonical files must still meet the row floor and exact
 code-set equality before the UTF-8/BOM bundle is rendered and passed to
 `publish_bundle`.
 

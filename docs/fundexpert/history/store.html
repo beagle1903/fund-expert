@@ -69,9 +69,10 @@
     </div>
     <a class="headerlink" href="#save_run"></a>
 
-            <div class="docstring"><p>Save the current run to <history_dir>/YYYY-MM-DD_HH-MM-SS_<universe>.json.</p>
+            <div class="docstring"><p>Save the current run to <history_dir>/YYYY-MM-DD_HH-MM-SS-ffffff_<universe>.json.</p>
 
-<p>Returns the path written. May raise on serialization or disk errors; caller should wrap in try/except.</p>
+<p>Returns the path written. May raise on serialization or disk errors; caller should wrap in try/except.
+A slower save with an older timestamp does not replace latest_<universe>.json.</p>
 </div>
 
 

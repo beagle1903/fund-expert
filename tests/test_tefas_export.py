@@ -106,18 +106,29 @@ def test_download_web_export_bundle_renders_valid_canonical_csvs(tmp_path):
     }
     assert (tmp_path / "getiri.csv").read_bytes().startswith(b"\xef\xbb\xbf")
     assert len(opener.requests) == 3
+    for payload, _timeout in opener.requests:
+        assert payload["fundType"] == "YAT"
+        assert payload["filters"]["islem"] == 1
     size_payload = opener.requests[2][0]
     assert size_payload["filters"]["basTarih"] == "2026-06-27"
     assert size_payload["filters"]["bitTarih"] == "2026-07-27"
     assert size_payload["filters"]["calismaTipi"] == 1
 
 
-def test_download_web_export_bundle_uses_befas_fund_type(tmp_path):
-    opener = RecordingOpener(rows=100)
+def test_download_web_export_bundle_requests_all_befas_transaction_statuses(tmp_path):
+    opener = RecordingOpener(rows=350)
 
     download_web_export_bundle("befas", tmp_path, opener=opener)
 
-    assert {request[0]["fundType"] for request in opener.requests} == {"EMK"}
+    assert len(opener.requests) == 3
+    payloads = [request[0] for request in opener.requests]
+    assert {payload["fundType"] for payload in payloads} == {"EMK"}
+    assert {payload["filters"]["islem"] for payload in payloads} == {None}
+    assert {payload["listingType"] for payload in payloads} == {
+        "return",
+        "management",
+        "size",
+    }
 
 
 def test_download_web_export_bundle_rejects_short_response(tmp_path):
@@ -165,19 +176,55 @@ def test_download_web_export_bundle_rejects_more_than_five_code_set_differences(
         download_web_export_bundle("tefas", tmp_path, opener=mismatch)
 
 
-def test_download_web_export_bundle_keeps_exact_befas_code_coverage(tmp_path):
-    opener = RecordingOpener(rows=101)
+def test_download_web_export_bundle_ignores_up_to_five_befas_code_set_differences(
+    tmp_path,
+):
+    opener = RecordingOpener(rows=355)
     original_call = opener.__call__
 
     def mismatch(request, *, timeout):
         response = original_call(request, timeout=timeout)
         payload = json.loads(request.data.decode("utf-8"))
         if payload["listingType"] == "management":
-            response.payload = response.payload[:-1]
+            response.payload = response.payload[:-5]
         return response
 
-    with pytest.raises(WebExportError, match="maximum tolerated is 0"):
+    download_web_export_bundle("befas", tmp_path, opener=mismatch)
+
+    manifest = validate_bundle(tmp_path, "befas", source="tefas-web-export")
+    assert manifest.row_count == 350
+    for path in tmp_path.iterdir():
+        contents = path.read_text(encoding="utf-8-sig")
+        assert "F0350" not in contents
+        assert "F0354" not in contents
+
+
+def test_download_web_export_bundle_rejects_more_than_five_befas_code_set_differences(
+    tmp_path,
+):
+    opener = RecordingOpener(rows=356)
+    original_call = opener.__call__
+
+    def mismatch(request, *, timeout):
+        response = original_call(request, timeout=timeout)
+        payload = json.loads(request.data.decode("utf-8"))
+        if payload["listingType"] == "management":
+            response.payload = response.payload[:-6]
+        return response
+
+    with pytest.raises(
+        WebExportError,
+        match="BEFAS fund-code coverage differs by 6",
+    ) as raised:
         download_web_export_bundle("befas", tmp_path, opener=mismatch)
+    assert "maximum tolerated is 5" in str(raised.value)
+
+
+def test_download_web_export_bundle_rejects_befas_islem_goren_row_floor(tmp_path):
+    opener = RecordingOpener(rows=311)
+
+    with pytest.raises(WebExportError, match="only 311 BEFAS rows"):
+        download_web_export_bundle("befas", tmp_path, opener=opener)
 
 
 def test_download_web_export_bundle_keeps_row_floor_after_alignment(tmp_path):

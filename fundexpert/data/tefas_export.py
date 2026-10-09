@@ -16,8 +16,10 @@ from urllib.request import Request, urlopen
 
 TEFAS_EXPORT_URL = "https://www.tefas.gov.tr/api/fund-returns/export"
 FUND_TYPE_BY_UNIVERSE = {"tefas": "YAT", "befas": "EMK"}
-MIN_ROWS_BY_UNIVERSE = {"tefas": 500, "befas": 100}
-MAX_IGNORED_TEFAS_CODE_SET_DIFFERENCES = 5
+# Measured 2026-10-08: işlem gören is 311 and aligned Tümü is 400.
+# 350 sits between them, so a server that ignores islem null fails closed.
+MIN_ROWS_BY_UNIVERSE = {"tefas": 500, "befas": 350}
+MAX_IGNORED_CODE_SET_DIFFERENCES = 5
 
 
 @dataclass(frozen=True)
@@ -93,14 +95,19 @@ def _one_month_before(value: date) -> date:
     return date(year, month, day)
 
 
-def _filters_for(definition: ExportDefinition, acquired_at: datetime) -> dict[str, Any]:
+def _filters_for(
+    definition: ExportDefinition,
+    acquired_at: datetime,
+    universe: str,
+) -> dict[str, Any]:
+    # null is Fon Getirileri İşlem Durumu = Tümü; 1 is işlem gören.
     filters: dict[str, Any] = {
         "kurucuKodu": None,
         "fonTurKod": None,
         "fonGrubu": None,
         "fonTurAciklama": None,
         "sfonTurKod": None,
-        "islem": 1,
+        "islem": None if universe == "befas" else 1,
         "calismaTipi": 2,
     }
     if definition.listing_type == "return":
@@ -133,6 +140,7 @@ def _request_rows(
     definition: ExportDefinition,
     acquired_at: datetime,
     *,
+    universe: str,
     opener: ResponseOpener,
     timeout_seconds: float,
 ) -> list[dict[str, Any]]:
@@ -141,7 +149,7 @@ def _request_rows(
         "listingType": definition.listing_type,
         "fundType": fund_type,
         "locale": "tr",
-        "filters": _filters_for(definition, acquired_at),
+        "filters": _filters_for(definition, acquired_at, universe),
         "columns": [key for key, _ in definition.columns],
     }
     request = Request(
@@ -211,6 +219,7 @@ def _write_csv(
 def _align_code_sets(
     datasets: list[tuple[ExportDefinition, list[dict[str, Any]]]],
     *,
+    universe: str,
     maximum_tolerated: int,
 ) -> list[tuple[ExportDefinition, list[dict[str, Any]]]]:
     """Drop a bounded number of codes not shared by every export view."""
@@ -223,9 +232,9 @@ def _align_code_sets(
     if len(mismatched_codes) > maximum_tolerated:
         sample = ", ".join(sorted(mismatched_codes)[:6])
         raise WebExportError(
-            f"TEFAS fund-code coverage differs by {len(mismatched_codes)} "
-            "codes across exports; maximum tolerated is "
-            f"{maximum_tolerated}. Codes: {sample}."
+            f"{universe.upper()} fund-code coverage differs by "
+            f"{len(mismatched_codes)} codes across exports; maximum tolerated "
+            f"is {maximum_tolerated}. Codes: {sample}."
         )
     if not mismatched_codes:
         return datasets
@@ -264,6 +273,7 @@ def download_web_export_bundle(
             fund_type,
             definition,
             acquired_at,
+            universe=universe,
             opener=opener,
             timeout_seconds=timeout_seconds,
         )
@@ -277,9 +287,8 @@ def download_web_export_bundle(
 
     datasets = _align_code_sets(
         datasets,
-        maximum_tolerated=(
-            MAX_IGNORED_TEFAS_CODE_SET_DIFFERENCES if universe == "tefas" else 0
-        ),
+        universe=universe,
+        maximum_tolerated=MAX_IGNORED_CODE_SET_DIFFERENCES,
     )
     minimum = MIN_ROWS_BY_UNIVERSE[universe]
     for definition, rows in datasets:
