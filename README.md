@@ -8,6 +8,15 @@ The recommendation engine scores return, fund size, management fee, fund-flow
 momentum, and SRRI risk. It then applies independent strategy and sector
 diversification caps and assigns weights in 5% units.
 
+![Fundexpert dashboard showing a generated TEFAS portfolio](docs/screenshots/dashboard.png)
+
+## Screenshots
+
+| Web Run Settings | Selection Rules | Build Plugin Profile |
+| --- | --- | --- |
+| [![Web Run Settings dialog](docs/screenshots/web-run-settings.png)](docs/screenshots/web-run-settings.png) | [![Selection Rules editor](docs/screenshots/selection-rules.png)](docs/screenshots/selection-rules.png) | [![Build Plugin Profile editor](docs/screenshots/build-plugin-profile.png)](docs/screenshots/build-plugin-profile.png) |
+| Universe, founder, risk/horizon, and scoring priorities for the next dashboard run. | Ordered strategy, sector, and exclusion keywords saved to `fundexpert/rules.json`. | The personal profile read by `fund-expert:build-fund-portfolio`. |
+
 ## Setup
 
 Python 3.11+ and Node.js are required.
