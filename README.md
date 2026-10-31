@@ -8,7 +8,7 @@ The recommendation engine scores return, fund size, management fee, fund-flow
 momentum, and SRRI risk. It then applies independent strategy and sector
 diversification caps and assigns weights in 5% units.
 
-![Fundexpert dashboard showing a generated TEFAS portfolio](docs/screenshots/dashboard.png)
+![Fundexpert dashboard showing a generated BEFAS portfolio](docs/screenshots/dashboard.png)
 
 ## Screenshots
 
