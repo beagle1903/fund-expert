@@ -21,7 +21,7 @@ from fundexpert.build_profile import (
     load_build_profile,
     save_build_profile,
 )
-from fundexpert.config import DATA_ROOT, HISTORY_DIR, DiversificationMode
+from fundexpert.config import DATA_ROOT, HISTORY_DIR, DiversificationMode, FundScope
 from fundexpert.data.bundle import (
     ActiveDataBundle,
     BundleValidationError,
@@ -37,6 +37,7 @@ from fundexpert.data.refresh import (
     refresh_universe,
 )
 from fundexpert.founders import available_founders
+from fundexpert.fund_scope import FundScopeUnavailableError, filter_by_fund_scope
 from fundexpert.history.store import save_run
 from fundexpert.pipeline import PipelineConfig, run_pipeline
 from fundexpert.utils.rules import get_editable_rules, save_editable_rules
@@ -57,6 +58,7 @@ class GenerateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     universe: Universe
+    fund_scope: FundScope = "open"
     risk_level: Priority = "medium"
     horizon: Horizon = "medium"
     volume_priority: Priority = "medium"
@@ -140,6 +142,7 @@ class FounderOption(BaseModel):
 
 class FoundersResponse(BaseModel):
     universe: Universe
+    fund_scope: FundScope
     founders: list[FounderOption]
 
 
@@ -190,6 +193,7 @@ class SelectionRules(BaseModel):
 class PortfolioHeader(BaseModel):
     timestamp: datetime
     universe: Universe
+    fund_scope: FundScope
     candidate_total: int
     candidate_after_founder: int
     candidate_kept: int
@@ -321,6 +325,26 @@ def get_cached_candidates(universe: Universe) -> tuple[pd.DataFrame, DataBundleM
     return entry.candidates, entry.manifest
 
 
+def _scoped_candidates(
+    candidates: pd.DataFrame,
+    fund_scope: FundScope,
+    universe: Universe,
+) -> pd.DataFrame:
+    try:
+        return filter_by_fund_scope(candidates, fund_scope, universe)
+    except FundScopeUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "FUND_SCOPE_UNAVAILABLE",
+                "message": (
+                    f"The local {universe.upper()} data cannot serve this fund scope. "
+                    "Refresh the data and try again."
+                ),
+            },
+        ) from exc
+
+
 def _safe_number(value: Any) -> float:
     numeric = float(value)
     if not math.isfinite(numeric):
@@ -421,7 +445,7 @@ def refresh_data(req: DataRefreshRequest) -> DataRefreshResponse:
 
 
 @app.get("/api/founders", response_model=FoundersResponse)
-def get_founders(universe: Universe) -> FoundersResponse:
+def get_founders(universe: Universe, fund_scope: FundScope = "open") -> FoundersResponse:
     try:
         candidates, _ = get_cached_candidates(universe)
     except DataUnavailableError as exc:
@@ -432,11 +456,13 @@ def get_founders(universe: Universe) -> FoundersResponse:
                 "message": f"Data for {universe.upper()} is unavailable or invalid.",
             },
         ) from exc
+    scoped = _scoped_candidates(candidates, fund_scope, universe)
     return FoundersResponse(
         universe=universe,
+        fund_scope=fund_scope,
         founders=[
             FounderOption.model_validate(founder)
-            for founder in available_founders(candidates)
+            for founder in available_founders(scoped)
         ],
     )
 
@@ -533,9 +559,11 @@ def generate_portfolio(req: GenerateRequest) -> GenerateResponse:
             },
         ) from exc
 
+    scoped = _scoped_candidates(candidates, req.fund_scope, req.universe)
+
     if req.founder is not None:
         valid_founders = {
-            str(founder["name"]) for founder in available_founders(candidates)
+            str(founder["name"]) for founder in available_founders(scoped)
         }
         if req.founder not in valid_founders:
             raise HTTPException(
@@ -544,13 +572,14 @@ def generate_portfolio(req: GenerateRequest) -> GenerateResponse:
                     "code": "INVALID_FOUNDER",
                     "message": (
                         f"Founder is not available in the active "
-                        f"{req.universe.upper()} data."
+                        f"{req.universe.upper()} data for this fund scope."
                     ),
                 },
             )
 
     config = PipelineConfig(
         universe=req.universe,
+        fund_scope=req.fund_scope,
         risk_level=req.risk_level,
         horizon=req.horizon,
         volume_priority=req.volume_priority,

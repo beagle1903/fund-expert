@@ -22,6 +22,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const activeRequest = useRef(null);
+  const snapshotId = data?.data_snapshot?.bundle_id;
 
   const requestPortfolio = useCallback(async (requestConfig) => {
     activeRequest.current?.abort();
@@ -57,7 +58,7 @@ export default function App() {
   useEffect(() => {
     const controller = new AbortController();
     setFounders([]);
-    getFounders(config.universe, { signal: controller.signal })
+    getFounders(config.universe, config.fund_scope, { signal: controller.signal })
       .then(setFounders)
       .catch((requestError) => {
         if (requestError.name !== 'AbortError') {
@@ -65,7 +66,8 @@ export default function App() {
         }
       });
     return () => controller.abort();
-  }, [config.universe]);
+    // A refresh can replace the bundle, so re-read founders with each new snapshot.
+  }, [config.universe, config.fund_scope, snapshotId]);
 
   const handleGenerate = (event) => {
     event.preventDefault();

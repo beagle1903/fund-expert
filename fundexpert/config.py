@@ -49,6 +49,11 @@ DEFAULT_MAX_PER_SECTOR: int = 2
 
 
 DiversificationMode = Literal["strict", "balanced", "relaxed"]
+FundScope = Literal["open", "all"]
+
+# Each universe's fixed scope before fund_scope existed. Callers that do not
+# choose a scope stay on it, and it is all a bundle without open codes can serve.
+LEGACY_FUND_SCOPE: dict[str, FundScope] = {"tefas": "open", "befas": "all"}
 
 _DIVERSIFICATION_CAPS: dict[DiversificationMode, tuple[int, int, int]] = {
     "strict": (2, 2, 2),

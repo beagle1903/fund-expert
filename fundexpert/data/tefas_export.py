@@ -13,13 +13,21 @@ from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from fundexpert.data.loader import OPEN_CODES_FILENAME
+
 
 TEFAS_EXPORT_URL = "https://www.tefas.gov.tr/api/fund-returns/export"
 FUND_TYPE_BY_UNIVERSE = {"tefas": "YAT", "befas": "EMK"}
-# Measured 2026-10-08: işlem gören is 311 and aligned Tümü is 400.
-# 350 sits between them, so a server that ignores islem null fails closed.
-MIN_ROWS_BY_UNIVERSE = {"tefas": 500, "befas": 350}
-MAX_IGNORED_CODE_SET_DIFFERENCES = 5
+# Measured 2026-11-02: işlem gören / aligned Tümü is 1071 / 2099 for TEFAS and
+# 311 / 400 for BEFAS. The Tümü floors sit between them, so a server that ignores
+# islem null fails closed.
+MIN_ROWS_BY_UNIVERSE = {"tefas": 1500, "befas": 350}
+MIN_OPEN_ROWS_BY_UNIVERSE = {"tefas": 500, "befas": 250}
+# Measured 2026-11-02: 38 TEFAS and 2 BEFAS codes, all closed funds. TEFAS closed
+# funds often have no fee row, and clean_candidates would drop them anyway.
+MAX_IGNORED_CODE_SET_DIFFERENCES = {"tefas": 60, "befas": 5}
+MAX_IGNORED_OPEN_CODE_DIFFERENCES = 5
+VALID_RISK_VALUES = frozenset(str(value) for value in range(1, 8))
 
 
 @dataclass(frozen=True)
@@ -27,6 +35,8 @@ class ExportDefinition:
     filename: str
     listing_type: str
     columns: tuple[tuple[str, str], ...]
+    # null is Fon Getirileri İşlem Durumu = Tümü; 1 is işlem gören.
+    islem: int | None = None
 
 
 EXPORTS = (
@@ -81,6 +91,13 @@ EXPORTS = (
     ),
 )
 
+OPEN_CODES_EXPORT = ExportDefinition(
+    filename=OPEN_CODES_FILENAME,
+    listing_type="return",
+    columns=(("fonKodu", "Fon Kodu"),),
+    islem=1,
+)
+
 ResponseOpener = Callable[..., Any]
 
 
@@ -98,16 +115,14 @@ def _one_month_before(value: date) -> date:
 def _filters_for(
     definition: ExportDefinition,
     acquired_at: datetime,
-    universe: str,
 ) -> dict[str, Any]:
-    # null is Fon Getirileri İşlem Durumu = Tümü; 1 is işlem gören.
     filters: dict[str, Any] = {
         "kurucuKodu": None,
         "fonTurKod": None,
         "fonGrubu": None,
         "fonTurAciklama": None,
         "sfonTurKod": None,
-        "islem": None if universe == "befas" else 1,
+        "islem": definition.islem,
         "calismaTipi": 2,
     }
     if definition.listing_type == "return":
@@ -140,7 +155,6 @@ def _request_rows(
     definition: ExportDefinition,
     acquired_at: datetime,
     *,
-    universe: str,
     opener: ResponseOpener,
     timeout_seconds: float,
 ) -> list[dict[str, Any]]:
@@ -149,7 +163,7 @@ def _request_rows(
         "listingType": definition.listing_type,
         "fundType": fund_type,
         "locale": "tr",
-        "filters": _filters_for(definition, acquired_at, universe),
+        "filters": _filters_for(definition, acquired_at),
         "columns": [key for key, _ in definition.columns],
     }
     request = Request(
@@ -251,6 +265,54 @@ def _align_code_sets(
     ]
 
 
+def _align_open_rows(
+    open_rows: list[dict[str, Any]],
+    aligned_codes: set[str],
+    *,
+    universe: str,
+) -> list[dict[str, Any]]:
+    """Keep open codes that survived alignment, failing closed on any drift."""
+    minimum = MIN_OPEN_ROWS_BY_UNIVERSE[universe]
+    if len(open_rows) < minimum:
+        raise WebExportError(
+            f"TEFAS returned only {len(open_rows)} open {universe.upper()} rows; "
+            f"expected at least {minimum}."
+        )
+    kept = [row for row in open_rows if str(row.get("fonKodu", "")) in aligned_codes]
+    missing = len(open_rows) - len(kept)
+    if missing > MAX_IGNORED_OPEN_CODE_DIFFERENCES:
+        raise WebExportError(
+            f"{missing} open {universe.upper()} fund codes are missing from the "
+            f"aligned exports; maximum tolerated is "
+            f"{MAX_IGNORED_OPEN_CODE_DIFFERENCES}."
+        )
+    # Equal counts mean the server ignored islem 1, so nothing marks a closed fund.
+    if len(kept) >= len(aligned_codes):
+        raise WebExportError(
+            f"TEFAS returned every {universe.upper()} fund as open; "
+            "the transaction filter was not applied."
+        )
+    return kept
+
+
+def _blank_closed_fund_risk(
+    rows: list[dict[str, Any]],
+    open_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Blank the "-" and 0 risk some closed funds report; scoring treats blank as 7.
+
+    Open funds keep their value, so a bad rating on one still fails validation.
+    """
+    open_codes = {str(row.get("fonKodu", "")) for row in open_rows}
+    return [
+        row
+        if str(row.get("fonKodu", "")) in open_codes
+        or str(row.get("riskDegeri")) in VALID_RISK_VALUES
+        else {**row, "riskDegeri": None}
+        for row in rows
+    ]
+
+
 def download_web_export_bundle(
     universe: str,
     staged_dir: Path,
@@ -259,7 +321,7 @@ def download_web_export_bundle(
     opener: ResponseOpener = urlopen,
     timeout_seconds: float = 30,
 ) -> None:
-    """Acquire exactly three web exports and render the canonical CSV bundle."""
+    """Acquire exactly four web exports and render the canonical CSV bundle."""
     fund_type = FUND_TYPE_BY_UNIVERSE.get(universe)
     if fund_type is None:
         raise ValueError(f"Unsupported universe: {universe!r}.")
@@ -273,7 +335,6 @@ def download_web_export_bundle(
             fund_type,
             definition,
             acquired_at,
-            universe=universe,
             opener=opener,
             timeout_seconds=timeout_seconds,
         )
@@ -284,11 +345,18 @@ def download_web_export_bundle(
                 f"{definition.listing_type}; expected at least {minimum}."
             )
         datasets.append((definition, rows))
+    open_rows = _request_rows(
+        fund_type,
+        OPEN_CODES_EXPORT,
+        acquired_at,
+        opener=opener,
+        timeout_seconds=timeout_seconds,
+    )
 
     datasets = _align_code_sets(
         datasets,
         universe=universe,
-        maximum_tolerated=MAX_IGNORED_CODE_SET_DIFFERENCES,
+        maximum_tolerated=MAX_IGNORED_CODE_SET_DIFFERENCES[universe],
     )
     minimum = MIN_ROWS_BY_UNIVERSE[universe]
     for definition, rows in datasets:
@@ -297,8 +365,20 @@ def download_web_export_bundle(
                 f"TEFAS returned only {len(rows)} aligned {universe.upper()} "
                 f"rows for {definition.listing_type}; expected at least {minimum}."
             )
+    aligned_codes = {str(row.get("fonKodu", "")) for row in datasets[0][1]}
+    open_rows = _align_open_rows(open_rows, aligned_codes, universe=universe)
 
-    for definition, rows in datasets:
+    datasets = [
+        (
+            definition,
+            _blank_closed_fund_risk(rows, open_rows)
+            if definition.listing_type == "return"
+            else rows,
+        )
+        for definition, rows in datasets
+    ]
+
+    for definition, rows in [*datasets, (OPEN_CODES_EXPORT, open_rows)]:
         _write_csv(
             staged_dir / definition.filename,
             definition,

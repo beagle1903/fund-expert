@@ -9,6 +9,19 @@ export const UNIVERSE_OPTIONS = [
   { value: 'befas', label: 'BEFAS' },
 ];
 
+export function getFundScopeOptions(universe) {
+  const platform = universe.toUpperCase();
+  return [
+    { value: 'open', label: `Open to ${platform}` },
+    { value: 'all', label: `All ${platform} funds` },
+  ];
+}
+
+export function getFundScopeLabel(universe, fundScope) {
+  return getFundScopeOptions(universe).find((option) => option.value === fundScope)
+    ?.label;
+}
+
 export const HORIZON_OPTIONS = [
   { value: 'short', label: 'Short' },
   { value: 'medium', label: 'Medium' },
@@ -34,6 +47,7 @@ export function getDiversificationCap(n, mode) {
 
 export const DEFAULT_CONFIG = {
   universe: 'tefas',
+  fund_scope: 'open',
   founder: null,
   risk_level: 'medium',
   horizon: 'medium',

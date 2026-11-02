@@ -253,9 +253,81 @@ describe('App', () => {
     ).toBe('relaxed');
   });
 
+  it('offers universe-specific fund scopes and sends the applied scope', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText('AAA');
+    expect(screen.getByText('Open to TEFAS')).toBeInTheDocument();
+    const generateCalls = () =>
+      globalThis.fetch.mock.calls.filter(([url]) => url === '/api/generate');
+    expect(JSON.parse(generateCalls()[0][1].body).fund_scope).toBe('open');
+
+    await openPortfolioSettings(user);
+    const scope = screen.getByLabelText('Eligible funds');
+    expect(scope).toHaveValue('open');
+    expect(
+      screen.getByRole('option', { name: 'All TEFAS funds' }),
+    ).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Universe'), 'befas');
+    expect(screen.getByRole('option', { name: 'Open to BEFAS' })).toBeInTheDocument();
+    await user.selectOptions(scope, 'all');
+    await user.click(screen.getByRole('button', { name: /apply/i }));
+
+    expect(await screen.findByText('All BEFAS funds')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Generate Portfolio' }));
+    await waitFor(() => expect(generateCalls()).toHaveLength(2));
+    expect(JSON.parse(generateCalls()[1][1].body)).toMatchObject({
+      universe: 'befas',
+      fund_scope: 'all',
+    });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      '/api/founders?universe=befas&fund_scope=all',
+      expect.anything(),
+    );
+  });
+
+  it('reloads founders and resets the selection when the fund scope changes', async () => {
+    globalThis.fetch = vi.fn((url) => {
+      if (url === '/api/founders?universe=tefas&fund_scope=open') {
+        return jsonResponse({
+          universe: 'tefas',
+          fund_scope: 'open',
+          founders: [{ name: 'AK PORTFÖY YÖNETİMİ A.Ş.', fund_count: 2 }],
+        });
+      }
+      if (url === '/api/founders?universe=tefas&fund_scope=all') {
+        return jsonResponse({
+          universe: 'tefas',
+          fund_scope: 'all',
+          founders: [{ name: 'AK PORTFÖY YÖNETİMİ A.Ş.', fund_count: 5 }],
+        });
+      }
+      return jsonResponse(responseBody);
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText('AAA');
+
+    await openPortfolioSettings(user);
+    await user.selectOptions(
+      screen.getByLabelText('Founder (Kurucu)'),
+      'AK PORTFÖY YÖNETİMİ A.Ş.',
+    );
+
+    await user.selectOptions(screen.getByLabelText('Eligible funds'), 'all');
+
+    expect(
+      await screen.findByRole('option', {
+        name: 'AK PORTFÖY YÖNETİMİ A.Ş. (5)',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Founder (Kurucu)')).toHaveValue('');
+  });
+
   it('loads universe-specific founders and resets the selection on universe change', async () => {
     globalThis.fetch = vi.fn((url) => {
-      if (url === '/api/founders?universe=tefas') {
+      if (url === '/api/founders?universe=tefas&fund_scope=open') {
         return jsonResponse({
           universe: 'tefas',
           founders: [
@@ -263,7 +335,7 @@ describe('App', () => {
           ],
         });
       }
-      if (url === '/api/founders?universe=befas') {
+      if (url === '/api/founders?universe=befas&fund_scope=open') {
         return jsonResponse({
           universe: 'befas',
           founders: [

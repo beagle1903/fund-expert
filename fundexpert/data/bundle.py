@@ -17,6 +17,7 @@ import pandas as pd
 
 from fundexpert.config import MAX_CSV_SIZE_BYTES
 from fundexpert.data import loader as loader_module
+from fundexpert.data.loader import OPEN_CODES_FILENAME
 
 BUNDLE_SCHEMA_VERSION = 1
 BUNDLE_FILENAMES = ("getiri.csv", "buyukluk.csv", "yonetim ucreti.csv")
@@ -26,6 +27,7 @@ _RENAME_BY_FILENAME = {
     "getiri.csv": loader_module.GETIRI_RENAME,
     "buyukluk.csv": loader_module.BUYUKLUK_RENAME,
     "yonetim ucreti.csv": loader_module.YONETIM_RENAME,
+    OPEN_CODES_FILENAME: loader_module.OPEN_CODES_RENAME,
 }
 
 _NUMERIC_COLUMNS_BY_FILENAME = {
@@ -102,6 +104,10 @@ class DataBundleManifest:
             "imported_at": self.imported_at.isoformat() if self.imported_at else None,
             "row_count": self.row_count,
         }
+
+    @property
+    def has_open_codes(self) -> bool:
+        return any(item.filename == OPEN_CODES_FILENAME for item in self.files)
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> DataBundleManifest:
@@ -196,10 +202,16 @@ def validate_bundle(
     source: str = "manual",
     imported_at: datetime | None = None,
 ) -> DataBundleManifest:
-    """Validate a three-file export bundle and return its immutable manifest."""
+    """Validate an export bundle and return its immutable manifest.
+
+    The three export views are required. The open-codes file is optional, so
+    bundles published before it existed stay valid with their original IDs.
+    """
     _validate_universe(universe)
     bundle_dir = Path(bundle_dir)
     paths = {filename: bundle_dir / filename for filename in BUNDLE_FILENAMES}
+    if (bundle_dir / OPEN_CODES_FILENAME).is_file():
+        paths[OPEN_CODES_FILENAME] = bundle_dir / OPEN_CODES_FILENAME
 
     for filename, path in paths.items():
         if not path.is_file():
@@ -219,19 +231,22 @@ def validate_bundle(
             buyukluk_path=paths["buyukluk.csv"],
             yonetim_path=paths["yonetim ucreti.csv"],
         )
+        frames_by_filename: dict[str, pd.DataFrame] = {
+            "getiri.csv": frames.getiri,
+            "buyukluk.csv": frames.buyukluk,
+            "yonetim ucreti.csv": frames.yonetim_ucreti,
+        }
+        if OPEN_CODES_FILENAME in paths:
+            frames_by_filename[OPEN_CODES_FILENAME] = loader_module.read_open_codes(
+                paths[OPEN_CODES_FILENAME]
+            )
     except (OSError, UnicodeError, ValueError, pd.errors.ParserError) as exc:
         raise BundleValidationError(f"CSV parsing failed: {exc}") from exc
 
-    frames_by_filename: dict[str, pd.DataFrame] = {
-        "getiri.csv": frames.getiri,
-        "buyukluk.csv": frames.buyukluk,
-        "yonetim ucreti.csv": frames.yonetim_ucreti,
-    }
     metadata: list[DataFileMetadata] = []
     code_sets: dict[str, set[str]] = {}
 
-    for filename in BUNDLE_FILENAMES:
-        path = paths[filename]
+    for filename, path in paths.items():
         exported_at, reported_rows = _parse_preamble(path)
         frame = frames_by_filename[filename]
         actual_rows = len(frame)
@@ -255,6 +270,14 @@ def validate_bundle(
         if code_sets[filename] != reference_codes:
             raise BundleValidationError(
                 f"{filename}: fund-code set does not match {BUNDLE_FILENAMES[0]}."
+            )
+    if OPEN_CODES_FILENAME in paths:
+        open_codes = code_sets[OPEN_CODES_FILENAME]
+        if not open_codes:
+            raise BundleValidationError(f"{OPEN_CODES_FILENAME}: lists no fund codes.")
+        if not open_codes <= reference_codes:
+            raise BundleValidationError(
+                f"{OPEN_CODES_FILENAME}: lists codes missing from {BUNDLE_FILENAMES[0]}."
             )
 
     export_times = [item.exported_at for item in metadata]
@@ -363,8 +386,8 @@ def publish_bundle(
     else:
         temp_dir = Path(tempfile.mkdtemp(prefix=".bundle-", dir=bundles_dir))
         try:
-            for filename in BUNDLE_FILENAMES:
-                shutil.copy2(Path(staged_dir) / filename, temp_dir / filename)
+            for item in source_manifest.files:
+                shutil.copy2(Path(staged_dir) / item.filename, temp_dir / item.filename)
             copied_manifest = validate_bundle(
                 temp_dir,
                 universe,
@@ -416,9 +439,13 @@ def resolve_bundle_directory(bundle_dir: Path, universe: str) -> DataBundleManif
 
 
 def load_bundle_frames(bundle: ActiveDataBundle) -> loader_module.UniverseData:
-    """Load the three parsed frames for an already-resolved bundle."""
-    return loader_module.load_universe(
+    """Load the parsed frames and any open codes for an already-resolved bundle."""
+    frames = loader_module.load_universe(
         getiri_path=bundle.path / "getiri.csv",
         buyukluk_path=bundle.path / "buyukluk.csv",
         yonetim_path=bundle.path / "yonetim ucreti.csv",
     )
+    if bundle.manifest.has_open_codes:
+        open_codes = loader_module.read_open_codes(bundle.path / OPEN_CODES_FILENAME)
+        frames.open_codes = frozenset(open_codes["fon_kodu"].astype(str))
+    return frames

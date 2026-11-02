@@ -46,6 +46,8 @@ def _fresh_manifest(
         manifest = resolve_active_bundle(universe, data_root).manifest
     except (BundleValidationError, OSError, UnicodeError, ValueError):
         return None
+    if not manifest.has_open_codes:
+        return None
     return manifest if manifest.exported_at.date() == now.date() else None
 
 

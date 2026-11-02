@@ -6,6 +6,8 @@ import pandas as pd
 
 from fundexpert.config import (
     DiversificationMode,
+    FundScope,
+    LEGACY_FUND_SCOPE,
     ScoringConfig,
     SelectionConfig,
     DEFAULT_SCORING_CONFIG,
@@ -24,6 +26,7 @@ from fundexpert.select.strategy import bucket_from_names
 from fundexpert.select.weights import compute_weights
 from fundexpert.data.merge import clean_candidates
 from fundexpert.founders import filter_by_founder, validate_founder
+from fundexpert.fund_scope import filter_by_fund_scope
 from fundexpert.utils.text import turkish_upper_series
 
 
@@ -41,6 +44,8 @@ class PipelineConfig:
     max_per_type: int | None = None
     max_per_sector: int | None = None
     founder: str | None = None
+    # None keeps the universe's LEGACY_FUND_SCOPE (CLI and other non-web callers).
+    fund_scope: FundScope | None = None
     news_enabled: bool = False
     news_api_key: str | None = None
     validate_schemas: bool = False
@@ -82,6 +87,8 @@ def run_pipeline(
         max_per_type=config.max_per_type,
         max_per_sector=config.max_per_sector,
     )
+    fund_scope = config.fund_scope or LEGACY_FUND_SCOPE[config.universe]
+    candidates = filter_by_fund_scope(candidates, fund_scope, config.universe)
     total = len(candidates)
 
     if config.founder is not None:
@@ -166,6 +173,7 @@ def run_pipeline(
     header = {
         "timestamp": config.now,
         "universe":  config.universe,
+        "fund_scope": fund_scope,
         "candidate_total": total,
         "candidate_after_founder": candidate_after_founder,
         "candidate_kept":  len(horizoned),

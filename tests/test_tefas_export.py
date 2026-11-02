@@ -5,9 +5,11 @@ from urllib.error import HTTPError, URLError
 
 import pytest
 
-from fundexpert.data.bundle import validate_bundle
+from fundexpert.data.bundle import BundleValidationError, validate_bundle
+from fundexpert.data.loader import GETIRI_RENAME, _read_one
 from fundexpert.data.tefas_export import (
     EXPORTS,
+    OPEN_CODES_EXPORT,
     WebExportError,
     _one_month_before,
     download_web_export_bundle,
@@ -57,13 +59,20 @@ class FakeResponse:
 
 
 class RecordingOpener:
-    def __init__(self, *, rows=500):
+    def __init__(self, *, rows=1500, open_rows=None):
         self.rows = rows
+        self.open_rows = open_rows
         self.requests = []
 
     def __call__(self, request, *, timeout):
         payload = json.loads(request.data.decode("utf-8"))
         self.requests.append((payload, timeout))
+        if payload["filters"]["islem"] == 1:
+            minimum = 500 if payload["fundType"] == "YAT" else 250
+            count = minimum if self.open_rows is None else self.open_rows
+            return FakeResponse(
+                [_row(f"F{index:04}", OPEN_CODES_EXPORT) for index in range(count)]
+            )
         definition = next(
             item for item in EXPORTS if item.listing_type == payload["listingType"]
         )
@@ -97,18 +106,26 @@ def test_download_web_export_bundle_renders_valid_canonical_csvs(tmp_path):
     )
     manifest = validate_bundle(tmp_path, "tefas", source="tefas-web-export")
 
-    assert manifest.row_count == 500
+    assert manifest.row_count == 1500
+    assert manifest.has_open_codes
     assert manifest.exported_at == acquired_at
     assert {path.name for path in tmp_path.iterdir()} == {
         "getiri.csv",
         "yonetim ucreti.csv",
         "buyukluk.csv",
+        "islem_goren.csv",
     }
     assert (tmp_path / "getiri.csv").read_bytes().startswith(b"\xef\xbb\xbf")
-    assert len(opener.requests) == 3
-    for payload, _timeout in opener.requests:
-        assert payload["fundType"] == "YAT"
-        assert payload["filters"]["islem"] == 1
+    assert len(opener.requests) == 4
+    assert {payload["fundType"] for payload, _ in opener.requests} == {"YAT"}
+    assert [payload["filters"]["islem"] for payload, _ in opener.requests] == [
+        None,
+        None,
+        None,
+        1,
+    ]
+    assert opener.requests[3][0]["listingType"] == "return"
+    assert opener.requests[3][0]["columns"] == ["fonKodu"]
     size_payload = opener.requests[2][0]
     assert size_payload["filters"]["basTarih"] == "2026-06-27"
     assert size_payload["filters"]["bitTarih"] == "2026-07-27"
@@ -120,10 +137,10 @@ def test_download_web_export_bundle_requests_all_befas_transaction_statuses(tmp_
 
     download_web_export_bundle("befas", tmp_path, opener=opener)
 
-    assert len(opener.requests) == 3
+    assert len(opener.requests) == 4
     payloads = [request[0] for request in opener.requests]
     assert {payload["fundType"] for payload in payloads} == {"EMK"}
-    assert {payload["filters"]["islem"] for payload in payloads} == {None}
+    assert [payload["filters"]["islem"] for payload in payloads] == [None, None, None, 1]
     assert {payload["listingType"] for payload in payloads} == {
         "return",
         "management",
@@ -138,41 +155,43 @@ def test_download_web_export_bundle_rejects_short_response(tmp_path):
         download_web_export_bundle("tefas", tmp_path, opener=opener)
 
 
-def test_download_web_export_bundle_ignores_up_to_five_code_set_differences(tmp_path):
-    opener = RecordingOpener(rows=505)
+def test_download_web_export_bundle_ignores_up_to_sixty_tefas_code_set_differences(
+    tmp_path,
+):
+    opener = RecordingOpener(rows=1560)
     original_call = opener.__call__
 
     def mismatch(request, *, timeout):
         response = original_call(request, timeout=timeout)
         payload = json.loads(request.data.decode("utf-8"))
         if payload["listingType"] == "management":
-            response.payload = response.payload[:-5]
+            response.payload = response.payload[:-60]
         return response
 
     download_web_export_bundle("tefas", tmp_path, opener=mismatch)
 
     manifest = validate_bundle(tmp_path, "tefas", source="tefas-web-export")
-    assert manifest.row_count == 500
+    assert manifest.row_count == 1500
     for path in tmp_path.iterdir():
         contents = path.read_text(encoding="utf-8-sig")
-        assert "F0500" not in contents
-        assert "F0504" not in contents
+        assert "F1500" not in contents
+        assert "F1559" not in contents
 
 
-def test_download_web_export_bundle_rejects_more_than_five_code_set_differences(
+def test_download_web_export_bundle_rejects_more_than_sixty_tefas_code_set_differences(
     tmp_path,
 ):
-    opener = RecordingOpener(rows=506)
+    opener = RecordingOpener(rows=1561)
     original_call = opener.__call__
 
     def mismatch(request, *, timeout):
         response = original_call(request, timeout=timeout)
         payload = json.loads(request.data.decode("utf-8"))
         if payload["listingType"] == "management":
-            response.payload = response.payload[:-6]
+            response.payload = response.payload[:-61]
         return response
 
-    with pytest.raises(WebExportError, match="differs by 6 codes"):
+    with pytest.raises(WebExportError, match="differs by 61 codes"):
         download_web_export_bundle("tefas", tmp_path, opener=mismatch)
 
 
@@ -227,6 +246,92 @@ def test_download_web_export_bundle_rejects_befas_islem_goren_row_floor(tmp_path
         download_web_export_bundle("befas", tmp_path, opener=opener)
 
 
+def test_download_web_export_bundle_rejects_tefas_islem_goren_row_floor(tmp_path):
+    opener = RecordingOpener(rows=1071)
+
+    with pytest.raises(WebExportError, match="only 1071 TEFAS rows"):
+        download_web_export_bundle("tefas", tmp_path, opener=opener)
+
+
+def test_download_web_export_bundle_rejects_short_open_code_response(tmp_path):
+    opener = RecordingOpener(open_rows=499)
+
+    with pytest.raises(WebExportError, match="only 499 open TEFAS rows"):
+        download_web_export_bundle("tefas", tmp_path, opener=opener)
+
+
+def test_download_web_export_bundle_rejects_ignored_open_filter(tmp_path):
+    opener = RecordingOpener(open_rows=1500)
+
+    with pytest.raises(WebExportError, match="every TEFAS fund as open"):
+        download_web_export_bundle("tefas", tmp_path, opener=opener)
+
+
+def _dropping_first_fee_rows(opener, count):
+    original_call = opener.__call__
+
+    def mismatch(request, *, timeout):
+        response = original_call(request, timeout=timeout)
+        payload = json.loads(request.data.decode("utf-8"))
+        if payload["listingType"] == "management":
+            response.payload = response.payload[count:]
+        return response
+
+    return mismatch
+
+
+def test_download_web_export_bundle_drops_up_to_five_unaligned_open_codes(tmp_path):
+    opener = _dropping_first_fee_rows(RecordingOpener(rows=1505), 5)
+
+    download_web_export_bundle("tefas", tmp_path, opener=opener)
+
+    contents = (tmp_path / "islem_goren.csv").read_text(encoding="utf-8-sig")
+    assert validate_bundle(tmp_path, "tefas").has_open_codes
+    assert "Toplam Kayıt Sayısı:,495" in contents
+    assert "F0004" not in contents
+    assert "F0005" in contents
+
+
+def test_download_web_export_bundle_rejects_six_unaligned_open_codes(tmp_path):
+    opener = _dropping_first_fee_rows(RecordingOpener(rows=1506), 6)
+
+    with pytest.raises(WebExportError, match="6 open TEFAS fund codes"):
+        download_web_export_bundle("tefas", tmp_path, opener=opener)
+
+
+def _with_risk(opener, code, risk):
+    original_call = opener.__call__
+
+    def set_risk(request, *, timeout):
+        response = original_call(request, timeout=timeout)
+        for row in response.payload:
+            if row["fonKodu"] == code and "riskDegeri" in row:
+                row["riskDegeri"] = risk
+        return response
+
+    return set_risk
+
+
+@pytest.mark.parametrize("risk", ["-", 0])
+def test_download_web_export_bundle_blanks_closed_fund_risk(tmp_path, risk):
+    opener = _with_risk(RecordingOpener(), "F1000", risk)
+
+    download_web_export_bundle("tefas", tmp_path, opener=opener)
+
+    frame = _read_one(tmp_path / "getiri.csv", GETIRI_RENAME)
+    assert validate_bundle(tmp_path, "tefas").row_count == 1500
+    assert frame.set_index("fon_kodu")["risk"].isna()["F1000"]
+
+
+def test_download_web_export_bundle_rejects_open_fund_invalid_risk(tmp_path):
+    opener = _with_risk(RecordingOpener(), "F0000", "-")
+
+    download_web_export_bundle("tefas", tmp_path, opener=opener)
+
+    with pytest.raises(BundleValidationError, match="invalid numeric values"):
+        validate_bundle(tmp_path, "tefas")
+
+
 def test_download_web_export_bundle_keeps_row_floor_after_alignment(tmp_path):
     opener = RecordingOpener()
     original_call = opener.__call__
@@ -238,7 +343,7 @@ def test_download_web_export_bundle_keeps_row_floor_after_alignment(tmp_path):
             response.payload[0]["fonKodu"] = "DIFFERENT"
         return response
 
-    with pytest.raises(WebExportError, match="only 499 aligned TEFAS rows"):
+    with pytest.raises(WebExportError, match="only 1499 aligned TEFAS rows"):
         download_web_export_bundle("tefas", tmp_path, opener=mismatch)
 
 

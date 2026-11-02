@@ -40,6 +40,12 @@
                     <a class="variable" href="#YONETIM_RENAME">YONETIM_RENAME</a>
             </li>
             <li>
+                    <a class="variable" href="#OPEN_CODES_FILENAME">OPEN_CODES_FILENAME</a>
+            </li>
+            <li>
+                    <a class="variable" href="#OPEN_CODES_RENAME">OPEN_CODES_RENAME</a>
+            </li>
+            <li>
                     <a class="class" href="#UniverseData">UniverseData</a>
                             <ul class="memberlist">
                         <li>
@@ -54,11 +60,17 @@
                         <li>
                                 <a class="variable" href="#UniverseData.yonetim_ucreti">yonetim_ucreti</a>
                         </li>
+                        <li>
+                                <a class="variable" href="#UniverseData.open_codes">open_codes</a>
+                        </li>
                 </ul>
 
             </li>
             <li>
                     <a class="function" href="#load_universe">load_universe</a>
+            </li>
+            <li>
+                    <a class="function" href="#read_open_codes">read_open_codes</a>
             </li>
             <li>
                     <a class="function" href="#load_candidates_for_universe">load_candidates_for_universe</a>
@@ -125,6 +137,30 @@
 
 
                 </section>
+                <section id="OPEN_CODES_FILENAME">
+                    <div class="attr variable">
+            <span class="name">OPEN_CODES_FILENAME</span>        =
+<span class="default_value">&#39;islem_goren.csv&#39;</span>
+
+
+    </div>
+    <a class="headerlink" href="#OPEN_CODES_FILENAME"></a>
+
+
+
+                </section>
+                <section id="OPEN_CODES_RENAME">
+                    <div class="attr variable">
+            <span class="name">OPEN_CODES_RENAME</span><span class="annotation">: dict[str, str]</span>        =
+<span class="default_value">{&#39;Fon Kodu&#39;: &#39;fon_kodu&#39;}</span>
+
+
+    </div>
+    <a class="headerlink" href="#OPEN_CODES_RENAME"></a>
+
+
+
+                </section>
                 <section id="UniverseData">
                     <div class="attr class">
                     <div class="decorator decorator-dataclass">@dataclass</div>
@@ -141,7 +177,7 @@
                             <div id="UniverseData.__init__" class="classattr">
                                 <div class="attr function">
 
-        <span class="name">UniverseData</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">getiri</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>,</span><span class="param">	<span class="n">buyukluk</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>,</span><span class="param">	<span class="n">yonetim_ucreti</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span></span>)</span>
+        <span class="name">UniverseData</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">getiri</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>,</span><span class="param">	<span class="n">buyukluk</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>,</span><span class="param">	<span class="n">yonetim_ucreti</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>,</span><span class="param">	<span class="n">open_codes</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span>)</span>
 
 
     </div>
@@ -183,6 +219,18 @@
 
 
                             </div>
+                            <div id="UniverseData.open_codes" class="classattr">
+                                <div class="attr variable">
+            <span class="name">open_codes</span><span class="annotation">: frozenset[str] | None</span>        =
+<span class="default_value">None</span>
+
+
+    </div>
+    <a class="headerlink" href="#UniverseData.open_codes"></a>
+
+
+
+                            </div>
                 </section>
                 <section id="load_universe">
                     <div class="attr function">
@@ -195,6 +243,21 @@
     <a class="headerlink" href="#load_universe"></a>
 
             <div class="docstring"><p>Load the three CSVs for a single universe (tefas or befas).</p>
+</div>
+
+
+                </section>
+                <section id="read_open_codes">
+                    <div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">read_open_codes</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">_local</span><span class="o">.</span><span class="n">Path</span></span><span class="return-annotation">) -> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>:</span></span>
+
+
+    </div>
+    <a class="headerlink" href="#read_open_codes"></a>
+
+            <div class="docstring"><p>Load the open-to-platform fund codes for a single universe.</p>
 </div>
 
 

@@ -67,14 +67,20 @@ validation succeeds.
 Fundexpert can also acquire the three-file bundle through the same web-export
 transport used by the TEFAS returns page. The transport is undocumented and is
 not an official public API, so schema drift or access failures are treated as a
-hard refresh failure. It makes exactly one request per view and selected
-universe, and enforces minimum row counts. Both universes tolerate at most five
-codes that are not shared by every view by excluding them from all three staged
-files; the staged files still share one code set. Six or more differences fail
-closed. The BEFAS row floor is 350, so an işlem-gören-only response fails
+hard refresh failure. It makes exactly four requests per selected universe (the
+three views for all funds, plus the codes of funds open to the platform) and
+enforces minimum row counts. Codes that are not shared by every view are excluded
+from all three staged files, up to 60 for TEFAS and 5 for BEFAS, so the staged
+files still share one code set. Larger differences fail closed. The row floors
+(TEFAS 1500, BEFAS 350) reject an işlem-gören-only response, which also fails
 closed. The aligned canonical files must still meet the row floor and exact
 code-set equality before the UTF-8/BOM bundle is rendered and passed to
 `publish_bundle`.
+
+Web Run Settings chooses the eligible funds: funds open to the selected platform
+(the default) or all of its funds. The CLI keeps open TEFAS funds and all BEFAS
+funds. A bundle from before this choice existed needs one refresh to serve the
+other scope.
 
 Web portfolio generation enables a once-per-local-day freshness check by
 default. If refresh fails, the existing active bundle is preserved; clear

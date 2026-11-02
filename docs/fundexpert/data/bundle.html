@@ -112,6 +112,9 @@
                                 <a class="function" href="#DataBundleManifest.to_snapshot_dict">to_snapshot_dict</a>
                         </li>
                         <li>
+                                <a class="variable" href="#DataBundleManifest.has_open_codes">has_open_codes</a>
+                        </li>
+                        <li>
                                 <a class="function" href="#DataBundleManifest.from_dict">from_dict</a>
                         </li>
                 </ul>
@@ -471,6 +474,17 @@
 
 
                             </div>
+                            <div id="DataBundleManifest.has_open_codes" class="classattr">
+                                <div class="attr variable">
+            <span class="name">has_open_codes</span><span class="annotation">: bool</span>
+
+
+    </div>
+    <a class="headerlink" href="#DataBundleManifest.has_open_codes"></a>
+
+
+
+                            </div>
                             <div id="DataBundleManifest.from_dict" class="classattr">
                                 <div class="attr function">
                     <div class="decorator decorator-classmethod">@classmethod</div>
@@ -549,13 +563,16 @@
                     <div class="attr function">
 
         <span class="def">def</span>
-        <span class="name">validate_bundle</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">bundle_dir</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">_local</span><span class="o">.</span><span class="n">Path</span>,</span><span class="param">	<span class="n">universe</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;manual&#39;</span>,</span><span class="param">	<span class="n">imported_at</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n"><a href="#DataBundleManifest">DataBundleManifest</a></span>:</span></span>
+        <span class="name">validate_bundle</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">bundle_dir</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">_local</span><span class="o">.</span><span class="n">Path</span>,</span><span class="param">	<span class="n">universe</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">'manual'</span>,</span><span class="param">	<span class="n">imported_at</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n"><a href="#DataBundleManifest">DataBundleManifest</a></span>:</span></span>
 
 
     </div>
     <a class="headerlink" href="#validate_bundle"></a>
 
-            <div class="docstring"><p>Validate a three-file export bundle and return its immutable manifest.</p>
+            <div class="docstring"><p>Validate an export bundle and return its immutable manifest.</p>
+
+<p>The three export views are required. The open-codes file is optional, so
+bundles published before it existed stay valid with their original IDs.</p>
 </div>
 
 
@@ -579,7 +596,7 @@
                     <div class="attr function">
 
         <span class="def">def</span>
-        <span class="name">publish_bundle</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">staged_dir</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">_local</span><span class="o">.</span><span class="n">Path</span>,</span><span class="param">	<span class="n">universe</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">data_root</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">_local</span><span class="o">.</span><span class="n">Path</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;manual&#39;</span>,</span><span class="param">	<span class="n">now</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n"><a href="#DataBundleManifest">DataBundleManifest</a></span>:</span></span>
+        <span class="name">publish_bundle</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">staged_dir</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">_local</span><span class="o">.</span><span class="n">Path</span>,</span><span class="param">	<span class="n">universe</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">data_root</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">_local</span><span class="o">.</span><span class="n">Path</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">'manual'</span>,</span><span class="param">	<span class="n">now</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n"><a href="#DataBundleManifest">DataBundleManifest</a></span>:</span></span>
 
 
     </div>
@@ -618,7 +635,7 @@ directory is never modified.</p>
     </div>
     <a class="headerlink" href="#load_bundle_frames"></a>
 
-            <div class="docstring"><p>Load the three parsed frames for an already-resolved bundle.</p>
+            <div class="docstring"><p>Load the parsed frames and any open codes for an already-resolved bundle.</p>
 </div>
 
 
