@@ -4,6 +4,7 @@ import {
   HORIZON_OPTIONS,
   PRIORITY_OPTIONS,
   getDiversificationCap,
+  getFundScopeLabel,
 } from '../config.js';
 
 function getLabel(options, value) {
@@ -44,7 +45,7 @@ export default function ControlPanel({
         <div className="profile-grid">
           <div className="profile-item">
             <span>Universe</span>
-            <strong>{config.universe.toUpperCase()}</strong>
+            <strong>{getFundScopeLabel(config.universe, config.fund_scope)}</strong>
           </div>
           <div className="profile-item">
             <span>Target funds</span>

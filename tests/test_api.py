@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 import fundexpert.api as api
 from fundexpert.build_profile import DEFAULT_BUILD_PROFILE, BuildProfileError
 from fundexpert.data.refresh import DataRefreshError, DataRefreshResult
+from fundexpert.fund_scope import OPEN_TO_PLATFORM_COLUMN
 from fundexpert.history.store import load_last_run
 from fundexpert.utils import rules as rules_module
 
@@ -410,6 +411,7 @@ def test_generate_rejects_founder_outside_active_universe(client):
         "/api/generate",
         json={
             "universe": "befas",
+            "fund_scope": "all",
             "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
         },
     )
@@ -631,3 +633,110 @@ def test_changed_bundle_fingerprint_refreshes_cached_candidates(client):
     assert second.json()["data_snapshot"]["bundle_id"] != first_id
     names = {item["fon_adi"] for item in second.json()["weighted"]}
     assert "OMEGA FON" in names
+
+
+def _with_open_codes(monkeypatch, universe, open_flags, founders=None):
+    candidates, manifest = api.get_cached_candidates(universe)
+    candidates = candidates.copy()
+    candidates[OPEN_TO_PLATFORM_COLUMN] = open_flags
+    if founders is not None:
+        candidates["kurucu"] = founders
+    monkeypatch.setattr(
+        api, "get_cached_candidates", lambda requested: (candidates, manifest)
+    )
+
+
+@pytest.mark.parametrize("universe", ["tefas", "befas"])
+def test_generate_defaults_to_open_funds_and_all_widens_the_pool(
+    client, monkeypatch, universe
+):
+    _with_open_codes(monkeypatch, universe, [True, True, False])
+
+    default = client.post("/api/generate", json={"universe": universe, "n": 2})
+    widened = client.post(
+        "/api/generate", json={"universe": universe, "fund_scope": "all", "n": 2}
+    )
+
+    assert default.status_code == 200
+    assert default.json()["header"]["fund_scope"] == "open"
+    assert default.json()["header"]["candidate_total"] == 2
+    assert {fund["fon_kodu"] for fund in default.json()["weighted"]} == {"AAA", "BBB"}
+    assert widened.status_code == 200
+    assert widened.json()["header"]["fund_scope"] == "all"
+    assert widened.json()["header"]["candidate_total"] == 3
+
+
+def test_generate_records_fund_scope_in_history(client, monkeypatch):
+    _with_open_codes(monkeypatch, "befas", [True, True, False])
+
+    response = client.post(
+        "/api/generate", json={"universe": "befas", "fund_scope": "all", "n": 2}
+    )
+
+    assert response.status_code == 200
+    assert load_last_run("befas", history_dir=api.HISTORY_DIR)["fund_scope"] == "all"
+
+
+def test_changing_scope_stays_on_the_once_per_day_refresh_check(client, monkeypatch):
+    _with_open_codes(monkeypatch, "tefas", [True, True, False])
+    manifest = api.resolve_active_bundle("tefas", api.DATA_ROOT).manifest
+    calls = []
+
+    def refresh(universe, data_root, *, force):
+        calls.append((universe, force))
+        return DataRefreshResult(universe, False, manifest)
+
+    monkeypatch.setattr(api, "refresh_universe", refresh)
+
+    for scope in ("open", "all"):
+        response = client.post(
+            "/api/generate",
+            json={"universe": "tefas", "fund_scope": scope, "refresh_data": True, "n": 2},
+        )
+        assert response.status_code == 200
+
+    assert calls == [("tefas", False), ("tefas", False)]
+
+
+def test_founders_follow_the_selected_scope(client, monkeypatch):
+    ak = "AK PORTFÖY YÖNETİMİ A.Ş."
+    ata = "ATA PORTFÖY YÖNETİMİ A.Ş."
+    _with_open_codes(monkeypatch, "tefas", [True, True, False], [ak, ak, ata])
+
+    open_response = client.get("/api/founders?universe=tefas")
+    all_response = client.get("/api/founders?universe=tefas&fund_scope=all")
+    closed_founder = client.post(
+        "/api/generate", json={"universe": "tefas", "founder": ata, "n": 1}
+    )
+
+    assert open_response.json()["fund_scope"] == "open"
+    assert open_response.json()["founders"] == [{"name": ak, "fund_count": 2}]
+    assert all_response.json()["founders"] == [
+        {"name": ak, "fund_count": 2},
+        {"name": ata, "fund_count": 1},
+    ]
+    assert closed_founder.status_code == 422
+    assert closed_founder.json()["detail"]["code"] == "INVALID_FOUNDER"
+
+
+@pytest.mark.parametrize(
+    ("universe", "scope"),
+    [("tefas", "all"), ("befas", "open")],
+)
+def test_bundle_without_open_codes_fails_closed_for_other_scope(client, universe, scope):
+    generate = client.post(
+        "/api/generate", json={"universe": universe, "fund_scope": scope}
+    )
+    founders = client.get(f"/api/founders?universe={universe}&fund_scope={scope}")
+
+    for response in (generate, founders):
+        assert response.status_code == 503
+        assert response.json()["detail"]["code"] == "FUND_SCOPE_UNAVAILABLE"
+
+
+def test_generate_rejects_unknown_fund_scope(client):
+    response = client.post(
+        "/api/generate", json={"universe": "tefas", "fund_scope": "closed"}
+    )
+
+    assert response.status_code == 422

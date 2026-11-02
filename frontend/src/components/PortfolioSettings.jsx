@@ -8,6 +8,8 @@ import {
   PRIORITY_OPTIONS,
   UNIVERSE_OPTIONS,
   getDiversificationCap,
+  getFundScopeLabel,
+  getFundScopeOptions,
 } from '../config.js';
 
 function SelectField({ label, name, onChange, options, value }) {
@@ -46,7 +48,10 @@ export default function PortfolioSettings({
   const [founderError, setFounderError] = useState(null);
 
   useEffect(() => {
-    if (draftConfig.universe === config.universe) {
+    if (
+      draftConfig.universe === config.universe &&
+      draftConfig.fund_scope === config.fund_scope
+    ) {
       setFounderOptions(founders);
       setFounderError(null);
       return undefined;
@@ -55,7 +60,9 @@ export default function PortfolioSettings({
     const controller = new AbortController();
     setFounderLoading(true);
     setFounderError(null);
-    getFounders(draftConfig.universe, { signal: controller.signal })
+    getFounders(draftConfig.universe, draftConfig.fund_scope, {
+      signal: controller.signal,
+    })
       .then(setFounderOptions)
       .catch((requestError) => {
         if (requestError.name !== 'AbortError') {
@@ -70,7 +77,13 @@ export default function PortfolioSettings({
       });
 
     return () => controller.abort();
-  }, [config.universe, draftConfig.universe, founders]);
+  }, [
+    config.fund_scope,
+    config.universe,
+    draftConfig.fund_scope,
+    draftConfig.universe,
+    founders,
+  ]);
 
   const handleChange = (event) => {
     const { checked, name, type, value } = event.target;
@@ -84,8 +97,8 @@ export default function PortfolioSettings({
             : value;
 
     setDraftConfig((previous) => {
-      if (name === 'universe') {
-        return { ...previous, universe: nextValue, founder: null };
+      if (name === 'universe' || name === 'fund_scope') {
+        return { ...previous, [name]: nextValue, founder: null };
       }
       return { ...previous, [name]: nextValue };
     });
@@ -141,7 +154,9 @@ export default function PortfolioSettings({
           </div>
           <div>
             <span>Universe</span>
-            <strong>{draftConfig.universe.toUpperCase()}</strong>
+            <strong>
+              {getFundScopeLabel(draftConfig.universe, draftConfig.fund_scope)}
+            </strong>
           </div>
           <div>
             <span>Risk / horizon</span>
@@ -161,16 +176,26 @@ export default function PortfolioSettings({
             <div className="settings-section-heading">
               <div>
                 <h3 id="settings-scope-title">Scope</h3>
-                <p>Choose the fund universe and optional portfolio manager.</p>
+                <p>
+                  Choose the fund universe, which of its funds are eligible, and an
+                  optional portfolio manager.
+                </p>
               </div>
             </div>
-            <div className="settings-grid settings-grid-two">
+            <div className="settings-grid settings-grid-three">
               <SelectField
                 label="Universe"
                 name="universe"
                 value={draftConfig.universe}
                 onChange={handleChange}
                 options={UNIVERSE_OPTIONS}
+              />
+              <SelectField
+                label="Eligible funds"
+                name="fund_scope"
+                value={draftConfig.fund_scope}
+                onChange={handleChange}
+                options={getFundScopeOptions(draftConfig.universe)}
               />
               <SelectField
                 label="Founder (Kurucu)"

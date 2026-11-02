@@ -43,11 +43,17 @@ YONETIM_RENAME: dict[str, str] = {
     # "Yıllık Getiri Oranı (%)" intentionally dropped — redundant with getiri.csv
 }
 
+# Optional bundle file: the codes of funds open to the platform (işlem gören).
+OPEN_CODES_FILENAME = "islem_goren.csv"
+OPEN_CODES_RENAME: dict[str, str] = {"Fon Kodu": "fon_kodu"}
+
+
 @dataclass
 class UniverseData:
     getiri: pd.DataFrame
     buyukluk: pd.DataFrame
     yonetim_ucreti: pd.DataFrame
+    open_codes: frozenset[str] | None = None
 
 
 def _read_one(path: Path, rename: dict[str, str]) -> pd.DataFrame:
@@ -77,6 +83,11 @@ def load_universe(
         buyukluk=_read_one(buyukluk_path, BUYUKLUK_RENAME),
         yonetim_ucreti=_read_one(yonetim_path,  YONETIM_RENAME),
     )
+
+def read_open_codes(path: Path) -> pd.DataFrame:
+    """Load the open-to-platform fund codes for a single universe."""
+    return _read_one(path, OPEN_CODES_RENAME)
+
 
 def load_candidates_for_universe(universe: str, data_root: Path) -> pd.DataFrame:
     """Resolve, validate, load, and merge one universe's active data bundle."""

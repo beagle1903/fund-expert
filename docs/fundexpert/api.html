@@ -52,6 +52,9 @@
                                 <a class="variable" href="#GenerateRequest.universe">universe</a>
                         </li>
                         <li>
+                                <a class="variable" href="#GenerateRequest.fund_scope">fund_scope</a>
+                        </li>
+                        <li>
                                 <a class="variable" href="#GenerateRequest.risk_level">risk_level</a>
                         </li>
                         <li>
@@ -265,6 +268,9 @@
                                 <a class="variable" href="#FoundersResponse.universe">universe</a>
                         </li>
                         <li>
+                                <a class="variable" href="#FoundersResponse.fund_scope">fund_scope</a>
+                        </li>
+                        <li>
                                 <a class="variable" href="#FoundersResponse.founders">founders</a>
                         </li>
                 </ul>
@@ -314,6 +320,9 @@
                         </li>
                         <li>
                                 <a class="variable" href="#PortfolioHeader.universe">universe</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#PortfolioHeader.fund_scope">fund_scope</a>
                         </li>
                         <li>
                                 <a class="variable" href="#PortfolioHeader.candidate_total">candidate_total</a>
@@ -576,6 +585,18 @@
 
     </div>
     <a class="headerlink" href="#GenerateRequest.universe"></a>
+
+
+
+                            </div>
+                            <div id="GenerateRequest.fund_scope" class="classattr">
+                                <div class="attr variable">
+            <span class="name">fund_scope</span><span class="annotation">: Literal[&#39;open&#39;, &#39;all&#39;]</span>        =
+<span class="default_value">&#39;open&#39;</span>
+
+
+    </div>
+    <a class="headerlink" href="#GenerateRequest.fund_scope"></a>
 
 
 
@@ -1662,6 +1683,18 @@ __pydantic_private__: Values of private attributes set on the model instance.
 
 
                             </div>
+                            <div id="FoundersResponse.fund_scope" class="classattr">
+                                <div class="attr variable">
+            <span class="name">fund_scope</span><span class="annotation">: Literal[&#39;open&#39;, &#39;all&#39;]</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#FoundersResponse.fund_scope"></a>
+
+
+
+                            </div>
                             <div id="FoundersResponse.founders" class="classattr">
                                 <div class="attr variable">
             <span class="name">founders</span><span class="annotation">: list[<a href="#FounderOption">FounderOption</a>]</span>        =
@@ -1939,6 +1972,18 @@ __pydantic_private__: Values of private attributes set on the model instance.
 
     </div>
     <a class="headerlink" href="#PortfolioHeader.universe"></a>
+
+
+
+                            </div>
+                            <div id="PortfolioHeader.fund_scope" class="classattr">
+                                <div class="attr variable">
+            <span class="name">fund_scope</span><span class="annotation">: Literal[&#39;open&#39;, &#39;all&#39;]</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+
+    </div>
+    <a class="headerlink" href="#PortfolioHeader.fund_scope"></a>
 
 
 
@@ -2538,7 +2583,7 @@ __pydantic_private__: Values of private attributes set on the model instance.
                     <div class="attr function">
 
         <span class="def">def</span>
-        <span class="name">get_cached_candidates</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">universe</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;tefas&#39;</span><span class="p">,</span> <span class="s1">&#39;befas&#39;</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n"><a href="data/bundle.html#DataBundleManifest">fundexpert.data.bundle.DataBundleManifest</a></span><span class="p">]</span>:</span></span>
+        <span class="name">get_cached_candidates</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">universe</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">'tefas'</span><span class="p">,</span> <span class="s1">'befas'</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n"><a href="data/bundle.html#DataBundleManifest">fundexpert.data.bundle.DataBundleManifest</a></span><span class="p">]</span>:</span></span>
 
 
     </div>
@@ -2582,7 +2627,7 @@ __pydantic_private__: Values of private attributes set on the model instance.
                     <div class="decorator decorator-app.get">@app.get(&#39;/api/founders&#39;, response_model=FoundersResponse)</div>
 
         <span class="def">def</span>
-        <span class="name">get_founders</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">universe</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;tefas&#39;</span><span class="p">,</span> <span class="s1">&#39;befas&#39;</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="n"><a href="#FoundersResponse">FoundersResponse</a></span>:</span></span>
+        <span class="name">get_founders</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">universe</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">'tefas'</span><span class="p">,</span> <span class="s1">'befas'</span><span class="p">]</span>,</span><span class="param">	<span class="n">fund_scope</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">'open'</span><span class="p">,</span> <span class="s1">'all'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'open'</span></span><span class="return-annotation">) -> <span class="n"><a href="#FoundersResponse">FoundersResponse</a></span>:</span></span>
 
 
     </div>

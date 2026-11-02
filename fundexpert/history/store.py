@@ -79,6 +79,7 @@ def _write_run(
         "n": header["n"],
     }
     for key in (
+        "fund_scope",
         "founder",
         "momentum_priority",
         "max_per_type",

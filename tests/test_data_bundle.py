@@ -5,9 +5,11 @@ from pathlib import Path
 
 import pytest
 
+from fundexpert.data.loader import OPEN_CODES_FILENAME
 from fundexpert.data.bundle import (
     BUNDLE_FILENAMES,
     BundleValidationError,
+    load_bundle_frames,
     publish_bundle,
     resolve_active_bundle,
     validate_bundle,
@@ -163,3 +165,69 @@ def test_tampered_active_bundle_is_rejected(fixtures_dir, tmp_path):
 
     with pytest.raises(BundleValidationError, match="immutable ID"):
         resolve_active_bundle("tefas", tmp_path / "data")
+
+
+def _write_open_codes(bundle_dir: Path, *codes: str, reported: int | None = None) -> None:
+    rows = "".join(f"{code}\n" for code in codes)
+    count = len(codes) if reported is None else reported
+    (bundle_dir / OPEN_CODES_FILENAME).write_text(
+        "Dışa Aktarım Tarihi:,02.05.2026 11:02:13\n"
+        f"Toplam Kayıt Sayısı:,{count}\n\nFon Kodu\n{rows}",
+        encoding="utf-8-sig",
+    )
+
+
+def test_open_codes_are_published_tracked_and_loaded(fixtures_dir, tmp_path):
+    staged = _copy_bundle(fixtures_dir, tmp_path / "candidate")
+    without_open_codes = validate_bundle(staged, "tefas")
+    _write_open_codes(staged, "AAA", "BBB")
+
+    published = publish_bundle(staged, "tefas", tmp_path / "data")
+    active = resolve_active_bundle("tefas", tmp_path / "data")
+
+    assert published.has_open_codes
+    assert not without_open_codes.has_open_codes
+    assert published.bundle_id != without_open_codes.bundle_id
+    assert published.row_count == 3
+    assert OPEN_CODES_FILENAME in {item.filename for item in active.manifest.files}
+    assert load_bundle_frames(active).open_codes == frozenset({"AAA", "BBB"})
+
+
+def test_bundle_without_open_codes_loads_none(fixtures_dir, tmp_path):
+    staged = _copy_bundle(fixtures_dir, tmp_path / "candidate")
+    publish_bundle(staged, "tefas", tmp_path / "data")
+
+    active = resolve_active_bundle("tefas", tmp_path / "data")
+
+    assert load_bundle_frames(active).open_codes is None
+
+
+def test_active_bundle_rejects_tampered_open_codes(fixtures_dir, tmp_path):
+    staged = _copy_bundle(fixtures_dir, tmp_path / "candidate")
+    _write_open_codes(staged, "AAA", "BBB")
+    published = publish_bundle(staged, "tefas", tmp_path / "data")
+
+    bundle_dir = tmp_path / "data" / "tefas" / "bundles" / published.bundle_id
+    _write_open_codes(bundle_dir, "AAA", "BBB", "CCC")
+
+    with pytest.raises(BundleValidationError):
+        resolve_active_bundle("tefas", tmp_path / "data")
+
+
+@pytest.mark.parametrize(
+    ("codes", "reported", "message"),
+    [
+        (("AAA", "ZZZ"), None, "lists codes missing"),
+        ((), None, "lists no fund codes"),
+        (("AAA", "AAA"), None, "duplicate fund codes"),
+        (("AAA",), 2, "reports 2 rows but contains 1"),
+    ],
+)
+def test_validate_bundle_rejects_invalid_open_codes(
+    fixtures_dir, tmp_path, codes, reported, message
+):
+    bundle_dir = _copy_bundle(fixtures_dir, tmp_path / "candidate")
+    _write_open_codes(bundle_dir, *codes, reported=reported)
+
+    with pytest.raises(BundleValidationError, match=message):
+        validate_bundle(bundle_dir, "tefas")

@@ -48,9 +48,9 @@ export async function generatePortfolio(config, { signal } = {}) {
   return payload;
 }
 
-export async function getFounders(universe, { signal } = {}) {
+export async function getFounders(universe, fundScope, { signal } = {}) {
   const response = await fetch(
-    `/api/founders?universe=${encodeURIComponent(universe)}`,
+    `/api/founders?universe=${encodeURIComponent(universe)}&fund_scope=${encodeURIComponent(fundScope)}`,
     { signal },
   );
 

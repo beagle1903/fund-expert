@@ -7,6 +7,7 @@ import pandas as pd
 from fundexpert.schemas import MergedUniverseSchema
 from fundexpert.data.loader import UniverseData
 from fundexpert.founders import attribute_founders
+from fundexpert.fund_scope import OPEN_TO_PLATFORM_COLUMN
 from fundexpert.utils.rules import get_exclusion_rules
 
 
@@ -27,6 +28,8 @@ def merge_universe(frames: UniverseData, universe: str, validate_schemas: bool =
     df = df.merge(yonetim_keep, on="fon_kodu", how="inner")
     df["universe"] = universe
     df["kurucu"] = attribute_founders(df["fon_adi"], universe)
+    if frames.open_codes is not None:
+        df[OPEN_TO_PLATFORM_COLUMN] = df["fon_kodu"].isin(frames.open_codes).astype(bool)
 
     if validate_schemas:
         return MergedUniverseSchema.validate(df)

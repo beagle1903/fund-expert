@@ -10,6 +10,7 @@ from fundexpert.data.refresh import (
     DataRefreshError,
     refresh_universe,
 )
+from fundexpert.data.loader import OPEN_CODES_FILENAME
 from fundexpert.data.tefas_export import WebExportError
 
 
@@ -26,9 +27,40 @@ def _copy_bundle(fixtures_dir: Path, destination: Path) -> None:
         shutil.copy2(fixtures_dir / source, destination / target)
 
 
+def _write_open_codes(bundle_dir: Path) -> None:
+    (bundle_dir / OPEN_CODES_FILENAME).write_text(
+        "Dışa Aktarım Tarihi:,02.05.2026 11:02:13\n"
+        "Toplam Kayıt Sayısı:,1\n\nFon Kodu\nAAA\n",
+        encoding="utf-8-sig",
+    )
+
+
+def test_refresh_replaces_fresh_bundle_without_open_codes(fixtures_dir, tmp_path):
+    data_root = tmp_path / "data"
+    _copy_bundle(fixtures_dir, data_root / "tefas")
+    calls = []
+
+    def downloader(universe, staged_dir, *, now):
+        calls.append(universe)
+        _copy_bundle(fixtures_dir, staged_dir)
+        _write_open_codes(staged_dir)
+
+    result = refresh_universe(
+        "tefas",
+        data_root,
+        now=datetime(2026, 5, 2, 18, 0),
+        downloader=downloader,
+    )
+
+    assert calls == ["tefas"]
+    assert result.refreshed is True
+    assert result.manifest.has_open_codes
+
+
 def test_refresh_skips_download_when_active_bundle_is_fresh(fixtures_dir, tmp_path):
     data_root = tmp_path / "data"
     _copy_bundle(fixtures_dir, data_root / "tefas")
+    _write_open_codes(data_root / "tefas")
     calls = []
 
     result = refresh_universe(

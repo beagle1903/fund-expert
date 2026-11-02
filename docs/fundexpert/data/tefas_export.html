@@ -40,7 +40,13 @@
                     <a class="variable" href="#MIN_ROWS_BY_UNIVERSE">MIN_ROWS_BY_UNIVERSE</a>
             </li>
             <li>
+                    <a class="variable" href="#MIN_OPEN_ROWS_BY_UNIVERSE">MIN_OPEN_ROWS_BY_UNIVERSE</a>
+            </li>
+            <li>
                     <a class="variable" href="#MAX_IGNORED_CODE_SET_DIFFERENCES">MAX_IGNORED_CODE_SET_DIFFERENCES</a>
+            </li>
+            <li>
+                    <a class="variable" href="#MAX_IGNORED_OPEN_CODE_DIFFERENCES">MAX_IGNORED_OPEN_CODE_DIFFERENCES</a>
             </li>
             <li>
                     <a class="class" href="#ExportDefinition">ExportDefinition</a>
@@ -57,11 +63,17 @@
                         <li>
                                 <a class="variable" href="#ExportDefinition.columns">columns</a>
                         </li>
+                        <li>
+                                <a class="variable" href="#ExportDefinition.islem">islem</a>
+                        </li>
                 </ul>
 
             </li>
             <li>
                     <a class="variable" href="#EXPORTS">EXPORTS</a>
+            </li>
+            <li>
+                    <a class="variable" href="#OPEN_CODES_EXPORT">OPEN_CODES_EXPORT</a>
             </li>
             <li>
                     <a class="variable" href="#ResponseOpener">ResponseOpener</a>
@@ -125,7 +137,7 @@
                 <section id="MIN_ROWS_BY_UNIVERSE">
                     <div class="attr variable">
             <span class="name">MIN_ROWS_BY_UNIVERSE</span>        =
-<span class="default_value">{&#39;tefas&#39;: 500, &#39;befas&#39;: 350}</span>
+<span class="default_value">{&#39;tefas&#39;: 1500, &#39;befas&#39;: 350}</span>
 
 
     </div>
@@ -134,14 +146,38 @@
 
 
                 </section>
+                <section id="MIN_OPEN_ROWS_BY_UNIVERSE">
+                    <div class="attr variable">
+            <span class="name">MIN_OPEN_ROWS_BY_UNIVERSE</span>        =
+<span class="default_value">{&#39;tefas&#39;: 500, &#39;befas&#39;: 250}</span>
+
+
+    </div>
+    <a class="headerlink" href="#MIN_OPEN_ROWS_BY_UNIVERSE"></a>
+
+
+
+                </section>
                 <section id="MAX_IGNORED_CODE_SET_DIFFERENCES">
                     <div class="attr variable">
             <span class="name">MAX_IGNORED_CODE_SET_DIFFERENCES</span>        =
-<span class="default_value">5</span>
+<span class="default_value">{&#39;tefas&#39;: 60, &#39;befas&#39;: 5}</span>
 
 
     </div>
     <a class="headerlink" href="#MAX_IGNORED_CODE_SET_DIFFERENCES"></a>
+
+
+
+                </section>
+                <section id="MAX_IGNORED_OPEN_CODE_DIFFERENCES">
+                    <div class="attr variable">
+            <span class="name">MAX_IGNORED_OPEN_CODE_DIFFERENCES</span>        =
+<span class="default_value">5</span>
+
+
+    </div>
+    <a class="headerlink" href="#MAX_IGNORED_OPEN_CODE_DIFFERENCES"></a>
 
 
 
@@ -162,7 +198,7 @@
                             <div id="ExportDefinition.__init__" class="classattr">
                                 <div class="attr function">
 
-        <span class="name">ExportDefinition</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">filename</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">listing_type</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">columns</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span></span>)</span>
+        <span class="name">ExportDefinition</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">filename</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">listing_type</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">columns</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span>,</span><span class="param">	<span class="n">islem</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span>)</span>
 
 
     </div>
@@ -204,16 +240,41 @@
 
 
                             </div>
+                            <div id="ExportDefinition.islem" class="classattr">
+                                <div class="attr variable">
+            <span class="name">islem</span><span class="annotation">: int | None</span>        =
+<span class="default_value">None</span>
+
+
+    </div>
+    <a class="headerlink" href="#ExportDefinition.islem"></a>
+
+
+
+                            </div>
                 </section>
                 <section id="EXPORTS">
                     <div class="attr variable">
             <span class="name">EXPORTS</span>        =
 <input id="EXPORTS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
-            <label class="view-value-button pdoc-button" for="EXPORTS-view-value"></label><span class="default_value">(ExportDefinition(filename=&#39;getiri.csv&#39;, listing_type=&#39;return&#39;, columns=((&#39;fonKodu&#39;, &#39;Fon Kodu&#39;), (&#39;fonUnvan&#39;, &#39;Fon Adı&#39;), (&#39;fonTurAciklama&#39;, &#39;Şemsiye Fon Türü&#39;), (&#39;riskDegeri&#39;, &#39;Fonun Risk Değeri&#39;), (&#39;getiri1a&#39;, &#39;1 Ay (%)&#39;), (&#39;getiri3a&#39;, &#39;3 Ay (%)&#39;), (&#39;getiri6a&#39;, &#39;6 Ay (%)&#39;), (&#39;getiriyb&#39;, &#39;Yılbaşından İtibaren (%)&#39;), (&#39;getiri1y&#39;, &#39;1 Yıl (%)&#39;), (&#39;getiri3y&#39;, &#39;3 Yıl (%)&#39;), (&#39;getiri5y&#39;, &#39;5 Yıl (%)&#39;))), ExportDefinition(filename=&#39;yonetim ucreti.csv&#39;, listing_type=&#39;management&#39;, columns=((&#39;fonKodu&#39;, &#39;Fon Kodu&#39;), (&#39;fonUnvan&#39;, &#39;Fon Adı&#39;), (&#39;fonTurAciklama&#39;, &#39;Şemsiye Fon Türü&#39;), (&#39;uygulananYu1Y&#39;, &#39;Uygulanan Yönetim Ücreti Yıllık (%)&#39;), (&#39;fonIcTuzukYu1G&#39;, &#39;Fon İç Tüzüğünde Yer Alan Yönetim Ücreti Yıllık (%)&#39;), (&#39;yillikGetiri&#39;, &#39;Yıllık Getiri Oranı (%)&#39;), (&#39;fonTopGiderKesoran&#39;, &#39;Yıllık Azami Fon Toplam Gider Oranı (%)&#39;))), ExportDefinition(filename=&#39;buyukluk.csv&#39;, listing_type=&#39;size&#39;, columns=((&#39;fonKodu&#39;, &#39;Fon Kodu&#39;), (&#39;fonUnvan&#39;, &#39;Fon Adı&#39;), (&#39;fonTurAciklama&#39;, &#39;Şemsiye Fon Türü&#39;), (&#39;ilkPortfoyDegeri&#39;, &#39;İlk Portföy Büyüklüğü&#39;), (&#39;sonPortfoyDegeri&#39;, &#39;Son Portföy Büyüklüğü&#39;), (&#39;portBuyuklukDegisim&#39;, &#39;Portföy Büyüklüğü Değişimi (%)&#39;), (&#39;ilkPayAdedi&#39;, &#39;Tedavüldeki İlk Pay Adedi&#39;), (&#39;sonPayAdedi&#39;, &#39;Tedavüldeki Son Pay Adedi&#39;), (&#39;payAdetDegisim&#39;, &#39;Pay Adedi Değişimi (%)&#39;), (&#39;netGetiriOrani&#39;, &#39;Getiri Oranı (%)&#39;))))</span>
+            <label class="view-value-button pdoc-button" for="EXPORTS-view-value"></label><span class="default_value">(ExportDefinition(filename=&#39;getiri.csv&#39;, listing_type=&#39;return&#39;, columns=((&#39;fonKodu&#39;, &#39;Fon Kodu&#39;), (&#39;fonUnvan&#39;, &#39;Fon Adı&#39;), (&#39;fonTurAciklama&#39;, &#39;Şemsiye Fon Türü&#39;), (&#39;riskDegeri&#39;, &#39;Fonun Risk Değeri&#39;), (&#39;getiri1a&#39;, &#39;1 Ay (%)&#39;), (&#39;getiri3a&#39;, &#39;3 Ay (%)&#39;), (&#39;getiri6a&#39;, &#39;6 Ay (%)&#39;), (&#39;getiriyb&#39;, &#39;Yılbaşından İtibaren (%)&#39;), (&#39;getiri1y&#39;, &#39;1 Yıl (%)&#39;), (&#39;getiri3y&#39;, &#39;3 Yıl (%)&#39;), (&#39;getiri5y&#39;, &#39;5 Yıl (%)&#39;)), islem=None), ExportDefinition(filename=&#39;yonetim ucreti.csv&#39;, listing_type=&#39;management&#39;, columns=((&#39;fonKodu&#39;, &#39;Fon Kodu&#39;), (&#39;fonUnvan&#39;, &#39;Fon Adı&#39;), (&#39;fonTurAciklama&#39;, &#39;Şemsiye Fon Türü&#39;), (&#39;uygulananYu1Y&#39;, &#39;Uygulanan Yönetim Ücreti Yıllık (%)&#39;), (&#39;fonIcTuzukYu1G&#39;, &#39;Fon İç Tüzüğünde Yer Alan Yönetim Ücreti Yıllık (%)&#39;), (&#39;yillikGetiri&#39;, &#39;Yıllık Getiri Oranı (%)&#39;), (&#39;fonTopGiderKesoran&#39;, &#39;Yıllık Azami Fon Toplam Gider Oranı (%)&#39;)), islem=None), ExportDefinition(filename=&#39;buyukluk.csv&#39;, listing_type=&#39;size&#39;, columns=((&#39;fonKodu&#39;, &#39;Fon Kodu&#39;), (&#39;fonUnvan&#39;, &#39;Fon Adı&#39;), (&#39;fonTurAciklama&#39;, &#39;Şemsiye Fon Türü&#39;), (&#39;ilkPortfoyDegeri&#39;, &#39;İlk Portföy Büyüklüğü&#39;), (&#39;sonPortfoyDegeri&#39;, &#39;Son Portföy Büyüklüğü&#39;), (&#39;portBuyuklukDegisim&#39;, &#39;Portföy Büyüklüğü Değişimi (%)&#39;), (&#39;ilkPayAdedi&#39;, &#39;Tedavüldeki İlk Pay Adedi&#39;), (&#39;sonPayAdedi&#39;, &#39;Tedavüldeki Son Pay Adedi&#39;), (&#39;payAdetDegisim&#39;, &#39;Pay Adedi Değişimi (%)&#39;), (&#39;netGetiriOrani&#39;, &#39;Getiri Oranı (%)&#39;)), islem=None))</span>
 
 
     </div>
     <a class="headerlink" href="#EXPORTS"></a>
+
+
+
+                </section>
+                <section id="OPEN_CODES_EXPORT">
+                    <div class="attr variable">
+            <span class="name">OPEN_CODES_EXPORT</span>        =
+<input id="OPEN_CODES_EXPORT-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+            <label class="view-value-button pdoc-button" for="OPEN_CODES_EXPORT-view-value"></label><span class="default_value">ExportDefinition(filename=&#39;islem_goren.csv&#39;, listing_type=&#39;return&#39;, columns=((&#39;fonKodu&#39;, &#39;Fon Kodu&#39;),), islem=1)</span>
+
+
+    </div>
+    <a class="headerlink" href="#OPEN_CODES_EXPORT"></a>
 
 
 
@@ -255,7 +316,7 @@
     </div>
     <a class="headerlink" href="#download_web_export_bundle"></a>
 
-            <div class="docstring"><p>Acquire exactly three web exports and render the canonical CSV bundle.</p>
+            <div class="docstring"><p>Acquire exactly four web exports and render the canonical CSV bundle.</p>
 </div>
 
 
