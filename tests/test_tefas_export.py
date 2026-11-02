@@ -312,7 +312,7 @@ def _with_risk(opener, code, risk):
     return set_risk
 
 
-@pytest.mark.parametrize("risk", ["-", 0])
+@pytest.mark.parametrize("risk", ["-", " - ", 0, "0", 0.0, "0.0"])
 def test_download_web_export_bundle_blanks_closed_fund_risk(tmp_path, risk):
     opener = _with_risk(RecordingOpener(), "F1000", risk)
 
@@ -321,6 +321,36 @@ def test_download_web_export_bundle_blanks_closed_fund_risk(tmp_path, risk):
     frame = _read_one(tmp_path / "getiri.csv", GETIRI_RENAME)
     assert validate_bundle(tmp_path, "tefas").row_count == 1500
     assert frame.set_index("fon_kodu")["risk"].isna()["F1000"]
+
+
+@pytest.mark.parametrize(
+    ("risk", "message"),
+    [
+        (8, "between 1 and 7"),
+        ("8", "between 1 and 7"),
+        ("broken", "invalid numeric values"),
+    ],
+)
+def test_download_web_export_bundle_rejects_closed_fund_unexpected_risk(
+    tmp_path, risk, message
+):
+    opener = _with_risk(RecordingOpener(), "F1000", risk)
+
+    download_web_export_bundle("tefas", tmp_path, opener=opener)
+
+    with pytest.raises(BundleValidationError, match=message):
+        validate_bundle(tmp_path, "tefas")
+
+
+@pytest.mark.parametrize("risk", [3, "3", 3.0, "3.0"])
+def test_download_web_export_bundle_keeps_closed_fund_valid_risk(tmp_path, risk):
+    opener = _with_risk(RecordingOpener(), "F1000", risk)
+
+    download_web_export_bundle("tefas", tmp_path, opener=opener)
+
+    frame = _read_one(tmp_path / "getiri.csv", GETIRI_RENAME)
+    assert validate_bundle(tmp_path, "tefas").row_count == 1500
+    assert float(frame.set_index("fon_kodu")["risk"]["F1000"]) == 3
 
 
 def test_download_web_export_bundle_rejects_open_fund_invalid_risk(tmp_path):

@@ -27,7 +27,6 @@ MIN_OPEN_ROWS_BY_UNIVERSE = {"tefas": 500, "befas": 250}
 # funds often have no fee row, and clean_candidates would drop them anyway.
 MAX_IGNORED_CODE_SET_DIFFERENCES = {"tefas": 60, "befas": 5}
 MAX_IGNORED_OPEN_CODE_DIFFERENCES = 5
-VALID_RISK_VALUES = frozenset(str(value) for value in range(1, 8))
 
 
 @dataclass(frozen=True)
@@ -295,20 +294,33 @@ def _align_open_rows(
     return kept
 
 
+def _is_missing_risk_sentinel(value: Any) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, str):
+        value = value.strip()
+        if value == "-":
+            return True
+    try:
+        return float(value) == 0
+    except (TypeError, ValueError):
+        return False
+
+
 def _blank_closed_fund_risk(
     rows: list[dict[str, Any]],
     open_rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Blank the "-" and 0 risk some closed funds report; scoring treats blank as 7.
 
-    Open funds keep their value, so a bad rating on one still fails validation.
+    Open funds and any other value stay as sent, so validation can still reject them.
     """
     open_codes = {str(row.get("fonKodu", "")) for row in open_rows}
     return [
-        row
-        if str(row.get("fonKodu", "")) in open_codes
-        or str(row.get("riskDegeri")) in VALID_RISK_VALUES
-        else {**row, "riskDegeri": None}
+        {**row, "riskDegeri": None}
+        if str(row.get("fonKodu", "")) not in open_codes
+        and _is_missing_risk_sentinel(row.get("riskDegeri"))
+        else row
         for row in rows
     ]
 
