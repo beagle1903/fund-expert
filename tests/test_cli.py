@@ -179,7 +179,7 @@ def test_main_passes_diversification_mode_and_optional_overrides(monkeypatch):
             "6",
         ],
     )
-    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: answers)
+    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda *_args, **_kwargs: answers)
     monkeypatch.setattr("fundexpert.cli.save_last_run_state", lambda _: None)
     monkeypatch.setattr(
         "fundexpert.cli.load_candidates_for_universe",
@@ -497,7 +497,7 @@ def test_run_pipeline_news_enabled_without_api_key_falls_back_to_quant(
 def test_main_saves_run_on_every_execution(monkeypatch, stub_cli_candidate_load):
     """save_run is called once per universe even without --diff-last."""
     monkeypatch.setattr("sys.argv", ["fundexpert"])
-    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: {
+    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda *_args, **_kwargs: {
         "universe": "tefas", "risk_level": "medium", "horizon": "medium",
         "volume_priority": "medium", "fee_priority": "medium", "momentum_priority": "medium", "n": 5,
     })
@@ -530,7 +530,7 @@ def test_main_saves_run_on_every_execution(monkeypatch, stub_cli_candidate_load)
 def test_main_diff_last_calls_render_diff_when_previous_exists(monkeypatch, stub_cli_candidate_load):
     """--diff-last calls render_diff when a previous run is available."""
     monkeypatch.setattr("sys.argv", ["fundexpert", "--diff-last"])
-    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: {
+    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda *_args, **_kwargs: {
         "universe": "tefas", "risk_level": "medium", "horizon": "medium",
         "volume_priority": "medium", "fee_priority": "medium", "momentum_priority": "medium", "n": 5,
     })
@@ -608,7 +608,7 @@ def test_main_refreshes_each_selected_universe_before_generation(
         return DataRefreshResult(universe, False, MagicMock())
 
     monkeypatch.setattr("sys.argv", ["fundexpert", "--refresh"])
-    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda _: answers)
+    monkeypatch.setattr("fundexpert.cli.prompt_user", lambda *_args, **_kwargs: answers)
     monkeypatch.setattr("fundexpert.cli.save_last_run_state", lambda _: None)
     monkeypatch.setattr("fundexpert.cli.refresh_universe", refresh)
     monkeypatch.setattr("fundexpert.cli.render_portfolio", lambda *args, **kwargs: None)
@@ -653,3 +653,158 @@ def test_load_last_run_returns_empty_on_json_error():
          patch("pathlib.Path.exists", return_value=True), \
          patch("pathlib.Path.glob", return_value=[Path("/tmp/foo")]):
         assert load_last_run("tefas", Path("/tmp")) is None
+
+
+# ---- founders come from the loaded data; data problems are worded, not raised ----
+
+_PRESENT_FOUNDERS = ["AK PORTFÖY YÖNETİMİ A.Ş.", "ATA PORTFÖY YÖNETİMİ A.Ş."]
+_CLI_ANSWERS = {
+    "universe": "tefas",
+    "risk_level": "medium",
+    "horizon": "medium",
+    "volume_priority": "medium",
+    "fee_priority": "medium",
+    "momentum_priority": "medium",
+    "n": 3,
+}
+
+
+def _founder_candidates():
+    return pd.DataFrame(
+        {
+            "fon_kodu": ["AAA", "BBB", "CCC"],
+            "universe": ["tefas"] * 3,
+            # Deliberately not in catalogue order; one fund has no founder.
+            "kurucu": [_PRESENT_FOUNDERS[1], _PRESENT_FOUNDERS[0], None],
+        }
+    )
+
+
+def _stub_cli_output(monkeypatch):
+    monkeypatch.setattr("fundexpert.cli.save_last_run_state", lambda _: None)
+    monkeypatch.setattr("fundexpert.cli.save_run", lambda *args, **kwargs: None)
+    monkeypatch.setattr("fundexpert.cli.render_portfolio", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "fundexpert.cli.run_pipeline",
+        lambda **kwargs: PipelineResult(
+            weighted=pd.DataFrame(),
+            header={"warning": None},
+            hits_for_render={},
+            news_meta={"enabled": False},
+        ),
+    )
+
+
+def test_prompt_offers_only_the_founders_it_is_given():
+    qmock = _make_questionary_mock(
+        ["tefas", "__all__", "medium", "medium", "medium", "medium", "medium", "5"]
+    )
+    asked = []
+
+    def founders_for(universe):
+        asked.append(universe)
+        return _PRESENT_FOUNDERS
+
+    with patch.dict("sys.modules", {"questionary": qmock}):
+        answers = prompt_user(
+            last={"founders": {"tefas": "HAS PORTFÖY YÖNETİMİ A.Ş."}},
+            founders_for=founders_for,
+        )
+
+    assert asked == ["tefas"]
+    assert answers["founders"] == {"tefas": None}
+    offered = [call.kwargs["value"] for call in qmock.Choice.call_args_list]
+    assert offered == ["__all__", *_PRESENT_FOUNDERS]
+    # A remembered founder that is no longer offered falls back to "all".
+    assert qmock.select.call_args_list[1].kwargs["default"] == "__all__"
+
+
+def test_main_offers_founders_present_in_the_loaded_data(monkeypatch):
+    loads = []
+    offered = {}
+
+    def load(universe, data_root):
+        loads.append(universe)
+        return _founder_candidates()
+
+    def fake_prompt(last, founders_for):
+        offered["tefas"] = list(founders_for("tefas"))
+        return dict(_CLI_ANSWERS)
+
+    monkeypatch.setattr("sys.argv", ["fundexpert"])
+    monkeypatch.setattr("fundexpert.cli.load_candidates_for_universe", load)
+    monkeypatch.setattr("fundexpert.cli.prompt_user", fake_prompt)
+    _stub_cli_output(monkeypatch)
+
+    assert main() == 0
+    # Catalogue order, only founders with a fund, and the bundle is read once.
+    assert offered["tefas"] == _PRESENT_FOUNDERS
+    assert "HAS PORTFÖY YÖNETİMİ A.Ş." not in offered["tefas"]
+    assert loads == ["tefas"]
+
+
+def test_main_reports_unreadable_data_without_a_traceback(monkeypatch, capsys):
+    from fundexpert.data.bundle import BundleValidationError
+
+    def load(universe, data_root):
+        raise BundleValidationError("Required file is missing: getiri.csv.")
+
+    monkeypatch.setattr("sys.argv", ["fundexpert"])
+    monkeypatch.setattr("fundexpert.cli.load_candidates_for_universe", load)
+    monkeypatch.setattr(
+        "fundexpert.cli.prompt_user", lambda *_args, **_kwargs: dict(_CLI_ANSWERS)
+    )
+    _stub_cli_output(monkeypatch)
+
+    assert main() == 2
+    err = capsys.readouterr().err
+    assert "Veri yüklenemedi (TEFAS)" in err
+    assert "getiri.csv" in err
+    assert "--refresh" in err
+    assert "Traceback" not in err
+
+
+def test_main_reports_unreadable_data_raised_while_listing_founders(monkeypatch, capsys):
+    saved = []
+
+    def load(universe, data_root):
+        raise FileNotFoundError("Required CSV file is missing: getiri.csv")
+
+    def fake_prompt(last, founders_for):
+        founders_for("befas")
+        raise AssertionError("the prompt should stop at the data error")
+
+    monkeypatch.setattr("sys.argv", ["fundexpert"])
+    monkeypatch.setattr("fundexpert.cli.load_candidates_for_universe", load)
+    monkeypatch.setattr("fundexpert.cli.prompt_user", fake_prompt)
+    monkeypatch.setattr("fundexpert.cli.save_last_run_state", saved.append)
+
+    assert main() == 2
+    assert "Veri yüklenemedi (BEFAS)" in capsys.readouterr().err
+    assert saved == []
+
+
+def test_main_reports_failed_refresh_and_generates_nothing(monkeypatch, capsys):
+    from fundexpert.data.refresh import DataRefreshError
+
+    ran = []
+
+    def refresh(universe, data_root, *, force, now):
+        raise DataRefreshError("TEFAS export is unavailable.")
+
+    monkeypatch.setattr("sys.argv", ["fundexpert", "--force-refresh"])
+    monkeypatch.setattr("fundexpert.cli.refresh_universe", refresh)
+    monkeypatch.setattr(
+        "fundexpert.cli.load_candidates_for_universe",
+        lambda *args: ran.append("load"),
+    )
+    monkeypatch.setattr(
+        "fundexpert.cli.prompt_user", lambda *_args, **_kwargs: dict(_CLI_ANSWERS)
+    )
+    _stub_cli_output(monkeypatch)
+
+    assert main() == 2
+    err = capsys.readouterr().err
+    assert "Veri yenileme başarısız (TEFAS): TEFAS export is unavailable." in err
+    assert "--refresh ile" not in err
+    assert ran == []

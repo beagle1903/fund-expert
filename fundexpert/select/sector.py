@@ -25,13 +25,17 @@ def _clean_names(names: pd.Series) -> pd.Series:
     return names.replace(cleanup_rules, regex=True)
 
 def sector_from_names(fon_adi_series: pd.Series) -> pd.Series:
-    """Vectorized sector bucket assignment for a Pandas Series of names."""
+    """Vectorized sector bucket assignment for a Pandas Series of names.
+
+    Names must already be Turkish-uppercased (``turkish_upper_series``). Rule
+    keywords are Turkish-uppercased on load, so the match is exact.
+    """
     cleaned = _clean_names(fon_adi_series)
     rules = get_sector_rules()
     if not rules:
         return pd.Series("diversified", index=fon_adi_series.index)
     conditions = [
-        cleaned.str.contains(k, case=False, na=False, regex=False)
+        cleaned.str.contains(k, na=False, regex=False)
         for k, _ in rules
     ]
     choices = [v for _, v in rules]

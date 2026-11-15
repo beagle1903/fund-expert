@@ -153,13 +153,17 @@
                     <div class="attr function">
 
         <span class="def">def</span>
-        <span class="name">prompt_user</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">last</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span>:</span></span>
+        <span class="name">prompt_user</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">last</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span>,</span><span class="param">	<span class="n">founders_for</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">function</span> <span class="n">founder_choices</span><span class="o">&gt;</span></span><span class="return-annotation">) -> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span>:</span></span>
 
 
     </div>
     <a class="headerlink" href="#prompt_user"></a>
 
             <div class="docstring"><p>Run interactive prompts. Returns None if the user cancelled (Ctrl+C / Esc).</p>
+
+<p><code>founders_for</code> supplies the founders offered for a universe. The CLI
+passes the founders present in the active data, so a founder with no
+current fund is never offered.</p>
 </div>
 
 

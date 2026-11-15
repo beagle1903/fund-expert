@@ -9,6 +9,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from fundexpert.utils.text import turkish_upper
 
 RULES_FILE = Path(__file__).resolve().parent.parent / "rules.json"
 _rules_write_lock = threading.Lock()
@@ -74,15 +75,25 @@ def save_editable_rules(rules: dict[str, Any]) -> None:
             raise
     clear_rules_cache()
 
+def _classification_rules(key: str) -> tuple[tuple[str, str], ...]:
+    """Return ``(keyword, category)`` pairs with Turkish-uppercased keywords.
+
+    Fund names are Turkish-uppercased before matching, so the keyword must be
+    too: a plain case-insensitive comparison does not fold i/İ or ı/I.
+    """
+    rules = _load_rules_json()
+    return tuple(
+        (turkish_upper(keyword), category) for keyword, category in rules.get(key, [])
+    )
+
+
 @lru_cache(maxsize=1)
 def get_bucket_rules() -> tuple[tuple[str, str], ...]:
-    rules = _load_rules_json()
-    return tuple(tuple(r) for r in rules.get("bucket_rules", []))
+    return _classification_rules("bucket_rules")
 
 @lru_cache(maxsize=1)
 def get_sector_rules() -> tuple[tuple[str, str], ...]:
-    rules = _load_rules_json()
-    return tuple(tuple(r) for r in rules.get("sector_rules", []))
+    return _classification_rules("sector_rules")
 
 @lru_cache(maxsize=1)
 def get_exclusion_rules() -> tuple[str, ...]:
