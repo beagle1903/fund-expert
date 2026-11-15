@@ -1,11 +1,47 @@
 [CmdletBinding()]
 param(
-    [string]$EngineRoot
+    [string]$EngineRoot,
+    # API port. Falls back to FUNDEXPERT_API_PORT, then 8000. The Vite proxy
+    # reads the same variable, so both sides always agree.
+    [string]$ApiPort,
+    # UI port. Falls back to FUNDEXPERT_UI_PORT, then 5173.
+    [string]$UiPort
 )
 
 $ErrorActionPreference = "Stop"
-$apiUrl = "http://127.0.0.1:8000/openapi.json"
-$uiUrl = "http://127.0.0.1:5173/"
+
+function Resolve-Port {
+    param(
+        [string]$Value,
+        [string]$EnvValue,
+        [int]$Default
+    )
+
+    $source = "$Default"
+    if (-not [string]::IsNullOrWhiteSpace($Value)) {
+        $source = $Value
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($EnvValue)) {
+        $source = $EnvValue
+    }
+    $number = 0
+    $valid = (
+        [int]::TryParse($source.Trim(), [ref]$number) -and
+        $number -ge 1 -and $number -le 65535
+    )
+    if (-not $valid) {
+        $number = $Default
+    }
+    return @{ Source = $source; Valid = $valid; Number = $number }
+}
+
+$apiPortInfo = Resolve-Port -Value $ApiPort -EnvValue $env:FUNDEXPERT_API_PORT -Default 8000
+$uiPortInfo = Resolve-Port -Value $UiPort -EnvValue $env:FUNDEXPERT_UI_PORT -Default 5173
+$apiPortNumber = $apiPortInfo.Number
+$uiPortNumber = $uiPortInfo.Number
+$apiBase = "http://127.0.0.1:$apiPortNumber"
+$apiUrl = "$apiBase/openapi.json"
+$uiUrl = "http://127.0.0.1:$uiPortNumber/"
 
 function Test-FundExpertRoot {
     param([string]$Path)
@@ -29,6 +65,22 @@ function Test-Endpoint {
     }
     catch {
         return $false
+    }
+}
+
+function Get-StatusCode {
+    param([string]$Url)
+
+    try {
+        $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 10
+        return [int]$response.StatusCode
+    }
+    catch {
+        $failed = $_.Exception.Response
+        if ($null -ne $failed) {
+            return [int]$failed.StatusCode
+        }
+        return $null
     }
 }
 
@@ -147,6 +199,20 @@ if ($null -eq $resolvedRoot) {
     Write-RunJson (New-ErrorPayload -Message "Fund Expert repository not found. Set FUND_EXPERT_ROOT or pass -EngineRoot." -EngineRootValue $null -Api $null -Ui $null -Logs $null)
     exit 1
 }
+$portError = $null
+if (-not $apiPortInfo.Valid) {
+    $portError = "Invalid API port '$($apiPortInfo.Source)'. Pass -ApiPort or set FUNDEXPERT_API_PORT to a number from 1 to 65535."
+}
+elseif (-not $uiPortInfo.Valid) {
+    $portError = "Invalid UI port '$($uiPortInfo.Source)'. Pass -UiPort or set FUNDEXPERT_UI_PORT to a number from 1 to 65535."
+}
+elseif ($apiPortNumber -eq $uiPortNumber) {
+    $portError = "The API and UI cannot share port $apiPortNumber."
+}
+if ($null -ne $portError) {
+    Write-RunJson (New-ErrorPayload -Message $portError -EngineRootValue $resolvedRoot -Api $null -Ui $null -Logs $null)
+    exit 1
+}
 
 $logDir = Join-Path $resolvedRoot ".Agent\logs"
 $apiStdout = Join-Path $logDir "fund-expert-api.stdout.log"
@@ -176,8 +242,8 @@ function Write-SetupFailure {
 try {
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
 
-    $apiPid = Get-ListenerProcessId -Port 8000
-    $uiPid = Get-ListenerProcessId -Port 5173
+    $apiPid = Get-ListenerProcessId -Port $apiPortNumber
+    $uiPid = Get-ListenerProcessId -Port $uiPortNumber
     $apiReachable = Test-Endpoint -Url $apiUrl
     $uiReachable = Test-Endpoint -Url $uiUrl
 
@@ -187,13 +253,13 @@ try {
             $apiState.action = "rejected"
             $apiState.pid = $apiPid
             $cmd = Get-ProcessCommandLine -ProcessId $apiPid
-            throw "Port 8000 is in use by process $apiPid, which does not belong to $resolvedRoot. $cmd"
+            throw "Port $apiPortNumber is in use by process $apiPid, which does not belong to $resolvedRoot. Pass -ApiPort or set FUNDEXPERT_API_PORT to use another port. $cmd"
         }
         if (-not $apiReachable) {
             $apiState.status = "conflict"
             $apiState.action = "rejected"
             $apiState.pid = $apiPid
-            throw "Port 8000 is already bound by this checkout but is not healthy at $apiUrl."
+            throw "Port $apiPortNumber is already bound by this checkout but is not healthy at $apiUrl."
         }
         $apiState.status = "healthy"
         $apiState.action = "reused"
@@ -202,7 +268,7 @@ try {
     elseif ($apiReachable) {
         $apiState.status = "conflict"
         $apiState.action = "rejected"
-        throw "Port 8000 answered $apiUrl but the listener process could not be identified."
+        throw "Port $apiPortNumber answered $apiUrl but the listener process could not be identified."
     }
 
     if ($null -ne $uiPid) {
@@ -211,13 +277,13 @@ try {
             $uiState.action = "rejected"
             $uiState.pid = $uiPid
             $cmd = Get-ProcessCommandLine -ProcessId $uiPid
-            throw "Port 5173 is in use by process $uiPid, which does not belong to $resolvedRoot. $cmd"
+            throw "Port $uiPortNumber is in use by process $uiPid, which does not belong to $resolvedRoot. Pass -UiPort or set FUNDEXPERT_UI_PORT to use another port. $cmd"
         }
         if (-not $uiReachable) {
             $uiState.status = "conflict"
             $uiState.action = "rejected"
             $uiState.pid = $uiPid
-            throw "Port 5173 is already bound by this checkout but is not healthy at $uiUrl."
+            throw "Port $uiPortNumber is already bound by this checkout but is not healthy at $uiUrl."
         }
         $uiState.status = "healthy"
         $uiState.action = "reused"
@@ -226,7 +292,7 @@ try {
     elseif ($uiReachable) {
         $uiState.status = "conflict"
         $uiState.action = "rejected"
-        throw "Port 5173 answered $uiUrl but the listener process could not be identified."
+        throw "Port $uiPortNumber answered $uiUrl but the listener process could not be identified."
     }
 
     if ($apiState.action -ne "reused") {
@@ -235,7 +301,7 @@ try {
             throw "Fund Expert Python runtime is missing: $python"
         }
         $apiProcess = Start-Process -FilePath $python `
-            -ArgumentList @("-m", "uvicorn", "fundexpert.api:app", "--host", "127.0.0.1", "--port", "8000") `
+            -ArgumentList @("-m", "uvicorn", "fundexpert.api:app", "--host", "127.0.0.1", "--port", "$apiPortNumber") `
             -WorkingDirectory $resolvedRoot -WindowStyle Hidden -PassThru `
             -RedirectStandardOutput $apiStdout -RedirectStandardError $apiStderr
         $apiState.pid = $apiProcess.Id
@@ -256,8 +322,10 @@ try {
                 throw "npm ci failed with exit code $LASTEXITCODE."
             }
         }
+        # vite.config.js reads this to pick the /api proxy target.
+        $env:FUNDEXPERT_API_PORT = "$apiPortNumber"
         $uiProcess = Start-Process -FilePath $npm `
-            -ArgumentList @("run", "dev", "--", "--host", "127.0.0.1", "--port", "5173", "--strictPort") `
+            -ArgumentList @("run", "dev", "--", "--host", "127.0.0.1", "--port", "$uiPortNumber", "--strictPort") `
             -WorkingDirectory $frontendRoot -WindowStyle Hidden -PassThru `
             -RedirectStandardOutput $uiStdout -RedirectStandardError $uiStderr
         $uiState.pid = $uiProcess.Id
@@ -277,7 +345,7 @@ try {
     if ($apiHealthy) {
         $apiState.status = "healthy"
         if ($apiState.action -eq "started") {
-            $apiState.pid = Get-ListenerProcessId -Port 8000
+            $apiState.pid = Get-ListenerProcessId -Port $apiPortNumber
         }
     }
     else {
@@ -286,7 +354,7 @@ try {
     if ($uiHealthy) {
         $uiState.status = "healthy"
         if ($uiState.action -eq "started") {
-            $uiState.pid = Get-ListenerProcessId -Port 5173
+            $uiState.pid = Get-ListenerProcessId -Port $uiPortNumber
         }
     }
     else {
@@ -296,6 +364,16 @@ try {
     if (-not ($apiHealthy -and $uiHealthy)) {
         Write-SetupFailure "API or UI did not become healthy within 60 seconds."
         exit 1
+    }
+
+    # A reused Vite keeps the proxy target it was started with, so confirm
+    # /api on the UI answers the same way as this API.
+    $statusPath = "api/data-status"
+    $directStatus = Get-StatusCode -Url "$apiBase/$statusPath"
+    $proxiedStatus = Get-StatusCode -Url "$uiUrl$statusPath"
+    if ($null -eq $directStatus -or $directStatus -ne $proxiedStatus) {
+        $uiState.status = "conflict"
+        throw "The UI on port $uiPortNumber does not proxy /api to the API on port $apiPortNumber (direct status $directStatus, proxied status $proxiedStatus). Stop the Vite process $($uiState.pid) and run again."
     }
 }
 catch {

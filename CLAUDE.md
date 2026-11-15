@@ -35,6 +35,7 @@ npm --prefix frontend run build
 # Run
 .venv\Scripts\python.exe -m fundexpert.cli          # CLI (add --news, --refresh, --force-refresh)
 .\scripts\run.ps1                                   # starts/reuses API :8000 + Vite :5173, prints JSON status; logs in .Agent/logs/
+.\scripts\run.ps1 -ApiPort 8010 -UiPort 5183        # when the default ports are taken (or set FUNDEXPERT_API_PORT / FUNDEXPERT_UI_PORT)
 
 # Dead code and generated API docs
 .venv\Scripts\python.exe -m vulture fundexpert --min-confidence 80
@@ -45,7 +46,7 @@ npm --prefix frontend run build
 
 - **Data layer** (`fundexpert/data/`): `bundle.py` treats `getiri.csv`, `buyukluk.csv`, `yonetim ucreti.csv` as one acquisition — `validate_bundle` then `publish_bundle` (immutable version + atomic `current.json` swap); `resolve_active_bundle` also accepts legacy flat files. `refresh.py`/`tefas_export.py` fetch fresh bundles via the undocumented TEFAS web-export transport and fail closed. `loader.py` parses the Turkish CSVs; `merge.py` joins them into one universe and attributes `kurucu` via `fundexpert/founders.py`.
 - **Pipeline** (`fundexpert/pipeline.py`, `run_pipeline(candidates, PipelineConfig)`): founder filter → `scoring/` (horizon averaging, normalized weighted score minus SRRI risk penalty) → strategy/sector buckets from `fundexpert/rules.json` keywords (`select/strategy.py`, `select/sector.py`) → optional news penalty (`news/`, Tavily) → `select/pick.py` (independent strategy and sector caps) → `select/weights.py` (5% units). Tunables in `fundexpert/config.py`; pandera schemas in `fundexpert/schemas.py`.
-- **Outputs**: `render/` (rich tables for CLI), `history/store.py` (runs saved to `~/.fundexpert/runs`, fail-soft), and `api.py` endpoints consumed by `frontend/src/api/fundexpert.js`. Vite proxies `/api` to `127.0.0.1:8000`.
+- **Outputs**: `render/` (rich tables for CLI), `history/store.py` (runs saved to `~/.fundexpert/runs`, fail-soft), and `api.py` endpoints consumed by `frontend/src/api/fundexpert.js`. Vite proxies `/api` to `127.0.0.1:8000` (or the port in `FUNDEXPERT_API_PORT`).
 - **Editable config via the web UI**: selection rules (`GET/PUT /api/selection-rules` → `fundexpert/rules.json`, never touching `cleanup_rules`) and the build-plugin profile (`GET/PUT /api/build-profile` → personal `profiles/default.json`, separate from frontend `DEFAULT_CONFIG`; saving never generates a portfolio).
 
 ## Data and tests

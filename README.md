@@ -110,7 +110,10 @@ Local web application:
 ```
 
 That starts or reuses the API on `127.0.0.1:8000` and Vite on `127.0.0.1:5173`.
-To run them yourself:
+If another program already uses one of those ports, choose others with
+`.\scripts\run.ps1 -ApiPort 8010 -UiPort 5183` or by setting
+`FUNDEXPERT_API_PORT` and `FUNDEXPERT_UI_PORT`; the Vite proxy follows the API
+port. To run them yourself:
 
 ```powershell
 # Terminal 1

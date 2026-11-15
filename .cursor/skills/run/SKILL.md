@@ -23,7 +23,8 @@ Start the local app without duplicating healthy services, then open it in Cursor
 ## Failure handling
 
 - Do not start a second copy of a healthy component that belongs to this checkout.
-- If another process owns port 8000 or 5173, fail with JSON `status: "error"` and do not reuse it.
+- If another process owns the API port (8000 by default) or the UI port (5173 by default), fail with JSON `status: "error"` and do not reuse it.
+- When the user names different ports, pass `-ApiPort <port>` and/or `-UiPort <port>` (or set `FUNDEXPERT_API_PORT` / `FUNDEXPERT_UI_PORT`). The Vite proxy follows the API port, and the script fails if a reused Vite still proxies elsewhere.
 - If startup fails, report the returned error and log paths. Include only a short relevant log tail; do not claim the URL is ready.
 - Do not change ports automatically. Port conflicts must fail clearly so the conflicting process can be inspected.
 - Run `npm ci` only when the Vite executable is missing.

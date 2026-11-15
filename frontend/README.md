@@ -15,7 +15,8 @@ npm --prefix frontend run build
 ```
 
 The development and preview servers proxy relative `/api` requests to
-`http://127.0.0.1:8000`. Start the backend with:
+`http://127.0.0.1:8000`, or to the port in `FUNDEXPERT_API_PORT` when that is
+set. Start the backend with:
 
 ```powershell
 .venv\Scripts\python.exe -m uvicorn fundexpert.api:app --reload
