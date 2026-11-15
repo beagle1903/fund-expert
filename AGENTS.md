@@ -15,6 +15,8 @@ fundexpert
 # Web UI (FastAPI backend + Vite/React frontend)
 # Start or reuse API :8000 and Vite :5173 (JSON status on stdout)
 ./scripts/run.ps1
+# Ports taken? Pick others (or set FUNDEXPERT_API_PORT / FUNDEXPERT_UI_PORT); the Vite proxy follows the API port
+./scripts/run.ps1 -ApiPort 8010 -UiPort 5183
 # Manual (two terminals):
 .venv/Scripts/python.exe -m uvicorn fundexpert.api:app --reload
 cd frontend && npm run dev
