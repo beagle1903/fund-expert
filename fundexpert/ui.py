@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from fundexpert.config import LAST_RUN_FILE
@@ -34,8 +35,16 @@ def save_last_run_state(answers: dict[str, Any]) -> None:
         pass  # quality-of-life only — never fail the run on cache write errors
 
 
-def prompt_user(last: dict[str, Any]) -> dict[str, Any] | None:
-    """Run interactive prompts. Returns None if the user cancelled (Ctrl+C / Esc)."""
+def prompt_user(
+    last: dict[str, Any],
+    founders_for: Callable[[str], Iterable[str]] = founder_choices,
+) -> dict[str, Any] | None:
+    """Run interactive prompts. Returns None if the user cancelled (Ctrl+C / Esc).
+
+    ``founders_for`` supplies the founders offered for a universe. The CLI
+    passes the founders present in the active data, so a founder with no
+    current fund is never offered.
+    """
     import questionary
 
     universe = questionary.select(
@@ -51,7 +60,7 @@ def prompt_user(last: dict[str, Any]) -> dict[str, Any] | None:
         last_founders = {}
     founders: dict[str, str | None] = {}
     for selected_universe in selected_universes:
-        universe_founders = tuple(founder_choices(selected_universe))
+        universe_founders = tuple(founders_for(selected_universe))
         last_founder = last_founders.get(selected_universe)
         founder = questionary.select(
             f"Kurucu ({selected_universe.upper()}):",

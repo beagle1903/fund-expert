@@ -16,12 +16,16 @@ import pandas as pd
 import numpy as np
 
 def bucket_from_names(fon_adi_series: pd.Series) -> pd.Series:
-    """Vectorized strategy bucket assignment for a Pandas Series of names."""
+    """Vectorized strategy bucket assignment for a Pandas Series of names.
+
+    Names must already be Turkish-uppercased (``turkish_upper_series``). Rule
+    keywords are Turkish-uppercased on load, so the match is exact.
+    """
     rules = get_bucket_rules()
     if not rules:
         return pd.Series("other", index=fon_adi_series.index)
     conditions = [
-        fon_adi_series.str.contains(k, case=False, na=False, regex=False)
+        fon_adi_series.str.contains(k, na=False, regex=False)
         for k, _ in rules
     ]
     choices = [v for _, v in rules]

@@ -4,23 +4,27 @@ import argparse
 import os
 import sys
 from datetime import datetime
+from typing import Any
 
 from fundexpert.config import (
-    HISTORY_DIR,
-    NEWS_API_KEY_ENV,
     DATA_ROOT,
+    HISTORY_DIR,
+    LEGACY_FUND_SCOPE,
+    NEWS_API_KEY_ENV,
 )
-from fundexpert.ui import ensure_utf8_stdio, load_last_run_state, prompt_user, save_last_run_state
-from fundexpert.pipeline import run_pipeline, PipelineConfig
-from fundexpert.history.store import load_last_run, save_run
-from fundexpert.render.diff import render_diff
-from fundexpert.render.table import render_portfolio
-
-
-
-
 from fundexpert.data.loader import load_candidates_for_universe
 from fundexpert.data.refresh import DataRefreshError, refresh_universe
+from fundexpert.founders import available_founders
+from fundexpert.fund_scope import filter_by_fund_scope
+from fundexpert.history.store import load_last_run, save_run
+from fundexpert.pipeline import run_pipeline, PipelineConfig
+from fundexpert.render.diff import render_diff
+from fundexpert.render.table import render_portfolio
+from fundexpert.ui import ensure_utf8_stdio, load_last_run_state, prompt_user, save_last_run_state
+
+
+class _CliDataError(RuntimeError):
+    """A data problem already worded for the user; ends the run with exit code 2."""
 
 
 def _cap_value(value: str) -> int:
@@ -68,11 +72,56 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    now = datetime.now()
+    candidates_by_universe: dict[str, Any] = {}
+
+    def prepare(universe: str) -> Any:
+        """Refresh (when asked) and load one universe once; reuse it afterwards."""
+        if universe in candidates_by_universe:
+            return candidates_by_universe[universe]
+        if args.refresh or args.force_refresh:
+            try:
+                refresh = refresh_universe(
+                    universe,
+                    DATA_ROOT,
+                    force=args.force_refresh,
+                    now=now,
+                )
+            except DataRefreshError as exc:
+                raise _CliDataError(
+                    f"Veri yenileme başarısız ({universe.upper()}): {exc}"
+                ) from exc
+            state = "yenilendi" if refresh.refreshed else "zaten güncel"
+            print(
+                f"Veri ({universe.upper()}): {state} "
+                f"[{refresh.manifest.bundle_id}]",
+                file=sys.stderr,
+            )
+        try:
+            candidates = load_candidates_for_universe(universe, DATA_ROOT)
+        except (OSError, UnicodeError, ValueError, KeyError) as exc:
+            hint = "" if args.refresh or args.force_refresh else " --refresh ile güncel veriyi indirmeyi deneyin."
+            raise _CliDataError(
+                f"Veri yüklenemedi ({universe.upper()}): {exc}{hint}"
+            ) from exc
+        candidates_by_universe[universe] = candidates
+        return candidates
+
+    def founders_in_data(universe: str) -> list[str]:
+        """Founders that have at least one fund in the scope the CLI runs on."""
+        scoped = filter_by_fund_scope(
+            prepare(universe), LEGACY_FUND_SCOPE[universe], universe
+        )
+        return [str(founder["name"]) for founder in available_founders(scoped)]
+
     last = load_last_run_state()
     try:
-        answers = prompt_user(last)
+        answers = prompt_user(last, founders_for=founders_in_data)
     except KeyboardInterrupt:
         answers = None
+    except _CliDataError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     if answers is None:
         print("İptal edildi.", file=sys.stderr)
         return 130
@@ -83,32 +132,17 @@ def main() -> int:
     universes_to_run = (
         ["tefas", "befas"] if answers["universe"] == "both" else [answers["universe"]]
     )
-    now = datetime.now()
 
-    if args.refresh or args.force_refresh:
+    # Refresh and load every universe before the first portfolio is printed.
+    try:
         for universe in universes_to_run:
-            try:
-                refresh = refresh_universe(
-                    universe,
-                    DATA_ROOT,
-                    force=args.force_refresh,
-                    now=now,
-                )
-            except DataRefreshError as exc:
-                print(
-                    f"Veri yenileme başarısız ({universe.upper()}): {exc}",
-                    file=sys.stderr,
-                )
-                return 2
-            state = "yenilendi" if refresh.refreshed else "zaten güncel"
-            print(
-                f"Veri ({universe.upper()}): {state} "
-                f"[{refresh.manifest.bundle_id}]",
-                file=sys.stderr,
-            )
-    
+            prepare(universe)
+    except _CliDataError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
     for u in universes_to_run:
-        candidates = load_candidates_for_universe(u, DATA_ROOT)
+        candidates = candidates_by_universe[u]
         config = PipelineConfig(
             universe=u,
             risk_level=answers["risk_level"],
